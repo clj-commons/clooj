@@ -49,9 +49,9 @@
 
 (defn put-constraint [comp1 edge1 comp2 edge2 dist]
   (let [edges {:n SpringLayout/NORTH
-               :e SpringLayout/EAST
+               :w SpringLayout/WEST
                :s SpringLayout/SOUTH
-               :w SpringLayout/WEST}]
+               :e SpringLayout/EAST}]
   (.. comp1 getParent getLayout
             (putConstraint (edges edge1) comp1 
                            dist (edges edge2) comp2))))
