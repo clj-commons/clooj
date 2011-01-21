@@ -1,7 +1,7 @@
 (ns clyde.core
   (:import (javax.swing JFrame JLabel JPanel JTextArea JScrollPane
-  			                JMenuBar JMenu JMenuItem KeyStroke JSplitPane
-  			                SpringLayout)
+                        JMenuBar JMenu JMenuItem KeyStroke JSplitPane
+                        SpringLayout)
            (javax.swing.event CaretListener)
            (javax.swing.text DefaultHighlighter
                              DefaultHighlighter$DefaultHighlightPainter)
@@ -36,10 +36,10 @@
                    (DefaultHighlighter$DefaultHighlightPainter. color)))
   ([doc pos color] (highlight doc pos (inc pos) color)))
 
-
 (defn remove-highlight
   ([doc highlight-object]
-    (.removeHighlight (.getHighlighter (:doc-text-area doc)) highlight-object)))
+    (.removeHighlight (.getHighlighter (:doc-text-area doc))
+                      highlight-object)))
 
 (defn make-scroll-pane [text-area]
     (JScrollPane. text-area))
