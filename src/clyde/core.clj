@@ -47,6 +47,24 @@
 (defn make-split-pane []
   (JSplitPane. JSplitPane/VERTICAL_SPLIT true))
 
+(defn put-constraint [comp1 edge1 comp2 edge2 dist]
+  (let [edges {:n SpringLayout/NORTH
+               :e SpringLayout/EAST
+               :s SpringLayout/SOUTH
+               :w SpringLayout/WEST}]
+  (.. comp1 getParent getLayout
+            (putConstraint (edges edge1) comp1 
+                           dist (edges edge2) comp2))))
+
+(defn put-constraints [comp & args]
+  (let [args (partition 3 args)
+        edges [:n :w :s :e]]
+    (dorun (map #(apply put-constraint comp %1 %2) edges args))))
+
+(defn constrain-to-parent [comp & args]
+  (apply put-constraints comp
+        (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
+
 (defn create-doc []
   (let [doc-text-area (make-text-area)
         repl-text-area (make-text-area)
@@ -65,16 +83,9 @@
       (.add status-bar))
     (doto status-bar
       (.setFont (Font. "Courier" Font/PLAIN 13)))
-    (doto layout
-      (.putConstraint SpringLayout/NORTH split-pane 0 SpringLayout/NORTH cp)
-      (.putConstraint SpringLayout/WEST split-pane 0 SpringLayout/WEST cp)
-      (.putConstraint SpringLayout/EAST split-pane 0 SpringLayout/EAST cp)
-      (.putConstraint SpringLayout/SOUTH split-pane -16 SpringLayout/SOUTH cp)
-      (.putConstraint SpringLayout/NORTH status-bar -16 SpringLayout/SOUTH cp)
-      (.putConstraint SpringLayout/SOUTH status-bar 0 SpringLayout/SOUTH cp)
-      (.putConstraint SpringLayout/WEST status-bar 0  SpringLayout/WEST cp)
-      (.putConstraint SpringLayout/EAST status-bar 0 SpringLayout/EAST cp)
-      (.layoutContainer f))
+    (constrain-to-parent split-pane :n 0 :w 0 :s -16 :e 0)
+    (constrain-to-parent status-bar :s -16 :w 0 :s 0 :e 0)
+    (.layoutContainer layout f)
     (doto doc-text-area
       (.addCaretListener
         (reify CaretListener
