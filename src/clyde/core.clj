@@ -1,9 +1,12 @@
 (ns clyde.core
   (:import (javax.swing JFrame JLabel JPanel JTextArea JScrollPane
-  			JMenuBar JMenu JMenuItem KeyStroke JSplitPane SpringLayout)
+  			                JMenuBar JMenu JMenuItem KeyStroke JSplitPane
+  			                SpringLayout)
            (javax.swing.event CaretListener)
-  		   (java.awt.event ActionListener KeyEvent)
-           (java.awt Font Toolkit FileDialog)
+           (javax.swing.text DefaultHighlighter
+                             DefaultHighlighter$DefaultHighlightPainter)
+           (java.awt.event ActionListener KeyEvent)
+           (java.awt Color Font Toolkit FileDialog)
            (java.io File FilenameFilter FileReader FileWriter OutputStream))
   (:use [clojure.contrib.duck-streams :only (writer)])
   (:gen-class))
@@ -26,6 +29,18 @@
   (let [{:keys [row col]} (get-caret-position doc)]
     (.setText (:status-bar doc) (str " " (inc row) "|" (inc col)))))
   
+(defn highlight
+  ([doc start stop color]
+    (.addHighlight (.getHighlighter (:doc-text-area doc))
+                   start stop
+                   (DefaultHighlighter$DefaultHighlightPainter. color)))
+  ([doc pos color] (highlight doc pos (inc pos) color)))
+
+
+(defn remove-highlight
+  ([doc highlight-object]
+    (.removeHighlight (.getHighlighter (:doc-text-area doc)) highlight-object)))
+
 (defn make-scroll-pane [text-area]
     (JScrollPane. text-area))
 
