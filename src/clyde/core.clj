@@ -48,7 +48,7 @@
     (JScrollPane. text-area))
 
 (defn make-split-pane []
-  (JSplitPane. JSplitPane/VERTICAL_SPLIT true))
+  (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true))
 
 (defn put-constraint [comp1 edge1 comp2 edge2 dist]
   (let [edges {:n SpringLayout/NORTH
