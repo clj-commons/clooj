@@ -175,8 +175,7 @@
      (def current-doc doc)
      (make-menus doc)
      (.show (doc :frame))
-     (add-line-numbers doc)
-     ))
+     (add-line-numbers doc)))
 
 (defn -main [& args]
   (startup))
