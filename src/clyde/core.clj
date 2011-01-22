@@ -1,15 +1,18 @@
 (ns clyde.core
-  (:import (javax.swing JFrame JLabel JPanel JTextArea JScrollPane
+  (:import (javax.swing JFrame JLabel JPanel JTextArea JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane
-                        SpringLayout)
+                        SpringLayout AbstractListModel)
            (javax.swing.event CaretListener)
            (javax.swing.text DefaultHighlighter
                              DefaultHighlighter$DefaultHighlightPainter)
+           (java.awt Insets)
            (java.awt.event ActionListener KeyEvent)
            (java.awt Color Font Toolkit FileDialog)
            (java.io File FilenameFilter FileReader FileWriter OutputStream))
   (:use [clojure.contrib.duck-streams :only (writer)])
   (:gen-class))
+
+(def light-green (Color. 180 242 180))
 
 (defn get-mono-font []
   (Font. "Monaco" Font/PLAIN 11))
@@ -65,6 +68,28 @@
   (apply put-constraints comp
         (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
 
+(defn add-line-numbers [doc]
+  (let [ta (:doc-text-area doc)
+        row-height (.. ta getGraphics (getFontMetrics (. ta getFont)) getHeight)
+        sp (.. ta getParent getParent)
+        jl (JList.
+             (proxy [AbstractListModel] []
+               (getSize [] Short/MAX_VALUE)
+               (getElementAt [i] (str (inc i) " "))))
+        cr (. jl getCellRenderer)]
+    (.setMargin ta (Insets. 0 10 0 0))
+    (dorun (map #(.removeMouseListener jl %) (.getMouseListeners jl)))
+    (dorun (map #(.removeMouseMotionListener jl %) (.getMouseMotionListeners jl)))
+    (doto jl
+      (.setBackground (Color. 235 235 235))
+      (.setForeground (Color. 50 50 50))
+      (.setFixedCellHeight row-height)
+      (.setFont (Font. "Monaco" Font/PLAIN 8)))
+    (doto cr
+      (.setHorizontalAlignment JLabel/RIGHT)
+      (.setVerticalAlignment JLabel/BOTTOM))
+    (.setRowHeaderView sp jl)))
+
 (defn create-doc []
   (let [doc-text-area (make-text-area)
         repl-text-area (make-text-area)
@@ -93,7 +118,7 @@
     (doto split-pane
       (.add (make-scroll-pane doc-text-area))
       (.add (make-scroll-pane repl-text-area))
-      (.setResizeWeight 1.0))      
+      (.setResizeWeight 1.0))    
     doc))
 
 (defn choose-file [frame suffix load]
@@ -149,8 +174,9 @@
   (let [doc (create-doc)]
      (def current-doc doc)
      (make-menus doc)
-     (.show (doc :frame))))
+     (.show (doc :frame))
+     (add-line-numbers doc)
+     ))
 
 (defn -main [& args]
   (startup))
-
