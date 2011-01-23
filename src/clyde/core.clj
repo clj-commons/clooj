@@ -1,7 +1,8 @@
 (ns clyde.core
   (:import (javax.swing JFrame JLabel JPanel JTextArea JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane
-                        SpringLayout AbstractListModel AbstractAction)
+                        SpringLayout AbstractListModel AbstractAction
+                        UIManager)
            (javax.swing.event CaretListener UndoableEditListener)
            (javax.swing.text DefaultHighlighter
                              DefaultHighlighter$DefaultHighlightPainter)
@@ -195,6 +196,7 @@
      (. menu-bar add file-menu)))
 
 (defn startup []
+  (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [doc (create-doc)]
      (def current-doc doc)
      (make-menus doc)
