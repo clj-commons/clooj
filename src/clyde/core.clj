@@ -176,7 +176,7 @@
     (.setTitle frame (.getPath file))))
   
 (defn add-menu-item [menu item-name key-shortcut response-fn]
-  (let [k (+ (- (int key-shortcut) (int \A)) KeyEvent/VK_A)]
+  (let [k (+ KeyEvent/VK_A (- (int key-shortcut) (int \A)))]
     (.add menu
       (doto (JMenuItem. item-name)
         (.setAccelerator (cmd-key k))
