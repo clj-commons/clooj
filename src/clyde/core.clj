@@ -117,12 +117,12 @@
   (apply put-constraints comp
         (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
 
-(defn add-line-numbers [text-comp max]
+(defn add-line-numbers [text-comp max-lines]
   (let [row-height (.. text-comp getGraphics (getFontMetrics (. text-comp getFont)) getHeight)
         sp (.. text-comp getParent getParent)
         jl (JList.
              (proxy [AbstractListModel] []
-               (getSize [] max)
+               (getSize [] max-lines)
                (getElementAt [i] (str (inc i) " "))))
         cr (. jl getCellRenderer)]
     (.setMargin text-comp (Insets. 0 10 0 0))
