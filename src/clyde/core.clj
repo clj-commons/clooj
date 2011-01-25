@@ -27,15 +27,14 @@
   (doto (JTextArea.)
     (.setFont (get-mono-font))))
 
-(defn get-caret-position [doc]
-  (let [t (:doc-text-area doc)
-        offset (.getCaretPosition t)
-        row (.getLineOfOffset t offset)
-        col (- offset (.getLineStartOffset t row))]
+(defn get-caret-position [text-comp]
+  (let [offset (.getCaretPosition text-comp)
+        row (.getLineOfOffset text-comp offset)
+        col (- offset (.getLineStartOffset text-comp row))]
     {:row row :col col}))
 
 (defn display-caret-position [doc]
-  (let [{:keys [row col]} (get-caret-position doc)]
+  (let [{:keys [row col]} (get-caret-position (:doc-text-area doc))]
     (.setText (:status-bar doc) (str " " (inc row) "|" (inc col)))))
 
 (defn bracket-score [c]
