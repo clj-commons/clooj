@@ -37,18 +37,62 @@
 (defn display-caret-position [doc]
   (let [{:keys [row col]} (get-caret-position doc)]
     (.setText (:status-bar doc) (str " " (inc row) "|" (inc col)))))
-  
+
+(defn bracket-score [c]
+  (condp = c 
+         \(  1 \[  1 \{  1   
+         \) -1 \] -1 \} -1
+         0))
+
+(defn count-while [pred coll]
+  (count (take-while pred coll)))
+
+(defn bracket-increment [score next-char]
+  (+ score (bracket-score next-char)))
+
+(defn count-brackets [s]
+  (reductions bracket-increment 0 s))
+
+(defn find-enclosing-brackets [text pos]
+  (let [[before after] (split-at pos text)]
+    [(- pos (count (take-while
+                     (partial >= 0)
+                     (count-brackets (reverse before)))))
+     (+ -1 pos (count (take-while
+                     (partial <= 0)
+                     (count-brackets after))))]))
+
+(def caret-highlight (atom nil))
+
 (defn highlight
-  ([doc start stop color]
-    (.addHighlight (.getHighlighter (:doc-text-area doc))
+  ([text-comp start stop color]
+    (.addHighlight (.getHighlighter text-comp)
                    start stop
                    (DefaultHighlighter$DefaultHighlightPainter. color)))
-  ([doc pos color] (highlight doc pos (inc pos) color)))
+  ([text-comp pos color] (highlight text-comp pos (inc pos) color)))
 
 (defn remove-highlight
-  ([doc highlight-object]
-    (.removeHighlight (.getHighlighter (:doc-text-area doc))
+  ([text-comp highlight-object]
+    (.removeHighlight (.getHighlighter text-comp)
                       highlight-object)))
+
+(defn highlight-enclosing-brackets [text-comp pos color]
+  (doall (map #(highlight text-comp % color)
+       (find-enclosing-brackets (.getText text-comp) pos))))
+
+(defn highlight-caret-enclosure [text-comp]
+  (when-let [ch @caret-highlight]
+    (doall (map #(remove-highlight text-comp %) ch)))
+  (reset! caret-highlight
+          (highlight-enclosing-brackets
+            text-comp (.getCaretPosition text-comp) Color/PINK)))
+
+(defn add-caret-listener [text-comp f]
+  (.addCaretListener text-comp
+    (reify CaretListener (caretUpdate [this evt] (f)))))
+
+(defn activate-caret-highlighter [text-comp]
+  (add-caret-listener text-comp #(highlight-caret-enclosure text-comp)))
 
 (defn make-scroll-pane [text-area]
     (JScrollPane. text-area))
@@ -74,16 +118,15 @@
   (apply put-constraints comp
         (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
 
-(defn add-line-numbers [doc]
-  (let [ta (:doc-text-area doc)
-        row-height (.. ta getGraphics (getFontMetrics (. ta getFont)) getHeight)
-        sp (.. ta getParent getParent)
+(defn add-line-numbers [text-comp max]
+  (let [row-height (.. text-comp getGraphics (getFontMetrics (. text-comp getFont)) getHeight)
+        sp (.. text-comp getParent getParent)
         jl (JList.
              (proxy [AbstractListModel] []
-               (getSize [] Short/MAX_VALUE)
+               (getSize [] max)
                (getElementAt [i] (str (inc i) " "))))
         cr (. jl getCellRenderer)]
-    (.setMargin ta (Insets. 0 10 0 0))
+    (.setMargin text-comp (Insets. 0 10 0 0))
     (dorun (map #(.removeMouseListener jl %) (.getMouseListeners jl)))
     (dorun (map #(.removeMouseMotionListener jl %) (.getMouseMotionListeners jl)))
     (doto jl
@@ -139,6 +182,7 @@
       (.addCaretListener
         (reify CaretListener
           (caretUpdate [this evt] (display-caret-position doc)))))
+    (activate-caret-highlighter doc-text-area)
     (doto split-pane
       (.add (make-scroll-pane doc-text-area))
       (.add (make-scroll-pane repl-text-area))
@@ -201,7 +245,7 @@
      (def current-doc doc)
      (make-menus doc)
      (.show (doc :frame))
-     (add-line-numbers doc)))
+     (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 
 (defn -main [& args]
   (startup))
