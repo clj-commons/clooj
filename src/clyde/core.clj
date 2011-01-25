@@ -84,7 +84,7 @@
     (doall (map #(remove-highlight text-comp %) ch)))
   (reset! caret-highlight
           (highlight-enclosing-brackets
-            text-comp (.getCaretPosition text-comp) Color/PINK)))
+            text-comp (.getCaretPosition text-comp) Color/GRAY)))
 
 (defn add-caret-listener [text-comp f]
   (.addCaretListener text-comp
