@@ -5,7 +5,8 @@
                         UIManager)
            (javax.swing.event CaretListener UndoableEditListener)
            (javax.swing.text DefaultHighlighter
-                             DefaultHighlighter$DefaultHighlightPainter)
+                             DefaultHighlighter$DefaultHighlightPainter
+                             DocumentFilter)
            (javax.swing.undo UndoManager)
            (java.awt Insets)
            (java.awt.event ActionListener KeyEvent)
@@ -156,6 +157,15 @@
           (.put (cmd-key KeyEvent/VK_Z) "Undo")
           (.put (cmd-key KeyEvent/VK_Y) "Redo"))))
 
+(defn set-tab-as-spaces [text-comp n]
+  (.. text-comp getDocument
+      (setDocumentFilter
+        (proxy [DocumentFilter] []
+          (replace [fb offset len text attrs]
+            (.replace fb offset len
+                      (if (= "\t" text) (apply str (repeat n " ")) text)
+                      attrs))))))
+
 (defn create-doc []
   (let [doc-text-area (make-text-area)
         repl-text-area (make-text-area)
@@ -206,6 +216,7 @@
     (.read (doc :doc-text-area) (FileReader. (.getAbsolutePath file)) nil)
     (.setTitle frame (.getPath file))
     (make-undoable (doc :doc-text-area))
+    (set-tab-as-spaces (doc :doc-text-area) 2)
     (reset! (doc :file) file)))
 
 (defn save-file [doc]
