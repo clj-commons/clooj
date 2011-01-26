@@ -119,7 +119,8 @@
         (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
 
 (defn add-line-numbers [text-comp max-lines]
-  (let [row-height (.. text-comp getGraphics (getFontMetrics (. text-comp getFont)) getHeight)
+  (let [row-height (.. text-comp getGraphics
+                       (getFontMetrics (. text-comp getFont)) getHeight)
         sp (.. text-comp getParent getParent)
         jl (JList.
              (proxy [AbstractListModel] []
@@ -244,7 +245,8 @@
   (let [menu-bar (JMenuBar.)
         file-menu (JMenu. "File")]
      (. (doc :frame) setJMenuBar menu-bar)
-     (add-menu-item file-menu "Open" \O #(reset! (doc :file) (open-file doc ".clj")))
+     (add-menu-item file-menu "Open" \O #(reset! (doc :file)
+                                                 (open-file doc ".clj")))
      (add-menu-item file-menu "Save" \S #(save-file doc))
      (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
      (. menu-bar add file-menu)))
