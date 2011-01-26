@@ -1,3 +1,7 @@
+; Copyright (c) 2011, Arthur Edelstein
+; All rights reserved.
+; arthuredelstein@gmail.com
+
 (ns clyde.core
   (:import (javax.swing JFrame JLabel JPanel JTextArea JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane
