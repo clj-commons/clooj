@@ -213,16 +213,18 @@
       .show)
     d (.getDirectory dialog)
     n (.getFile dialog)]
-    (File. d n)))
+    (if (and d n)
+      (File. d n))))
     
 (defn open-file [doc suffix]
   (let [frame (doc :frame)
         file (choose-file frame suffix true)]
-    (.read (doc :doc-text-area) (FileReader. (.getAbsolutePath file)) nil)
-    (.setTitle frame (.getPath file))
-    (make-undoable (doc :doc-text-area))
-    (set-tab-as-spaces (doc :doc-text-area) 2)
-    (reset! (doc :file) file)))
+    (when file
+      (.read (doc :doc-text-area) (FileReader. (.getAbsolutePath file)) nil)
+      (.setTitle frame (.getPath file))
+      (make-undoable (doc :doc-text-area))
+      (set-tab-as-spaces (doc :doc-text-area) 2)
+      (reset! (doc :file) file))))
 
 (defn save-file [doc]
   (.write (doc :doc-text-area) (FileWriter. @(doc :file))))
