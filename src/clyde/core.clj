@@ -56,16 +56,16 @@
 
 (defn count-brackets [s]
   (reductions bracket-increment 0 s))
-
+  
 (defn find-enclosing-brackets [text pos]
   (let [[before after] (split-at pos text)]
-    [(- pos (count (take-while
-                     (partial >= 0)
-                     (count-brackets (reverse before)))))
-     (+ -1 pos (count (take-while
-                     (partial <= 0)
-                     (count-brackets after))))]))
-
+    [(- pos (count-while
+              (partial >= 0)
+              (count-brackets (reverse before))))
+     (+ -1 pos (count-while
+               (partial <= 0)
+               (count-brackets after)))]))
+  
 (def caret-highlight (atom nil))
 
 (defn highlight
@@ -167,9 +167,13 @@
       (setDocumentFilter
         (proxy [DocumentFilter] []
           (replace [fb offset len text attrs]
-            (.replace fb offset len
-                      (if (= "\t" text) (apply str (repeat n " ")) text)
-                      attrs))))))
+            (.replace
+              fb offset len
+              (condp = text
+                "\t" (apply str (repeat n " "))
+                "\n" "\n" ;TODO: auto-tab on newline
+                text)
+                attrs))))))
 
 (defn create-doc []
   (let [doc-text-area (make-text-area)
