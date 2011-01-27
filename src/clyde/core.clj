@@ -60,7 +60,7 @@
   (let [before (string/take pos text)]
     (- pos (count-while
              (partial >= 0)
-             (count-brackets (string/reverse before)))))
+             (count-brackets (string/reverse before))))))
 
 (defn find-right-enclosing-bracket [text pos]
   (let [after (string/drop pos text)]
