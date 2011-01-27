@@ -109,9 +109,6 @@
 (defn make-scroll-pane [text-area]
     (JScrollPane. text-area))
 
-(defn make-split-pane []
-  (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true))
-
 (defn put-constraint [comp1 edge1 comp2 edge2 dist]
   (let [edges {:n SpringLayout/NORTH
                :w SpringLayout/WEST
@@ -194,13 +191,17 @@
 
 (defn create-doc []
   (let [doc-text-area (make-text-area)
-        repl-text-area (make-text-area)
-        split-pane (make-split-pane)
+        repl-out-text-area (make-text-area)
+        repl-in-text-area (make-text-area)
+        split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true)
+        repl-split-pane (JSplitPane. JSplitPane/VERTICAL_SPLIT true)
         status-bar (JLabel.)
         f (JFrame.)
         cp (.getContentPane f)
         layout (SpringLayout.)
-        doc {:doc-text-area doc-text-area :repl-text-area repl-text-area
+        doc {:doc-text-area doc-text-area
+             :repl-out-text-area repl-out-text-area
+             :repl-in-text-area repl-in-text-area
              :split-pane split-pane :status-bar status-bar :frame f
              :file (atom nil)}]
     (doto f
@@ -220,8 +221,11 @@
     (activate-caret-highlighter doc-text-area)
     (doto split-pane
       (.add (make-scroll-pane doc-text-area))
-      (.add (make-scroll-pane repl-text-area))
+      (.add repl-split-pane)
       (.setResizeWeight 1.0))
+    (doto repl-split-pane
+      (.add (make-scroll-pane repl-out-text-area))
+      (.add (make-scroll-pane repl-in-text-area)))
     doc))
 
 (defn choose-file [frame suffix load]
