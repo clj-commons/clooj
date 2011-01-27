@@ -171,10 +171,12 @@
   (let [bracket-pos (find-left-enclosing-bracket
                       (.getText text-comp) offset)]
     (if (pos? bracket-pos)
-      (let [col (:col (get-coords text-comp bracket-pos))]
-        (apply str "\n" (repeat (+ 2 col) " ")))
+      (let [bracket (.. text-comp getText (charAt bracket-pos))
+            col (:col (get-coords text-comp bracket-pos))
+            indent-size (if (= bracket \() 2 1)] ;\) avoids highlighting problems
+        (apply str "\n" (repeat (+ col indent-size) " ")))
       "\n")))
-
+     
 (defn set-tab-as-spaces [text-comp n]
   (let [tab-str (apply str (repeat n " "))]
     (.. text-comp getDocument
