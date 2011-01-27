@@ -31,11 +31,13 @@
   (doto (JTextArea.)
     (.setFont (get-mono-font))))
 
-(defn get-caret-position [text-comp]
-  (let [offset (.getCaretPosition text-comp)
-        row (.getLineOfOffset text-comp offset)
+(defn get-coords [text-comp offset]
+  (let [row (.getLineOfOffset text-comp offset)
         col (- offset (.getLineStartOffset text-comp row))]
     {:row row :col col}))
+
+(defn get-caret-position [text-comp]
+  (get-coords text-comp (.getCaretPosition text-comp)))
 
 (defn display-caret-position [doc]
   (let [{:keys [row col]} (get-caret-position (:doc-text-area doc))]
@@ -168,18 +170,27 @@
           (.put (cmd-key KeyEvent/VK_Z) "Undo")
           (.put (cmd-key KeyEvent/VK_Y) "Redo"))))
 
+(defn auto-indent-str [text-comp offset]
+  (let [bracket-pos (find-left-enclosing-bracket
+                      (.getText text-comp) offset)]
+    (if (pos? bracket-pos)
+      (let [col (:col (get-coords text-comp bracket-pos))]
+        (apply str "\n" (repeat (+ 2 col) " ")))
+      "\n")))
+
 (defn set-tab-as-spaces [text-comp n]
-  (.. text-comp getDocument
-      (setDocumentFilter
-        (proxy [DocumentFilter] []
-          (replace [fb offset len text attrs]
-            (.replace
-              fb offset len
-              (condp = text
-                "\t" (apply str (repeat n " "))
-                "\n" "\n" ;TODO: auto-tab on newline
-                text)
-                attrs))))))
+  (let [tab-str (apply str (repeat n " "))]
+    (.. text-comp getDocument
+        (setDocumentFilter
+          (proxy [DocumentFilter] []
+            (replace [fb offset len text attrs]
+              (.replace
+                fb offset len
+                (condp = text
+                  "\t" tab-str
+                  "\n" (auto-indent-str text-comp offset)
+                  text)
+                  attrs)))))))
 
 (defn create-doc []
   (let [doc-text-area (make-text-area)
@@ -225,7 +236,7 @@
     n (.getFile dialog)]
     (if (and d n)
       (File. d n))))
-    
+
 (defn open-file [doc suffix]
   (let [frame (doc :frame)
         file (choose-file frame suffix true)]
@@ -255,7 +266,7 @@
           (reify ActionListener
             (actionPerformed [this action-event]
               (do (response-fn)))))))))
-
+            
 (defn make-menus [doc]
   (System/setProperty "apple.laf.useScreenMenuBar" "true")
   (let [menu-bar (JMenuBar.)
