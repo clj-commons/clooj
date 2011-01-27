@@ -17,9 +17,8 @@
            (java.awt Color Font Toolkit FileDialog)
            (java.io File FilenameFilter FileReader FileWriter OutputStream))
   (:use [clojure.contrib.duck-streams :only (writer)])
+  (:require [clojure.contrib.string :as string])
   (:gen-class))
-
-(def light-green (Color. 180 242 180))
 
 (def menu-shortcut (. (Toolkit/getDefaultToolkit) getMenuShortcutKeyMask))
 
@@ -56,15 +55,22 @@
 
 (defn count-brackets [s]
   (reductions bracket-increment 0 s))
-  
+
+(defn find-left-enclosing-bracket [text pos]
+  (let [before (string/take pos text)]
+    (- pos (count-while
+             (partial >= 0)
+             (count-brackets (string/reverse before)))))
+
+(defn find-right-enclosing-bracket [text pos]
+  (let [after (string/drop pos text)]
+    (+ -1 pos (count-while
+                (partial <= 0)
+                (count-brackets after)))))
+
 (defn find-enclosing-brackets [text pos]
-  (let [[before after] (split-at pos text)]
-    [(- pos (count-while
-              (partial >= 0)
-              (count-brackets (reverse before))))
-     (+ -1 pos (count-while
-               (partial <= 0)
-               (count-brackets after)))]))
+  [(find-left-enclosing-bracket text pos)
+   (find-right-enclosing-bracket text pos)])
   
 (def caret-highlight (atom nil))
 
