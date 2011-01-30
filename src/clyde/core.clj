@@ -45,7 +45,7 @@
 
 (defn bracket-score [c]
   (condp = c 
-         \(  1 \[  1 \{  1   
+         \(  1 \[  1 \{  1
          \) -1 \] -1 \} -1
          0))
 
@@ -125,7 +125,7 @@
 
 (defn constrain-to-parent [comp & args]
   (apply put-constraints comp
-        (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
+         (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
 
 (defn add-line-numbers [text-comp max-lines]
   (let [row-height (.. text-comp getGraphics
@@ -207,7 +207,7 @@
              :split-pane split-pane :status-bar status-bar :frame f
              :file (atom nil)}]
     (doto f
-      (.setBounds 50 50 400 400)
+      (.setBounds 25 50 950 700)
       (.setLayout layout)
       (.add split-pane)
       (.add status-bar))
@@ -224,7 +224,8 @@
     (doto split-pane
       (.add (make-scroll-pane doc-text-area))
       (.add repl-split-pane)
-      (.setResizeWeight 1.0))
+      (.setResizeWeight 0.5)
+      (.setOneTouchExpandable true))
     (doto repl-split-pane
       (.add (make-scroll-pane repl-out-text-area))
       (.add (make-scroll-pane repl-in-text-area)))
@@ -262,7 +263,7 @@
     (reset! (doc :file) file)
     (save-file doc)
     (.setTitle frame (.getPath file))))
-  
+
 (defn add-menu-item [menu item-name key-shortcut response-fn]
   (let [k (+ KeyEvent/VK_A (- (int key-shortcut) (int \A)))]
     (.add menu
@@ -272,7 +273,7 @@
           (reify ActionListener
             (actionPerformed [this action-event]
               (do (response-fn)))))))))
-            
+
 (defn make-menus [doc]
   (System/setProperty "apple.laf.useScreenMenuBar" "true")
   (let [menu-bar (JMenuBar.)
