@@ -228,7 +228,8 @@
       (.setOneTouchExpandable true))
     (doto repl-split-pane
       (.add (make-scroll-pane repl-out-text-area))
-      (.add (make-scroll-pane repl-in-text-area)))
+      (.add (make-scroll-pane repl-in-text-area))
+      (.setResizeWeight 0.75))
     doc))
 
 (defn choose-file [frame suffix load]
