@@ -7,7 +7,7 @@
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane
                         SpringLayout AbstractListModel AbstractAction
                         UIManager)
-           (javax.swing.event CaretListener UndoableEditListener)
+           (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.text DefaultHighlighter
                              DefaultHighlighter$DefaultHighlightPainter
                              DocumentFilter)
@@ -19,6 +19,11 @@
   (:use [clojure.contrib.duck-streams :only (writer)])
   (:require [clojure.contrib.string :as string])
   (:gen-class))
+
+;; utils
+
+(defn count-while [pred coll]
+  (count (take-while pred coll)))
 
 (def menu-shortcut (. (Toolkit/getDefaultToolkit) getMenuShortcutKeyMask))
 
@@ -36,6 +41,8 @@
         col (- offset (.getLineStartOffset text-comp row))]
     {:row row :col col}))
 
+;; caret finding
+
 (defn get-caret-position [text-comp]
   (get-coords text-comp (.getCaretPosition text-comp)))
 
@@ -43,14 +50,13 @@
   (let [{:keys [row col]} (get-caret-position (:doc-text-area doc))]
     (.setText (:status-bar doc) (str " " (inc row) "|" (inc col)))))
 
+;; bracket finding
+
 (defn bracket-score [c]
   (condp = c 
          \(  1 \[  1 \{  1
          \) -1 \] -1 \} -1
          0))
-
-(defn count-while [pred coll]
-  (count (take-while pred coll)))
 
 (defn bracket-increment [score next-char]
   (+ score (bracket-score next-char)))
@@ -74,6 +80,17 @@
   [(find-left-enclosing-bracket text pos)
    (find-right-enclosing-bracket text pos)])
   
+(defn find-unpaired-left-bracket [text pos]
+  (let [p (find-left-enclosing-bracket text pos)]
+    (if (< 0 p) p)))
+
+(defn find-all-unpaired-left-brackets [text]
+  (next (take-while
+    identity
+    (iterate #(find-unpaired-left-bracket text %) (.length text)))))
+
+;; highlighting
+
 (def caret-highlight (atom nil))
 
 (defn highlight
@@ -98,6 +115,10 @@
   (reset! caret-highlight
           (highlight-enclosing-brackets
             text-comp (.getCaretPosition text-comp) Color/LIGHT_GRAY)))
+  
+(defn highlight-unpaired-left-brackets [text-comp]
+  (doall (map #(highlight text-comp % Color/PINK)
+              (find-all-unpaired-left-brackets (.getText text-comp)))))
 
 (defn add-caret-listener [text-comp f]
   (.addCaretListener text-comp
@@ -105,6 +126,28 @@
 
 (defn activate-caret-highlighter [text-comp]
   (add-caret-listener text-comp #(highlight-caret-enclosure text-comp)))
+
+(defn activate-error-highlighter [text-comp]
+  (let [hl #(do (.. text-comp getHighlighter removeAllHighlights)
+                (highlight-unpaired-left-brackets text-comp))]
+    (doto (.getDocument text-comp)
+      (.addDocumentListener
+        (reify DocumentListener
+          (insertUpdate [this evt] (hl))
+          (removeUpdate [this evt] (hl))
+          (changedUpdate [this evt] (hl)))))))
+
+;; paren closing (doesn't work)
+
+(defn close-bracket [text-area] ;; doesn't work yet
+  (let [text (.getText text-area)
+        right-pos (.getCaretPosition text-area)
+        left-pos (find-left-enclosing-bracket text right-pos)
+        left-char (.charAt text left-pos)]
+    (if-let [right-char (get {\( \), \{ \}, \[ \]} left-char)]
+      (.insert text-area (str right-char) right-pos))))
+
+;; build gui
 
 (defn make-scroll-pane [text-area]
     (JScrollPane. text-area))
@@ -249,11 +292,13 @@
   (let [frame (doc :frame)
         file (choose-file frame suffix true)]
     (when file
-      (.read (doc :doc-text-area) (FileReader. (.getAbsolutePath file)) nil)
-      (.setTitle frame (.getPath file))
-      (make-undoable (doc :doc-text-area))
-      (set-tab-as-spaces (doc :doc-text-area) 2)
-      (reset! (doc :file) file))))
+      (let [text-area (doc :doc-text-area)]
+        (.read text-area (FileReader. (.getAbsolutePath file)) nil)
+        (.setTitle frame (.getPath file))
+        (make-undoable text-area)
+        (set-tab-as-spaces text-area 2)
+        (activate-error-highlighter text-area)
+        (reset! (doc :file) file)))))
 
 (defn save-file [doc]
   (.write (doc :doc-text-area) (FileWriter. @(doc :file))))
