@@ -79,15 +79,26 @@
 (defn find-enclosing-brackets [text pos]
   [(find-left-enclosing-bracket text pos)
    (find-right-enclosing-bracket text pos)])
-  
+
 (defn find-unpaired-left-bracket [text pos]
   (let [p (find-left-enclosing-bracket text pos)]
     (if (< 0 p) p)))
 
+(defn find-unpaired-right-bracket [text pos]
+  (let [p (find-right-enclosing-bracket text pos)]
+    (if (> (.length text) p) p)))
+
 (defn find-all-unpaired-left-brackets [text]
-  (next (take-while
-    identity
+  (next (take-while identity
     (iterate #(find-unpaired-left-bracket text %) (.length text)))))
+
+(defn find-all-unpaired-right-brackets [text]
+  (next (take-while identity
+    (iterate #(find-unpaired-right-bracket text (inc %)) -1))))
+
+(defn find-all-unpaired-brackets [text]
+  (concat (find-all-unpaired-right-brackets text)
+          (find-all-unpaired-left-brackets text)))
 
 ;; highlighting
 
@@ -115,10 +126,10 @@
   (reset! caret-highlight
           (highlight-enclosing-brackets
             text-comp (.getCaretPosition text-comp) Color/LIGHT_GRAY)))
-  
-(defn highlight-unpaired-left-brackets [text-comp]
+
+(defn highlight-unpaired-brackets [text-comp]
   (doall (map #(highlight text-comp % Color/PINK)
-              (find-all-unpaired-left-brackets (.getText text-comp)))))
+    (find-all-unpaired-brackets (.getText text-comp)))))
 
 (defn add-caret-listener [text-comp f]
   (.addCaretListener text-comp
@@ -129,7 +140,7 @@
 
 (defn activate-error-highlighter [text-comp]
   (let [hl #(do (.. text-comp getHighlighter removeAllHighlights)
-                (highlight-unpaired-left-brackets text-comp))]
+                (highlight-unpaired-brackets text-comp))]
     (doto (.getDocument text-comp)
       (.addDocumentListener
         (reify DocumentListener
@@ -288,27 +299,41 @@
     (if (and d n)
       (File. d n))))
 
+(defn restart-doc [doc ^File file]
+  (let [frame (doc :frame)]
+    (let [text-area (doc :doc-text-area)]
+      (if file
+        (do (.read text-area (FileReader. (.getAbsolutePath file)) nil)
+            (.setTitle frame (.getPath file)))
+        (do (.setText text-area "")
+            (.setTitle frame "Untitled")))
+      (make-undoable text-area)
+      (set-tab-as-spaces text-area 2)
+      (activate-error-highlighter text-area)
+      (reset! (doc :file) file))))
+
 (defn open-file [doc suffix]
-  (let [frame (doc :frame)
-        file (choose-file frame suffix true)]
-    (when file
-      (let [text-area (doc :doc-text-area)]
-        (.read text-area (FileReader. (.getAbsolutePath file)) nil)
-        (.setTitle frame (.getPath file))
-        (make-undoable text-area)
-        (set-tab-as-spaces text-area 2)
-        (activate-error-highlighter text-area)
-        (reset! (doc :file) file)))))
+  (let [frame (doc :frame)]
+    (when-let [file (choose-file frame suffix true)]
+      (restart-doc doc file))))
+
+(defn new-file [doc]
+  (restart-doc doc nil))
+
+(declare save-file-as)
 
 (defn save-file [doc]
-  (.write (doc :doc-text-area) (FileWriter. @(doc :file))))
+  (if-not @(doc :file)
+    (save-file-as doc)
+    (.write (doc :doc-text-area) (FileWriter. @(doc :file)))))
 
 (defn save-file-as [doc]
   (let [frame (doc :frame)
         file (choose-file frame ".clj" false)]
     (reset! (doc :file) file)
-    (save-file doc)
-    (.setTitle frame (.getPath file))))
+    (if @(doc :file)
+     (save-file doc)
+     (.setTitle frame (.getPath file)))))
 
 (defn add-menu-item [menu item-name key-shortcut response-fn]
   (let [k (+ KeyEvent/VK_A (- (int key-shortcut) (int \A)))]
@@ -324,12 +349,12 @@
   (System/setProperty "apple.laf.useScreenMenuBar" "true")
   (let [menu-bar (JMenuBar.)
         file-menu (JMenu. "File")]
-     (. (doc :frame) setJMenuBar menu-bar)
-     (add-menu-item file-menu "Open" \O #(reset! (doc :file)
-                                                 (open-file doc ".clj")))
-     (add-menu-item file-menu "Save" \S #(save-file doc))
-     (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
-     (. menu-bar add file-menu)))
+    (. (doc :frame) setJMenuBar menu-bar)
+    (add-menu-item file-menu "New" \N #(new-file doc))
+    (add-menu-item file-menu "Open" \O #(open-file doc ".clj"))
+    (add-menu-item file-menu "Save" \S #(save-file doc))
+    (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
+    (. menu-bar add file-menu)))
 
 (defn startup []
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
