@@ -50,7 +50,7 @@
   (let [{:keys [row col]} (get-caret-position (:doc-text-area doc))]
     (.setText (:status-bar doc) (str " " (inc row) "|" (inc col)))))
 
-;; bracket finding
+;; bracket handling
 
 (defn bracket-score [c]
   (condp = c 
@@ -80,25 +80,35 @@
   [(find-left-enclosing-bracket text pos)
    (find-right-enclosing-bracket text pos)])
 
-(defn find-unpaired-left-bracket [text pos]
-  (let [p (find-left-enclosing-bracket text pos)]
-    (if (< 0 p) p)))
+(defn mismatched-brackets [a b]
+  (and (or (nil? a) (some #{a} [\( \[ \{]))
+       (some #{b} [\) \] \}])
+       (not (some #{[a b]} [[\( \)] [\[ \]] [\{ \}]]))))
 
-(defn find-unpaired-right-bracket [text pos]
-  (let [p (find-right-enclosing-bracket text pos)]
-    (if (> (.length text) p) p)))
-
-(defn find-all-unpaired-left-brackets [text]
-  (next (take-while identity
-    (iterate #(find-unpaired-left-bracket text %) (.length text)))))
-
-(defn find-all-unpaired-right-brackets [text]
-  (next (take-while identity
-    (iterate #(find-unpaired-right-bracket text (inc %)) -1))))
-
-(defn find-all-unpaired-brackets [text]
-  (concat (find-all-unpaired-right-brackets text)
-          (find-all-unpaired-left-brackets text)))
+(defn find-bad-brackets [text]
+  (loop [t text cnt 0 stack nil errs nil]
+    (let [s stack
+          c (first t)
+          l (ffirst s)
+          p (next s)
+          j (conj s [c cnt])
+          new-stack
+            (if (= l \\)
+              p
+              (if (= l \")
+                (if (= c \") p s)
+                (condp = c
+                  \" j \\ j
+                  \( j \[ j \{ j
+                  \) p \] p \} p
+                  s)))
+          e (if (mismatched-brackets l c)
+              (list (first s) [c cnt]))
+          new-errs (if e (concat errs e) errs)]
+        (if (next t)
+          (recur (next t) (inc cnt) new-stack new-errs)
+          (filter identity
+                  (map second (concat new-stack errs)))))))
 
 ;; highlighting
 
@@ -129,7 +139,7 @@
 
 (defn highlight-unpaired-brackets [text-comp]
   (doall (map #(highlight text-comp % Color/PINK)
-    (find-all-unpaired-brackets (.getText text-comp)))))
+    (find-bad-brackets (.getText text-comp)))))
 
 (defn add-caret-listener [text-comp f]
   (.addCaretListener text-comp
@@ -366,3 +376,8 @@
 
 (defn -main [& args]
   (startup))
+
+;; testing
+
+(defn get-text []
+  (.getText (current-doc :doc-text-area)))
