@@ -1,4 +1,4 @@
-(ns clyde.repl
+(ns clooj.repl
   (:import [java.io CharArrayWriter PipedReader PipedWriter
             PrintWriter])
   (:require [clojure.main :only repl]))
