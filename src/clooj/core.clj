@@ -20,7 +20,7 @@
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
-        [clyde.repl :only (create-clojure-repl)])
+        [clooj.repl :only (create-clojure-repl)])
   (:require [clojure.contrib.string :as string])
   (:gen-class))
 
