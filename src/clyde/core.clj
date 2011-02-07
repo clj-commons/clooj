@@ -13,10 +13,14 @@
                              DocumentFilter)
            (javax.swing.undo UndoManager)
            (java.awt Insets)
-           (java.awt.event ActionListener KeyEvent)
+           (java.awt.event ActionListener KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
-           (java.io File FilenameFilter FileReader FileWriter OutputStream))
-  (:use [clojure.contrib.duck-streams :only (writer)])
+           (java.io File FilenameFilter FileReader FileWriter OutputStream
+                    PipedReader PipedWriter StringReader)
+           (clojure.lang LineNumberingPushbackReader))
+  (:use [clojure.contrib.duck-streams :only (writer)]
+        [clojure.pprint :only (pprint)]
+        [clyde.repl :only (create-clojure-repl)])
   (:require [clojure.contrib.string :as string])
   (:gen-class))
 
@@ -93,15 +97,15 @@
           p (next s)
           j (conj s [c cnt])
           new-stack
-            (if (= l \\)
-              p
-              (if (= l \")
-                (if (= c \") p s)
-                (condp = c
-                  \" j \\ j
-                  \( j \[ j \{ j
-                  \) p \] p \} p
-                  s)))
+            (condp = l
+              \\ p
+              \" (if (= c \") p s)
+              \; (if (= c \newline) p s)
+              (condp = c
+                \" j \\ j \; j
+                \( j \[ j \{ j
+                \) p \] p \} p
+                s))
           e (if (mismatched-brackets l c)
               (list (first s) [c cnt]))
           new-errs (if e (concat errs e) errs)]
@@ -137,7 +141,7 @@
           (highlight-enclosing-brackets
             text-comp (.getCaretPosition text-comp) Color/LIGHT_GRAY)))
 
-(defn highlight-unpaired-brackets [text-comp]
+(defn highlight-bad-brackets [text-comp]
   (doall (map #(highlight text-comp % Color/PINK)
     (find-bad-brackets (.getText text-comp)))))
 
@@ -150,7 +154,7 @@
 
 (defn activate-error-highlighter [text-comp]
   (let [hl #(do (.. text-comp getHighlighter removeAllHighlights)
-                (highlight-unpaired-brackets text-comp))]
+                (highlight-bad-brackets text-comp))]
     (doto (.getDocument text-comp)
       (.addDocumentListener
         (reify DocumentListener
@@ -366,11 +370,38 @@
     (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
     (. menu-bar add file-menu)))
 
+;; REPL stuff
+
+(let [{:keys [repl-fn result-fn]} (create-clojure-repl)]
+  (def repl-in repl-fn)
+  (def repl-out result-fn))
+
+(defn handle-repl-enter [ta ta-out]
+  (.append ta-out (repl-out))
+  (.addKeyListener ta
+    (reify KeyListener
+      (keyReleased [this _] nil)
+      (keyTyped [this _] nil)
+      (keyPressed [this e]        
+        (when (and (= (.getKeyCode e) (KeyEvent/VK_ENTER))
+                   (= (.. ta getDocument getLength)
+                      (.getCaretPosition ta)))
+          (println "code entered into repl")
+          (let [code-entered (.getText ta)]
+            (.append ta-out code-entered)
+            (repl-in (str code-entered \newline))
+            (when (pos? (.. code-entered trim length))
+              (.append ta-out (repl-out))))
+          (.setText ta ""))))))
+          
 (defn startup []
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [doc (create-doc)]
      (def current-doc doc)
      (make-menus doc)
+     (handle-repl-enter
+       (doc :repl-in-text-area)
+       (doc :repl-out-text-area))
      (.show (doc :frame))
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 
