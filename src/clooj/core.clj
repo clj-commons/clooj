@@ -2,7 +2,7 @@
 ; All rights reserved.
 ; arthuredelstein@gmail.com
 
-(ns clyde.core
+(ns clooj.core
   (:import (javax.swing JFrame JLabel JPanel JTextArea JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane
                         SpringLayout AbstractListModel AbstractAction
