@@ -16,7 +16,7 @@
            (java.awt.event ActionListener KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
            (java.io File FilenameFilter FileReader FileWriter OutputStream
-                    PipedReader PipedWriter StringReader)
+                    PipedReader PipedWriter StringReader Writer)
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
@@ -289,6 +289,7 @@
         (reify CaretListener
           (caretUpdate [this evt] (display-caret-position doc)))))
     (activate-caret-highlighter doc-text-area)
+    (doto repl-out-text-area (.setLineWrap true))
     (doto split-pane
       (.add (make-scroll-pane doc-text-area))
       (.add repl-split-pane)
@@ -372,36 +373,43 @@
 
 ;; REPL stuff
 
-(let [{:keys [repl-fn result-fn]} (create-clojure-repl)]
-  (def repl-in repl-fn)
-  (def repl-out result-fn))
+(defn make-repl-writer [ta-out]
+  (proxy [Writer] []
+    (write
+      ([char-array offset length]
+        (let [buf (StringBuffer.)]
+          (.append buf char-array offset length)
+            (.append ta-out (.toString buf))))
+      ([t]
+        (.append ta-out
+          (if (= Integer (type t))
+            (str (char t)) t))))
+    (flush [] nil)
+    (close [] nil)))
 
-(defn handle-repl-enter [ta ta-out]
-  (.append ta-out (repl-out))
-  (.addKeyListener ta
+(defn add-repl-input-handler [ta-in ta-out repl-input-writer]
+  (.addKeyListener ta-in
     (reify KeyListener
       (keyReleased [this _] nil)
       (keyTyped [this _] nil)
       (keyPressed [this e]        
         (when (and (= (.getKeyCode e) (KeyEvent/VK_ENTER))
-                   (= (.. ta getDocument getLength)
-                      (.getCaretPosition ta)))
-          (println "code entered into repl")
-          (let [code-entered (.getText ta)]
-            (.append ta-out code-entered)
-            (repl-in (str code-entered \newline))
-            (when (pos? (.. code-entered trim length))
-              (.append ta-out (repl-out))))
-          (.setText ta ""))))))
+                   (= (.. ta-in getDocument getLength)
+                      (.getCaretPosition ta-in)))
+          (let [cmd (str (.getText ta-in) \newline)]
+            (.append ta-out cmd)
+            (.write repl-input-writer cmd)
+            (.setText ta-in "")))))))
           
 (defn startup []
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [doc (create-doc)]
      (def current-doc doc)
      (make-menus doc)
-     (handle-repl-enter
-       (doc :repl-in-text-area)
-       (doc :repl-out-text-area))
+     (let [ta-in (doc :repl-in-text-area)
+           ta-out (doc :repl-out-text-area)]
+       (add-repl-input-handler ta-in ta-out
+         (create-clojure-repl (make-repl-writer ta-out))))
      (.show (doc :frame))
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 

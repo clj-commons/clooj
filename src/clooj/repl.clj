@@ -13,19 +13,16 @@
 (.startsWith (.getMessage throwable) "java.lang.Exception: EOF while reading")
 (.startsWith (.getMessage throwable) "java.io.IOException: Write end dead"))))
 
-(defn create-clojure-repl []
-"This function creates an instance of clojure repl using piped in and out.
-It returns a map of two functions repl-fn and result-fn - first function
-can be called with a valid clojure expression and the results are read using
-the result-fn."
-(let [cmd-wtr (PipedWriter.)
-        result-rdr (PipedReader.)
-        piped-in (clojure.lang.LineNumberingPushbackReader. (PipedReader. cmd-wtr))
-        piped-out (PrintWriter. (PipedWriter. result-rdr))
+(defn create-clojure-repl [result-writer]
+  "This function creates an instance of clojure repl, with output going to output-writer
+  Returns an input writer."
+  (let [input-writer (PipedWriter.)
+        piped-in (clojure.lang.LineNumberingPushbackReader. (PipedReader. input-writer))
+        piped-out (PrintWriter. result-writer)
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
-                                                       *in* piped-in
-                                                       *out* piped-out
-                                                       *err* *out*]
+                                  *in* piped-in
+                                  *out* piped-out
+                                  *err* *out*]
                (try
                  (clojure.main/repl
                    :init (fn [] (in-ns 'user))
@@ -43,25 +40,5 @@ the result-fn."
                    (prn "REPL closing"))
                  (catch java.lang.InterruptedException ex)
                  (catch java.nio.channels.ClosedByInterruptException ex)))]
-(.start (Thread. repl-thread-fn))
-{:repl-fn (fn [cmd]
-     (if (= cmd ":CLOSE-REPL")
-       (do
-         (.close cmd-wtr)
-         (.close result-rdr))
-       (do
-         (.write cmd-wtr cmd)
-         (.flush cmd-wtr))))
-;//??Using CharArrayWriter to build the string from each read of one byte
-;Once there is nothing to read than this function returns the string read.
-;Using partial so that CharArrayWriter is only created and once and reused.
-;There could be better way.
-:result-fn (partial
-       (fn [wtr]
-         (.write wtr (.read result-rdr))
-         (if (.ready result-rdr)
-           (recur wtr)
-           (let [result (.toString wtr)]
-             (.reset wtr)
-             result)))
-       (CharArrayWriter.))}))
+    (.start (Thread. repl-thread-fn))
+    input-writer))
