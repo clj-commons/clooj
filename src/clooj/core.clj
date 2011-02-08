@@ -89,6 +89,11 @@
               (send-to-repl doc cmd)
               (.setText ta-in ""))))))))
 
+(defn apply-namespace-to-repl [doc]
+  (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
+    (when (= 'ns (first sexpr))
+      (send-to-repl doc (str "(ns " (second sexpr) ")")))))
+
 ;; caret finding
 
 (defn get-caret-position [text-comp]
@@ -334,7 +339,7 @@
         (reify CaretListener
           (caretUpdate [this evt] (display-caret-position doc)))))
     (activate-caret-highlighter doc-text-area)
-    (doto repl-out-text-area (.setLineWrap true))
+    (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (doto split-pane
       (.add (make-scroll-pane doc-text-area))
       (.add repl-split-pane)
@@ -418,6 +423,7 @@
     (add-menu-item file-menu "Save" \S #(save-file doc))
     (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
     (add-menu-item tools-menu "Evaluate in REPL" \E #(send-selected-to-repl doc))
+    (add-menu-item tools-menu "Apply file ns to REPL" \L #(apply-namespace-to-repl doc))
     (. menu-bar add file-menu)
     (. menu-bar add tools-menu)))
 
