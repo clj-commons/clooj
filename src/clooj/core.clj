@@ -45,6 +45,36 @@
         col (- offset (.getLineStartOffset text-comp row))]
     {:row row :col col}))
 
+;; REPL stuff
+
+(defn make-repl-writer [ta-out]
+  (proxy [Writer] []
+    (write
+      ([char-array offset length]
+        (let [buf (StringBuffer.)]
+          (.append buf char-array offset length)
+            (.append ta-out (.toString buf))))
+      ([t]
+        (.append ta-out
+          (if (= Integer (type t))
+            (str (char t)) t))))
+    (flush [] nil)
+    (close [] nil)))
+
+(defn add-repl-input-handler [ta-in ta-out repl-input-writer]
+  (.addKeyListener ta-in
+    (reify KeyListener
+      (keyReleased [this _] nil)
+      (keyTyped [this _] nil)
+      (keyPressed [this e]        
+        (when (and (= (.getKeyCode e) (KeyEvent/VK_ENTER))
+                   (= (.. ta-in getDocument getLength)
+                      (.getCaretPosition ta-in)))
+          (let [cmd (str (.getText ta-in) \newline)]
+            (.append ta-out cmd)
+            (.write repl-input-writer cmd)
+            (.setText ta-in "")))))))
+
 ;; caret finding
 
 (defn get-caret-position [text-comp]
@@ -269,11 +299,12 @@
         f (JFrame.)
         cp (.getContentPane f)
         layout (SpringLayout.)
+        repl-writer (create-clojure-repl (make-repl-writer repl-out-text-area))
         doc {:doc-text-area doc-text-area
              :repl-out-text-area repl-out-text-area
              :repl-in-text-area repl-in-text-area
              :split-pane split-pane :status-bar status-bar :frame f
-             :file (atom nil)}]
+             :file (atom nil) :repl-writer repl-writer}]
     (doto f
       (.setBounds 25 50 950 700)
       (.setLayout layout)
@@ -350,6 +381,12 @@
      (save-file doc)
      (.setTitle frame (.getPath file)))))
 
+(defn send-selected-to-repl [doc]
+  (.write (doc :repl-writer)
+          (.getSelectedText (doc :doc-text-area))))
+
+;; menu setup
+
 (defn add-menu-item [menu item-name key-shortcut response-fn]
   (let [k (+ KeyEvent/VK_A (- (int key-shortcut) (int \A)))]
     (.add menu
@@ -363,43 +400,18 @@
 (defn make-menus [doc]
   (System/setProperty "apple.laf.useScreenMenuBar" "true")
   (let [menu-bar (JMenuBar.)
-        file-menu (JMenu. "File")]
+        file-menu (JMenu. "File")
+        tools-menu (JMenu. "Tools")]
     (. (doc :frame) setJMenuBar menu-bar)
     (add-menu-item file-menu "New" \N #(new-file doc))
     (add-menu-item file-menu "Open" \O #(open-file doc ".clj"))
     (add-menu-item file-menu "Save" \S #(save-file doc))
     (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
-    (. menu-bar add file-menu)))
+    (add-menu-item tools-menu "Evaluate..." \E #(send-selected-to-repl doc))
+    (. menu-bar add file-menu)
+    (. menu-bar add tools-menu)))
 
-;; REPL stuff
-
-(defn make-repl-writer [ta-out]
-  (proxy [Writer] []
-    (write
-      ([char-array offset length]
-        (let [buf (StringBuffer.)]
-          (.append buf char-array offset length)
-            (.append ta-out (.toString buf))))
-      ([t]
-        (.append ta-out
-          (if (= Integer (type t))
-            (str (char t)) t))))
-    (flush [] nil)
-    (close [] nil)))
-
-(defn add-repl-input-handler [ta-in ta-out repl-input-writer]
-  (.addKeyListener ta-in
-    (reify KeyListener
-      (keyReleased [this _] nil)
-      (keyTyped [this _] nil)
-      (keyPressed [this e]        
-        (when (and (= (.getKeyCode e) (KeyEvent/VK_ENTER))
-                   (= (.. ta-in getDocument getLength)
-                      (.getCaretPosition ta-in)))
-          (let [cmd (str (.getText ta-in) \newline)]
-            (.append ta-out cmd)
-            (.write repl-input-writer cmd)
-            (.setText ta-in "")))))))
+;; startup
           
 (defn startup []
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
@@ -409,7 +421,7 @@
      (let [ta-in (doc :repl-in-text-area)
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler ta-in ta-out
-         (create-clojure-repl (make-repl-writer ta-out))))
+         (doc :repl-writer)))
      (.show (doc :frame))
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 
