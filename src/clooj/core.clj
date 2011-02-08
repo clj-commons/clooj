@@ -12,7 +12,7 @@
                              DefaultHighlighter$DefaultHighlightPainter
                              DocumentFilter)
            (javax.swing.undo UndoManager)
-           (java.awt Insets)
+           (java.awt Insets Rectangle)
            (java.awt.event ActionListener KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
            (java.io File FilenameFilter FileReader FileWriter OutputStream
@@ -47,33 +47,47 @@
 
 ;; REPL stuff
 
+(defn send-to-repl [doc cmd]
+  (let [cmd (str cmd \newline)]
+    (.append (doc :repl-out-text-area) cmd)
+    (.write (doc :repl-writer) cmd)))
+
+(defn send-selected-to-repl [doc]
+  (send-to-repl doc (.getSelectedText (doc :doc-text-area))))
+
+(defn scroll-to-last [text-area]
+  (.scrollRectToVisible text-area
+    (Rectangle. 0 (.getHeight text-area) 1 1)))
+
 (defn make-repl-writer [ta-out]
   (proxy [Writer] []
     (write
       ([char-array offset length]
         (let [buf (StringBuffer.)]
           (.append buf char-array offset length)
-            (.append ta-out (.toString buf))))
+            (.append ta-out (.toString buf)))
+        (scroll-to-last ta-out))
       ([t]
-        (.append ta-out
-          (if (= Integer (type t))
-            (str (char t)) t))))
+        (when (= Integer (type t))
+          (.append ta-out
+            (str (char t)))
+          (scroll-to-last ta-out))))
     (flush [] nil)
     (close [] nil)))
 
-(defn add-repl-input-handler [ta-in ta-out repl-input-writer]
-  (.addKeyListener ta-in
-    (reify KeyListener
-      (keyReleased [this _] nil)
-      (keyTyped [this _] nil)
-      (keyPressed [this e]        
-        (when (and (= (.getKeyCode e) (KeyEvent/VK_ENTER))
-                   (= (.. ta-in getDocument getLength)
-                      (.getCaretPosition ta-in)))
-          (let [cmd (str (.getText ta-in) \newline)]
-            (.append ta-out cmd)
-            (.write repl-input-writer cmd)
-            (.setText ta-in "")))))))
+(defn add-repl-input-handler [doc]
+  (let [ta-in (doc :repl-in-text-area)]  
+    (.addKeyListener ta-in
+      (reify KeyListener
+        (keyReleased [this _] nil)
+        (keyTyped [this _] nil)
+        (keyPressed [this e]
+          (when (and (= (.getKeyCode e) (KeyEvent/VK_ENTER))
+                     (= (.. ta-in getDocument getLength)
+                        (.getCaretPosition ta-in)))
+            (let [cmd (.getText ta-in)]
+              (send-to-repl doc cmd)
+              (.setText ta-in ""))))))))
 
 ;; caret finding
 
@@ -381,10 +395,6 @@
      (save-file doc)
      (.setTitle frame (.getPath file)))))
 
-(defn send-selected-to-repl [doc]
-  (.write (doc :repl-writer)
-          (.getSelectedText (doc :doc-text-area))))
-
 ;; menu setup
 
 (defn add-menu-item [menu item-name key-shortcut response-fn]
@@ -407,7 +417,7 @@
     (add-menu-item file-menu "Open" \O #(open-file doc ".clj"))
     (add-menu-item file-menu "Save" \S #(save-file doc))
     (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
-    (add-menu-item tools-menu "Evaluate..." \E #(send-selected-to-repl doc))
+    (add-menu-item tools-menu "Evaluate in REPL" \E #(send-selected-to-repl doc))
     (. menu-bar add file-menu)
     (. menu-bar add tools-menu)))
 
@@ -420,8 +430,7 @@
      (make-menus doc)
      (let [ta-in (doc :repl-in-text-area)
            ta-out (doc :repl-out-text-area)]
-       (add-repl-input-handler ta-in ta-out
-         (doc :repl-writer)))
+       (add-repl-input-handler doc))
      (.show (doc :frame))
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 
