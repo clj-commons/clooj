@@ -16,12 +16,12 @@
            (java.awt.event ActionListener KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
            (java.io File FilenameFilter FileReader FileWriter OutputStream
-                    PipedReader PipedWriter StringReader Writer)
+                    PipedReader PipedWriter PrintWriter StringReader Writer)
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
-        [clojure.pprint :only (pprint)]
-        [clooj.repl :only (create-clojure-repl)])
-  (:require [clojure.contrib.string :as string])
+        [clojure.pprint :only (pprint)])
+  (:require [clojure.contrib.string :as string]
+            [clojure.main :only repl])
   (:gen-class))
 
 ;; utils
@@ -46,6 +46,45 @@
     {:row row :col col}))
 
 ;; REPL stuff
+;; adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
+
+(def *printStackTrace-on-error* false)
+
+(defn is-eof-ex? [throwable]
+  (and (instance? clojure.lang.LispReader$ReaderException throwable)
+  (or
+    (.startsWith (.getMessage throwable) "java.lang.Exception: EOF while reading")
+    (.startsWith (.getMessage throwable) "java.io.IOException: Write end dead"))))
+
+(defn create-clojure-repl [result-writer]
+  "This function creates an instance of clojure repl, with output going to output-writer
+  Returns an input writer."
+  (let [input-writer (PipedWriter.)
+        piped-in (clojure.lang.LineNumberingPushbackReader. (PipedReader. input-writer))
+        piped-out (PrintWriter. result-writer)
+        repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
+                                  *in* piped-in
+                                  *out* piped-out
+                                  *err* *out*]
+               (try
+                 (clojure.main/repl
+                   :init (fn [] (in-ns 'user))
+                   :read (fn [prompt exit]
+                           (read))
+                   :caught (fn [e]
+                             (when (is-eof-ex? e)
+                               (throw e))
+                             (if *printStackTrace-on-error*
+                               (.printStackTrace e *out*)
+                               (prn (clojure.main/repl-exception e)))
+                             (flush))
+                   :need-prompt (constantly true))
+                 (catch clojure.lang.LispReader$ReaderException ex
+                   (prn "REPL closing"))
+                 (catch java.lang.InterruptedException ex)
+                 (catch java.nio.channels.ClosedByInterruptException ex)))]
+    (.start (Thread. repl-thread-fn))
+    input-writer))
 
 (defn send-to-repl [doc cmd]
   (let [cmd (str cmd \newline)]
