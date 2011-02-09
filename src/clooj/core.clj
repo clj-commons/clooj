@@ -16,12 +16,12 @@
            (java.awt.event ActionListener KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
            (java.io File FilenameFilter FileReader FileWriter OutputStream
-                    PipedReader PipedWriter PrintWriter StringReader Writer)
+                    OutputStreamWriter PipedReader PipedWriter PrintWriter StringReader Writer)
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]
-            [clojure.main :only repl])
+            [clojure.main :only (repl repl-prompt)])
   (:gen-class))
 
 ;; utils
@@ -78,6 +78,8 @@
                                (.printStackTrace e *out*)
                                (prn (clojure.main/repl-exception e)))
                              (flush))
+                   :prompt (fn [] (println)
+                                  (clojure.main/repl-prompt))
                    :need-prompt (constantly true))
                  (catch clojure.lang.LispReader$ReaderException ex
                    (prn "REPL closing"))
@@ -89,7 +91,8 @@
 (defn send-to-repl [doc cmd]
   (let [cmd (str cmd \newline)]
     (.append (doc :repl-out-text-area) cmd)
-    (.write (doc :repl-writer) cmd)))
+    (.write (doc :repl-writer) cmd)
+    (.flush (doc :repl-writer))))
 
 (defn send-selected-to-repl [doc]
   (send-to-repl doc (.getSelectedText (doc :doc-text-area))))
@@ -99,20 +102,18 @@
     (Rectangle. 0 (.getHeight text-area) 1 1)))
 
 (defn make-repl-writer [ta-out]
-  (proxy [Writer] []
-    (write
-      ([char-array offset length]
-        (let [buf (StringBuffer.)]
-          (.append buf char-array offset length)
-            (.append ta-out (.toString buf)))
-        (scroll-to-last ta-out))
-      ([t]
-        (when (= Integer (type t))
-          (.append ta-out
-            (str (char t)))
-          (scroll-to-last ta-out))))
-    (flush [] nil)
-    (close [] nil)))
+  (let [buf (StringBuffer.)]
+    (proxy [Writer] []
+      (write
+        ([char-array offset length]
+          (.append buf char-array offset length))
+        ([t]
+          (when (= Integer (type t))
+            (.append buf (char t)))))
+      (flush [] (.append ta-out (.toString buf))
+                (scroll-to-last ta-out)
+                (.setLength buf 0))
+      (close [] nil))))
 
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)]  
