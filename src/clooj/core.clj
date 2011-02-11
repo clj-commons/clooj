@@ -118,10 +118,10 @@
       (close [] nil))))
 
 (defn attach-child-action
-  "Maps an input-event on a swing component to an
-  action, such that action-fn is executed when
-  pred function is true, but the parent action
-  when pred returns false."
+  "Maps an input-event on a swing component to an action,
+  such that action-fn is executed when pred function is
+  true, but the parent (default) action when pred returns
+  false."
   [component input-event pred action-fn]
   (let [im (.getInputMap component)
         am (.getActionMap component)
