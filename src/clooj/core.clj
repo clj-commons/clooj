@@ -15,6 +15,7 @@
            (java.awt Insets Rectangle)
            (java.awt.event ActionListener KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
+           (java.util UUID)
            (java.io File FilenameFilter FileReader FileWriter OutputStream
                     OutputStreamWriter PipedReader PipedWriter PrintWriter StringReader Writer)
            (clojure.lang LineNumberingPushbackReader))
@@ -69,6 +70,7 @@
                (try
                  (clojure.main/repl
                    :init (fn [] (in-ns 'user))
+                   :print (fn [& args] (doall (map pprint args)))
                    :read (fn [prompt exit]
                            (read))
                    :caught (fn [e]
@@ -115,19 +117,33 @@
                 (.setLength buf 0))
       (close [] nil))))
 
+(defn attach-child-action
+  "Maps an input-event on a swing component to an
+  action, such that action-fn is executed when
+  pred function is true, but the parent action
+  when pred returns false."
+  [component input-event pred action-fn]
+  (let [im (.getInputMap component)
+        am (.getActionMap component)
+        parent-action (.get am (.get im input-event))
+        child-action
+          (proxy [AbstractAction] []
+            (actionPerformed [e]
+              (if (pred)
+                (action-fn) 
+                (.actionPerformed parent-action e))))
+        uuid (.. UUID randomUUID toString)]
+    (.put im input-event uuid)
+    (.put am uuid child-action)))
+
 (defn add-repl-input-handler [doc]
-  (let [ta-in (doc :repl-in-text-area)]  
-    (.addKeyListener ta-in
-      (reify KeyListener
-        (keyReleased [this _] nil)
-        (keyTyped [this _] nil)
-        (keyPressed [this e]
-          (when (and (= (.getKeyCode e) (KeyEvent/VK_ENTER))
-                     (= (.. ta-in getDocument getLength)
-                        (.getCaretPosition ta-in)))
-            (let [cmd (.getText ta-in)]
-              (send-to-repl doc cmd)
-              (.setText ta-in ""))))))))
+  (let [ta-in (doc :repl-in-text-area)
+        enter (KeyStroke/getKeyStroke KeyEvent/VK_ENTER 0)
+        ready #(= (.. ta-in getDocument getLength)
+                            (.getCaretPosition ta-in))
+        submit #((send-to-repl doc (.getText ta-in))
+                 (.setText ta-in ""))]
+    (attach-child-action ta-in enter ready submit)))
 
 (defn apply-namespace-to-repl [doc]
   (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
