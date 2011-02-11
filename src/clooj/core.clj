@@ -49,6 +49,8 @@
 ;; REPL stuff
 ;; adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
 
+(def repl-history {:items (atom nil) :pos (atom 0)})
+
 (def *printStackTrace-on-error* false)
 
 (defn is-eof-ex? [throwable]
@@ -91,10 +93,12 @@
     input-writer))
 
 (defn send-to-repl [doc cmd]
-  (let [cmd (str cmd \newline)]
-    (.append (doc :repl-out-text-area) cmd)
-    (.write (doc :repl-writer) cmd)
-    (.flush (doc :repl-writer))))
+  (let [cmd-ln (str cmd \newline)]
+    (.append (doc :repl-out-text-area) cmd-ln)
+    (.write (doc :repl-writer) cmd-ln)
+    (.flush (doc :repl-writer))
+    (swap! (:items repl-history) conj cmd)
+    (reset! (:pos repl-history) 0)))
 
 (defn send-selected-to-repl [doc]
   (send-to-repl doc (.getSelectedText (doc :doc-text-area))))
@@ -117,6 +121,11 @@
                 (.setLength buf 0))
       (close [] nil))))
 
+(defn show-previous-repl-entry [doc]
+  (swap! (:pos repl-history) inc)
+  (.setText (:repl-in-text-area doc)
+            (nth @(:items repl-history) @(:pos repl-history))))
+
 (defn attach-child-action
   "Maps an input-event on a swing component to an action,
   such that action-fn is executed when pred function is
@@ -138,12 +147,17 @@
 
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)
+        get-caret-pos #(.getCaretPosition ta-in)
         enter (KeyStroke/getKeyStroke KeyEvent/VK_ENTER 0)
         ready #(= (.. ta-in getDocument getLength)
-                            (.getCaretPosition ta-in))
+                            (get-caret-pos))
         submit #(do (send-to-repl doc (.getText ta-in))
-                    (.setText ta-in ""))]
-    (attach-child-action ta-in enter ready submit)))
+                    (.setText ta-in ""))
+        up (KeyStroke/getKeyStroke "UP")
+        at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
+        prev-hist #(show-previous-repl-entry doc)]
+    (attach-child-action ta-in enter ready submit)
+    (attach-child-action ta-in up at-top prev-hist)))
 
 (defn apply-namespace-to-repl [doc]
   (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
