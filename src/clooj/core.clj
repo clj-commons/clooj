@@ -121,10 +121,20 @@
                 (.setLength buf 0))
       (close [] nil))))
 
+(defn update-repl-entry [doc]
+  (when (pos? (count @(:items repl-history)))
+    (.setText (:repl-in-text-area doc)
+      (nth @(:items repl-history) @(:pos repl-history)))))
+
 (defn show-previous-repl-entry [doc]
-  (swap! (:pos repl-history) inc)
-  (.setText (:repl-in-text-area doc)
-            (nth @(:items repl-history) @(:pos repl-history))))
+  (swap! (:pos repl-history)
+         #(Math/min (dec (count @(:items repl-history))) (inc %)))
+  (update-repl-entry doc))
+
+(defn show-next-repl-entry [doc]
+  (swap! (:pos repl-history)
+         #(Math/max 0 (dec %)))
+  (update-repl-entry doc))
 
 (defn attach-child-action
   "Maps an input-event on a swing component to an action,
@@ -154,10 +164,15 @@
         submit #(do (send-to-repl doc (.getText ta-in))
                     (.setText ta-in ""))
         up (KeyStroke/getKeyStroke "UP")
+        down (KeyStroke/getKeyStroke "DOWN")
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
-        prev-hist #(show-previous-repl-entry doc)]
+        at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
+                      (.getLineOfOffset ta-in (.. ta-in getText length)))
+        prev-hist #(show-previous-repl-entry doc)
+        next-hist #(show-next-repl-entry doc)]
     (attach-child-action ta-in enter ready submit)
-    (attach-child-action ta-in up at-top prev-hist)))
+    (attach-child-action ta-in up at-top prev-hist)
+    (attach-child-action ta-in down at-bottom next-hist)))
 
 (defn apply-namespace-to-repl [doc]
   (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
