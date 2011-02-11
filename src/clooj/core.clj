@@ -141,8 +141,8 @@
         enter (KeyStroke/getKeyStroke KeyEvent/VK_ENTER 0)
         ready #(= (.. ta-in getDocument getLength)
                             (.getCaretPosition ta-in))
-        submit #((send-to-repl doc (.getText ta-in))
-                 (.setText ta-in ""))]
+        submit #(do (send-to-repl doc (.getText ta-in))
+                    (.setText ta-in ""))]
     (attach-child-action ta-in enter ready submit)))
 
 (defn apply-namespace-to-repl [doc]
