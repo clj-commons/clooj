@@ -92,12 +92,19 @@
     (.start (Thread. repl-thread-fn))
     input-writer))
 
+(defn replace-first [coll x]
+  (cons x (next coll)))
+
+(defn update-repl-history [doc]
+  (swap! (:items repl-history) replace-first
+         (.getText (doc :repl-in-text-area))))
+
 (defn send-to-repl [doc cmd]
   (let [cmd-ln (str cmd \newline)]
     (.append (doc :repl-out-text-area) cmd-ln)
     (.write (doc :repl-writer) cmd-ln)
     (.flush (doc :repl-writer))
-    (swap! (:items repl-history) conj cmd)
+    (swap! (:items repl-history) replace-first cmd)
     (reset! (:pos repl-history) 0)))
 
 (defn send-selected-to-repl [doc]
@@ -121,20 +128,22 @@
                 (.setLength buf 0))
       (close [] nil))))
 
-(defn update-repl-entry [doc]
+(defn update-repl-in [doc]
   (when (pos? (count @(:items repl-history)))
     (.setText (:repl-in-text-area doc)
       (nth @(:items repl-history) @(:pos repl-history)))))
 
 (defn show-previous-repl-entry [doc]
+  (when (zero? @(:pos repl-history))
+        (update-repl-history doc))
   (swap! (:pos repl-history)
          #(Math/min (dec (count @(:items repl-history))) (inc %)))
-  (update-repl-entry doc))
+  (update-repl-in doc))
 
 (defn show-next-repl-entry [doc]
   (swap! (:pos repl-history)
          #(Math/max 0 (dec %)))
-  (update-repl-entry doc))
+  (update-repl-in doc))
 
 (defn attach-child-action
   "Maps an input-event on a swing component to an action,
@@ -162,7 +171,8 @@
         ready #(= (.. ta-in getDocument getLength)
                             (get-caret-pos))
         submit #(do (send-to-repl doc (.getText ta-in))
-                    (.setText ta-in ""))
+                    (.setText ta-in "")
+                    (swap! (:items repl-history) conj ""))
         up (KeyStroke/getKeyStroke "UP")
         down (KeyStroke/getKeyStroke "DOWN")
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
