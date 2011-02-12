@@ -100,12 +100,14 @@
          (.getText (doc :repl-in-text-area))))
 
 (defn send-to-repl [doc cmd]
-  (let [cmd-ln (str cmd \newline)]
+  (let [cmd-ln (str (.trim cmd) \newline)]
     (.append (doc :repl-out-text-area) cmd-ln)
     (.write (doc :repl-writer) cmd-ln)
     (.flush (doc :repl-writer))
-    (swap! (:items repl-history) replace-first cmd)
-    (reset! (:pos repl-history) 0)))
+    (swap! (:items repl-history)
+           replace-first (.trim cmd-ln))
+    (reset! (:pos repl-history) 0)
+    (swap! (:items repl-history) conj "")))
 
 (defn send-selected-to-repl [doc]
   (send-to-repl doc (.getSelectedText (doc :doc-text-area))))
@@ -164,6 +166,19 @@
     (.put im input-event uuid)
     (.put am uuid child-action)))
 
+(defn attach-action
+  "Maps an input-event on a swing component to an action-fn."
+  [component input-event action-fn]
+  (let [im (.getInputMap component)
+        am (.getActionMap component)
+        action
+          (proxy [AbstractAction] []
+            (actionPerformed [e]
+                (action-fn)))
+        uuid (.. UUID randomUUID toString)]
+    (.put im input-event uuid)
+    (.put am uuid action)))
+
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)
         get-caret-pos #(.getCaretPosition ta-in)
@@ -171,10 +186,12 @@
         ready #(= (.. ta-in getDocument getLength)
                             (get-caret-pos))
         submit #(do (send-to-repl doc (.getText ta-in))
-                    (.setText ta-in "")
-                    (swap! (:items repl-history) conj ""))
-        up (KeyStroke/getKeyStroke "UP")
-        down (KeyStroke/getKeyStroke "DOWN")
+                    (.setText ta-in ""))
+        k #(KeyStroke/getKeyStroke %)
+        up (k "UP")
+        down (k "DOWN")
+        meta-up (k "meta UP")
+        meta-down (k "meta DOWN")
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
         at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
                       (.getLineOfOffset ta-in (.. ta-in getText length)))
@@ -182,7 +199,10 @@
         next-hist #(show-next-repl-entry doc)]
     (attach-child-action ta-in enter ready submit)
     (attach-child-action ta-in up at-top prev-hist)
-    (attach-child-action ta-in down at-bottom next-hist)))
+    (attach-child-action ta-in down at-bottom next-hist)
+    (attach-action ta-in meta-up prev-hist)
+    (attach-action ta-in meta-down next-hist)))
+
 
 (defn apply-namespace-to-repl [doc]
   (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
