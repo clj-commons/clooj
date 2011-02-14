@@ -336,6 +336,23 @@
     (if-let [right-char (get {\( \), \{ \}, \[ \]} left-char)]
       (.insert text-area (str right-char) right-pos))))
 
+
+;; find/replace
+
+(defn find-all-in-string [s t]
+  (loop [positions [] p-start 0]
+    (let [p (inc p-start)
+          pnew (.indexOf s t p)]
+      (if (pos? pnew)
+        (recur (conj positions pnew) (inc pnew))
+        positions))))
+
+(defn highlight-found [text-comp t]
+  (doall
+    (map #(highlight text-comp % (+ % (.length t)) Color/YELLOW)
+      (find-all-in-string (.getText text-comp) t))))
+  
+
 ;; build gui
 
 (defn make-scroll-pane [text-area]
