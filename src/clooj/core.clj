@@ -203,7 +203,6 @@
     (attach-action ta-in meta-up prev-hist)
     (attach-action ta-in meta-down next-hist)))
 
-
 (defn apply-namespace-to-repl [doc]
   (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
     (when (= 'ns (first sexpr))
@@ -293,6 +292,10 @@
   ([text-comp highlight-object]
     (.removeHighlight (.getHighlighter text-comp)
                       highlight-object)))
+
+(defn remove-highlights
+  ([text-comp highlights]
+    (dorun (map #(remove-highlight text-comp %) highlights))))
 
 (defn highlight-enclosing-brackets [text-comp pos color]
   (doall (map #(highlight text-comp % color)
