@@ -62,7 +62,8 @@
 (defn create-clojure-repl [result-writer]
   "This function creates an instance of clojure repl, with output going to output-writer
   Returns an input writer."
-  (let [input-writer (PipedWriter.)
+  (let [first-prompt (atom true)
+        input-writer (PipedWriter.)
         piped-in (clojure.lang.LineNumberingPushbackReader. (PipedReader. input-writer))
         piped-out (PrintWriter. result-writer)
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
@@ -82,7 +83,7 @@
                                (.printStackTrace e *out*)
                                (prn (clojure.main/repl-exception e)))
                              (flush))
-                   :prompt (fn [] (println)
+                   :prompt (fn [] (if @first-prompt (reset! first-prompt false) (println))
                                   (clojure.main/repl-prompt))
                    :need-prompt (constantly true))
                  (catch clojure.lang.LispReader$ReaderException ex
