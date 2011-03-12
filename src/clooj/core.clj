@@ -117,98 +117,6 @@
   (.scrollRectToVisible text-area
     (Rectangle. 0 (.getHeight text-area) 1 1)))
 
-(defn make-repl-writer [ta-out]
-  (let [buf (StringBuffer.)]
-    (proxy [Writer] []
-      (write
-        ([char-array offset length]
-          (.append buf char-array offset length))
-        ([t]
-          (when (= Integer (type t))
-            (.append buf (char t)))))
-      (flush [] (.append ta-out (.toString buf))
-                (scroll-to-last ta-out)
-                (.setLength buf 0))
-      (close [] nil))))
-
-(defn update-repl-in [doc]
-  (when (pos? (count @(:items repl-history)))
-    (.setText (:repl-in-text-area doc)
-      (nth @(:items repl-history) @(:pos repl-history)))))
-
-(defn show-previous-repl-entry [doc]
-  (when (zero? @(:pos repl-history))
-        (update-repl-history doc))
-  (swap! (:pos repl-history)
-         #(Math/min (dec (count @(:items repl-history))) (inc %)))
-  (update-repl-in doc))
-
-(defn show-next-repl-entry [doc]
-  (swap! (:pos repl-history)
-         #(Math/max 0 (dec %)))
-  (update-repl-in doc))
-
-(defn attach-child-action
-  "Maps an input-event on a swing component to an action,
-  such that action-fn is executed when pred function is
-  true, but the parent (default) action when pred returns
-  false."
-  [component input-event pred action-fn]
-  (let [im (.getInputMap component)
-        am (.getActionMap component)
-        parent-action (.get am (.get im input-event))
-        child-action
-          (proxy [AbstractAction] []
-            (actionPerformed [e]
-              (if (pred)
-                (action-fn) 
-                (.actionPerformed parent-action e))))
-        uuid (.. UUID randomUUID toString)]
-    (.put im input-event uuid)
-    (.put am uuid child-action)))
-
-(defn attach-action
-  "Maps an input-event on a swing component to an action-fn."
-  [component input-event action-fn]
-  (let [im (.getInputMap component)
-        am (.getActionMap component)
-        action
-          (proxy [AbstractAction] []
-            (actionPerformed [e]
-                (action-fn)))
-        uuid (.. UUID randomUUID toString)]
-    (.put im input-event uuid)
-    (.put am uuid action)))
-
-(defn add-repl-input-handler [doc]
-  (let [ta-in (doc :repl-in-text-area)
-        get-caret-pos #(.getCaretPosition ta-in)
-        enter (KeyStroke/getKeyStroke KeyEvent/VK_ENTER 0)
-        ready #(= (.. ta-in getDocument getLength)
-                            (get-caret-pos))
-        submit #(do (send-to-repl doc (.getText ta-in))
-                    (.setText ta-in ""))
-        k #(KeyStroke/getKeyStroke %)
-        up (k "UP")
-        down (k "DOWN")
-        meta-up (k "meta UP")
-        meta-down (k "meta DOWN")
-        at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
-        at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
-                      (.getLineOfOffset ta-in (.. ta-in getText length)))
-        prev-hist #(show-previous-repl-entry doc)
-        next-hist #(show-next-repl-entry doc)]
-    (attach-child-action ta-in enter ready submit)
-    (attach-child-action ta-in up at-top prev-hist)
-    (attach-child-action ta-in down at-bottom next-hist)
-    (attach-action ta-in meta-up prev-hist)
-    (attach-action ta-in meta-down next-hist)))
-
-(defn apply-namespace-to-repl [doc]
-  (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
-    (when (= 'ns (first sexpr))
-      (send-to-repl doc (str "(ns " (second sexpr) ")")))))
-
 ;; caret finding
 
 (defn get-caret-position [text-comp]
@@ -277,6 +185,105 @@
           (recur (next t) (inc cnt) new-stack new-errs)
           (filter identity
                   (map second (concat new-stack errs)))))))
+
+;; repl stuff
+
+(defn make-repl-writer [ta-out]
+  (let [buf (StringBuffer.)]
+    (proxy [Writer] []
+      (write
+        ([char-array offset length]
+          (.append buf char-array offset length))
+        ([t]
+          (when (= Integer (type t))
+            (.append buf (char t)))))
+      (flush [] (.append ta-out (.toString buf))
+                (scroll-to-last ta-out)
+                (.setLength buf 0))
+      (close [] nil))))
+
+(defn update-repl-in [doc]
+  (when (pos? (count @(:items repl-history)))
+    (.setText (:repl-in-text-area doc)
+      (nth @(:items repl-history) @(:pos repl-history)))))
+
+(defn show-previous-repl-entry [doc]
+  (when (zero? @(:pos repl-history))
+        (update-repl-history doc))
+  (swap! (:pos repl-history)
+         #(Math/min (dec (count @(:items repl-history))) (inc %)))
+  (update-repl-in doc))
+
+(defn show-next-repl-entry [doc]
+  (swap! (:pos repl-history)
+         #(Math/max 0 (dec %)))
+  (update-repl-in doc))
+
+(defn attach-child-action
+  "Maps an input-event on a swing component to an action,
+  such that action-fn is executed when pred function is
+  true, but the parent (default) action when pred returns
+  false."
+  [component input-event pred action-fn]
+  (let [im (.getInputMap component)
+        am (.getActionMap component)
+        parent-action (.get am (.get im input-event))
+        child-action
+          (proxy [AbstractAction] []
+            (actionPerformed [e]
+              (if (pred)
+                (action-fn) 
+                (.actionPerformed parent-action e))))
+        uuid (.. UUID randomUUID toString)]
+    (.put im input-event uuid)
+    (.put am uuid child-action)))
+
+(defn attach-action
+  "Maps an input-event on a swing component to an action-fn."
+  [component input-event action-fn]
+  (let [im (.getInputMap component)
+        am (.getActionMap component)
+        action
+          (proxy [AbstractAction] []
+            (actionPerformed [e]
+                (action-fn)))
+        uuid (.. UUID randomUUID toString)]
+    (.put im input-event uuid)
+    (.put am uuid action)))
+
+(defn add-repl-input-handler [doc]
+  (let [ta-in (doc :repl-in-text-area)
+        get-caret-pos #(.getCaretPosition ta-in)
+        enter (KeyStroke/getKeyStroke KeyEvent/VK_ENTER 0)
+        ready #(let [caret-pos (get-caret-pos)]
+                 (and
+                   (= (.. ta-in getDocument getLength)
+                                caret-pos)
+                   (= -1 (find-left-enclosing-bracket
+                           (.getText ta-in)
+                           caret-pos))))
+        submit #(do (send-to-repl doc (.getText ta-in))
+                    (.setText ta-in ""))
+        k #(KeyStroke/getKeyStroke %)
+        up (k "UP")
+        down (k "DOWN")
+        meta-up (k "meta UP")
+        meta-down (k "meta DOWN")
+        at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
+        at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
+                      (.getLineOfOffset ta-in (.. ta-in getText length)))
+        prev-hist #(show-previous-repl-entry doc)
+        next-hist #(show-next-repl-entry doc)]
+    (attach-child-action ta-in enter ready submit)
+    (attach-child-action ta-in up at-top prev-hist)
+    (attach-child-action ta-in down at-bottom next-hist)
+    (attach-action ta-in meta-up prev-hist)
+    (attach-action ta-in meta-down next-hist)))
+
+(defn apply-namespace-to-repl [doc]
+  (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
+    (when (= 'ns (first sexpr))
+      (send-to-repl doc (str "(ns " (second sexpr) ")")))))
 
 ;; highlighting
 
@@ -564,17 +571,24 @@
     (. menu-bar add tools-menu)))
 
 ;; startup
-          
+
+(def current-doc (atom nil))
+
 (defn startup []
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [doc (create-doc)]
-     (def current-doc doc)
+     (reset! current-doc doc)
      (make-menus doc)
      (let [ta-in (doc :repl-in-text-area)
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler doc))
      (.show (doc :frame))
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
+
+(defn -show []
+  (if (not @current-doc)
+    (startup)
+    (.show (:frame current-doc))))
 
 (defn -main [& args]
   (startup))
