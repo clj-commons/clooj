@@ -220,7 +220,7 @@
   (update-repl-in doc))
 
 (defn attach-child-action-key
-  "Maps an input-event on a swing component to an action,
+  "Maps an input-key on a swing component to an action,
   such that action-fn is executed when pred function is
   true, but the parent (default) action when pred returns
   false."
@@ -242,10 +242,10 @@
     (.put am uuid child-action)))
 
 (defn attach-action-key
-  "Maps an input-event on a swing component to an action-fn."
+  "Maps an input-key on a swing component to an action-fn."
   [component input-key action-fn]
   (attach-child-action-key component input-key
-                       (constantly true) action-fn))
+                           (constantly true) action-fn))
 
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)
