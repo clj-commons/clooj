@@ -219,14 +219,15 @@
          #(Math/max 0 (dec %)))
   (update-repl-in doc))
 
-(defn attach-child-action
+(defn attach-child-action-key
   "Maps an input-event on a swing component to an action,
   such that action-fn is executed when pred function is
   true, but the parent (default) action when pred returns
   false."
-  [component input-event pred action-fn]
+  [component input-key pred action-fn]
   (let [im (.getInputMap component)
         am (.getActionMap component)
+        input-event (KeyStroke/getKeyStroke input-key)
         parent-action (if-let [tag (.get im input-event)]
                         (.get am tag))
         child-action
@@ -240,10 +241,10 @@
     (.put im input-event uuid)
     (.put am uuid child-action)))
 
-(defn attach-action
+(defn attach-action-key
   "Maps an input-event on a swing component to an action-fn."
-  [component input-event action-fn]
-  (attach-child-action component input-event
+  [component input-key action-fn]
+  (attach-child-action-key component input-key
                        (constantly true) action-fn))
 
 (defn add-repl-input-handler [doc]
@@ -258,24 +259,17 @@
                            caret-pos))))
         submit #(do (send-to-repl doc (.getText ta-in))
                     (.setText ta-in ""))
-        k #(KeyStroke/getKeyStroke %)
-        up (k "UP")
-        down (k "DOWN")
-        enter (k "ENTER")       
-        meta-up (k "meta UP")
-        meta-down (k "meta DOWN")
-        meta-enter (k "meta ENTER")
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
         at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
                       (.getLineOfOffset ta-in (.. ta-in getText length)))
         prev-hist #(show-previous-repl-entry doc)
         next-hist #(show-next-repl-entry doc)]
-    (attach-child-action ta-in enter ready submit)
-    (attach-child-action ta-in up at-top prev-hist)
-    (attach-child-action ta-in down at-bottom next-hist)
-    (attach-action ta-in meta-up prev-hist)
-    (attach-action ta-in meta-down next-hist)
-    (attach-action ta-in meta-enter submit)))
+    (attach-child-action-key ta-in "UP" at-top prev-hist)
+    (attach-child-action-key ta-in "DOWN" at-bottom next-hist)
+    (attach-child-action-key ta-in "ENTER" ready submit)
+    (attach-action-key ta-in "meta UP" prev-hist)
+    (attach-action-key ta-in "meta DOWN" next-hist)
+    (attach-action-key ta-in "meta ENTER" submit)))
 
 (defn apply-namespace-to-repl [doc]
   (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
