@@ -3,8 +3,9 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.core
-  (:import (javax.swing BorderFactory JFrame JLabel JPanel JTextArea JScrollPane JList
-                        JMenuBar JMenu JMenuItem KeyStroke JSplitPane
+  (:import (javax.swing BorderFactory JFrame JLabel JPanel JScrollPane JList
+                        JMenuBar JMenu JMenuItem KeyStroke JSplitPane JTextField
+                        JTextArea
                         SpringLayout AbstractListModel AbstractAction
                         UIManager)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
@@ -17,7 +18,8 @@
            (java.awt Color Font Toolkit FileDialog)
            (java.util UUID)
            (java.io File FilenameFilter FileReader FileWriter OutputStream
-                    OutputStreamWriter PipedReader PipedWriter PrintWriter StringReader Writer)
+                    OutputStreamWriter PipedReader PipedWriter PrintWriter
+                    StringReader Writer)
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)])
@@ -124,7 +126,7 @@
 
 (defn display-caret-position [doc]
   (let [{:keys [row col]} (get-caret-position (:doc-text-area doc))]
-    (.setText (:status-bar doc) (str " " (inc row) "|" (inc col)))))
+    (.setText (:pos-label doc) (str " " (inc row) "|" (inc col)))))
 
 ;; bracket handling
 
@@ -353,7 +355,13 @@
   (doall
     (map #(highlight text-comp % (+ % (.length t)) Color/YELLOW)
       (find-all-in-string (.getText text-comp) t))))
-  
+
+(defn start-find [doc]
+  (let [sta (doc :search-text-area)]
+    (doto sta
+      (.setVisible true)
+      (.requestFocus)
+      (.selectAll))))
 
 ;; build gui
 
@@ -446,9 +454,10 @@
   (let [doc-text-area (make-text-area)
         repl-out-text-area (make-text-area)
         repl-in-text-area (make-text-area)
+        search-text-area (JTextField.)
         split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true)
         repl-split-pane (JSplitPane. JSplitPane/VERTICAL_SPLIT true)
-        status-bar (JLabel.)
+        pos-label (JLabel.)
         f (JFrame.)
         cp (.getContentPane f)
         layout (SpringLayout.)
@@ -456,17 +465,24 @@
         doc {:doc-text-area doc-text-area
              :repl-out-text-area repl-out-text-area
              :repl-in-text-area repl-in-text-area
-             :split-pane split-pane :status-bar status-bar :frame f
-             :file (atom nil) :repl-writer repl-writer}]
+             :split-pane split-pane :frame f
+             :search-text-area search-text-area
+             :pos-label pos-label :file (atom nil) :repl-writer repl-writer}]
     (doto f
       (.setBounds 25 50 950 700)
       (.setLayout layout)
       (.add split-pane)
-      (.add status-bar))
-    (doto status-bar
+      (.add search-text-area)
+      (.add pos-label))
+    (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
-    (constrain-to-parent split-pane :n 0 :w 0 :s -16 :e 0)
-    (constrain-to-parent status-bar :s -16 :w 0 :s 0 :e 0)
+    (constrain-to-parent split-pane :n 2 :w 2 :s -16 :e -2)
+    (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
+    (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
+    (doto search-text-area
+      (.setVisible false)
+      (.setFont (get-mono-font))
+      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY)))
     (.layoutContainer layout f)
     (doto doc-text-area
       (.addCaretListener
@@ -560,6 +576,7 @@
     (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
     (add-menu-item tools-menu "Evaluate in REPL" \E #(send-selected-to-repl doc))
     (add-menu-item tools-menu "Apply file ns to REPL" \L #(apply-namespace-to-repl doc))
+    (add-menu-item tools-menu "Find" \F #(start-find doc))
     (. menu-bar add file-menu)
     (. menu-bar add tools-menu)))
 
