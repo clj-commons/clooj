@@ -227,13 +227,15 @@
   [component input-event pred action-fn]
   (let [im (.getInputMap component)
         am (.getActionMap component)
-        parent-action (.get am (.get im input-event))
+        parent-action (if-let [tag (.get im input-event)]
+                        (.get am tag))
         child-action
           (proxy [AbstractAction] []
             (actionPerformed [e]
               (if (pred)
-                (action-fn) 
-                (.actionPerformed parent-action e))))
+                (action-fn)
+                (when parent-action
+                  (.actionPerformed parent-action e)))))
         uuid (.. UUID randomUUID toString)]
     (.put im input-event uuid)
     (.put am uuid child-action)))
@@ -241,20 +243,12 @@
 (defn attach-action
   "Maps an input-event on a swing component to an action-fn."
   [component input-event action-fn]
-  (let [im (.getInputMap component)
-        am (.getActionMap component)
-        action
-          (proxy [AbstractAction] []
-            (actionPerformed [e]
-                (action-fn)))
-        uuid (.. UUID randomUUID toString)]
-    (.put im input-event uuid)
-    (.put am uuid action)))
+  (attach-child-action component input-event
+                       (constantly true) action-fn))
 
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)
         get-caret-pos #(.getCaretPosition ta-in)
-        enter (KeyStroke/getKeyStroke KeyEvent/VK_ENTER 0)
         ready #(let [caret-pos (get-caret-pos)]
                  (and
                    (= (.. ta-in getDocument getLength)
@@ -267,8 +261,10 @@
         k #(KeyStroke/getKeyStroke %)
         up (k "UP")
         down (k "DOWN")
+        enter (k "ENTER")       
         meta-up (k "meta UP")
         meta-down (k "meta DOWN")
+        meta-enter (k "meta ENTER")
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
         at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
                       (.getLineOfOffset ta-in (.. ta-in getText length)))
@@ -278,7 +274,8 @@
     (attach-child-action ta-in up at-top prev-hist)
     (attach-child-action ta-in down at-bottom next-hist)
     (attach-action ta-in meta-up prev-hist)
-    (attach-action ta-in meta-down next-hist)))
+    (attach-action ta-in meta-down next-hist)
+    (attach-action ta-in meta-enter submit)))
 
 (defn apply-namespace-to-repl [doc]
   (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
