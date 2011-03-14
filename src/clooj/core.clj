@@ -3,7 +3,7 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.core
-  (:import (javax.swing JFrame JLabel JPanel JTextArea JScrollPane JList
+  (:import (javax.swing BorderFactory JFrame JLabel JPanel JTextArea JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane
                         SpringLayout AbstractListModel AbstractAction
                         UIManager)
@@ -487,11 +487,13 @@
       (.add (make-scroll-pane doc-text-area))
       (.add repl-split-pane)
       (.setResizeWeight 0.5)
-      (.setOneTouchExpandable true))
+      (.setOneTouchExpandable true)
+      (.setBorder (BorderFactory/createEmptyBorder)))
     (doto repl-split-pane
       (.add (make-scroll-pane repl-out-text-area))
       (.add (make-scroll-pane repl-in-text-area))
-      (.setResizeWeight 0.75))
+      (.setResizeWeight 0.75)
+      (.setBorder (BorderFactory/createEmptyBorder)))
     doc))
 
 (defn choose-file [frame suffix load]
