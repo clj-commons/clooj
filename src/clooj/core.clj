@@ -5,8 +5,7 @@
 (ns clooj.core
   (:import (javax.swing BorderFactory JFrame JLabel JPanel JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane JTextField
-                        JTextArea
-                        SpringLayout AbstractListModel AbstractAction
+                        JTextArea SpringLayout AbstractListModel AbstractAction
                         UIManager)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.text DefaultHighlighter
@@ -47,6 +46,15 @@
   (let [row (.getLineOfOffset text-comp offset)
         col (- offset (.getLineStartOffset text-comp row))]
     {:row row :col col}))
+
+(defn add-text-change-listener [text-comp f]
+  "Executes f whenever text is changed in text component."
+  (.addDocumentListener
+    (.getDocument text-comp)
+    (reify DocumentListener
+      (insertUpdate [this _] (f))
+      (removeUpdate [this _] (f))
+      (changedUpdate [this _] (f)))))
 
 ;; REPL stuff
 ;; adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
@@ -321,14 +329,10 @@
   (add-caret-listener text-comp #(highlight-caret-enclosure text-comp)))
 
 (defn activate-error-highlighter [text-comp]
-  (let [hl #(do (.. text-comp getHighlighter removeAllHighlights)
-                (highlight-bad-brackets text-comp))]
-    (doto (.getDocument text-comp)
-      (.addDocumentListener
-        (reify DocumentListener
-          (insertUpdate [this evt] (hl))
-          (removeUpdate [this evt] (hl))
-          (changedUpdate [this evt] (hl)))))))
+  (add-text-change-listener
+    text-comp 
+    #(do (.. text-comp getHighlighter removeAllHighlights)
+             (highlight-bad-brackets text-comp))))
 
 ;; paren closing (doesn't work)
 
@@ -348,20 +352,29 @@
     (let [p (inc p-start)
           pnew (.indexOf s t p)]
       (if (pos? pnew)
-        (recur (conj positions pnew) (inc pnew))
+        (recur (conj positions pnew) pnew)
         positions))))
 
 (defn highlight-found [text-comp t]
-  (doall
-    (map #(highlight text-comp % (+ % (.length t)) Color/YELLOW)
-      (find-all-in-string (.getText text-comp) t))))
+  (when (pos? (.length t))
+    (doall
+      (map #(highlight text-comp % (+ % (.length t)) Color/YELLOW)
+        (find-all-in-string (.getText text-comp) t)))))
+
+(let [highlights (atom nil)]
+  (defn update-find-highlight [doc]
+    (let [sta (:search-text-area doc)
+          dta (:doc-text-area doc)]
+      (remove-highlights dta @highlights)
+      (reset! highlights (highlight-found dta (.getText sta))))))
 
 (defn start-find [doc]
   (let [sta (doc :search-text-area)]
     (doto sta
       (.setVisible true)
       (.requestFocus)
-      (.selectAll))))
+      (.selectAll))
+    (add-text-change-listener sta #(update-find-highlight doc))))
 
 ;; build gui
 
