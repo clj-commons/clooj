@@ -56,6 +56,9 @@
       (removeUpdate [this _] (f))
       (changedUpdate [this _] (f)))))
 
+(defn set-selection [text-comp start end]
+  (doto text-comp (.setSelectionStart start) (.setSelectionEnd end)))
+
 ;; REPL stuff
 ;; adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
 
@@ -355,18 +358,24 @@
         (recur (conj positions pnew) pnew)
         positions))))
 
-(defn highlight-found [text-comp t]
-  (when (pos? (.length t))
+(defn highlight-found [text-comp posns length]
+  (when (pos? length)
     (doall
-      (map #(highlight text-comp % (+ % (.length t)) Color/YELLOW)
-        (find-all-in-string (.getText text-comp) t)))))
+      (map #(highlight text-comp % (+ % length) Color/YELLOW)
+        posns))))
+
+(defn find-next [cur-pos posns]
+  (or (first (drop-while #(>= cur-pos posns)) (first posns))))
 
 (let [highlights (atom nil)]
   (defn update-find-highlight [doc]
     (let [sta (:search-text-area doc)
-          dta (:doc-text-area doc)]
+          dta (:doc-text-area doc)
+          posns (find-all-in-string (.getText sta) dta)
+          selected-pos (find-next (.getCaretPosition dta) posns)
+          posns (remove #(= selected-pos %) posns)]
       (remove-highlights dta @highlights)
-      (reset! highlights (highlight-found dta (.getText sta))))))
+      (reset! highlights (highlight-found dta posns (.. sta getText length))))))
 
 (defn start-find [doc]
   (let [sta (doc :search-text-area)]
