@@ -250,11 +250,19 @@
     (.put im input-event uuid)
     (.put am uuid child-action)))
 
+
+(defn attach-child-action-keys [comp & items]
+  (doall (map #(apply attach-child-action-key comp %) items)))
+
 (defn attach-action-key
   "Maps an input-key on a swing component to an action-fn."
   [component input-key action-fn]
   (attach-child-action-key component input-key
                            (constantly true) action-fn))
+
+(defn attach-action-keys [comp & items]
+  "Maps input keys to action-fns."
+  (doall (map #(apply attach-action-key comp %) items)))
 
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)
@@ -273,12 +281,12 @@
                       (.getLineOfOffset ta-in (.. ta-in getText length)))
         prev-hist #(show-previous-repl-entry doc)
         next-hist #(show-next-repl-entry doc)]
-    (attach-child-action-key ta-in "UP" at-top prev-hist)
-    (attach-child-action-key ta-in "DOWN" at-bottom next-hist)
-    (attach-child-action-key ta-in "ENTER" ready submit)
-    (attach-action-key ta-in "meta UP" prev-hist)
-    (attach-action-key ta-in "meta DOWN" next-hist)
-    (attach-action-key ta-in "meta ENTER" submit)))
+    (attach-child-action-keys ta-in ["UP" at-top prev-hist]
+                                    ["DOWN" at-bottom next-hist]
+                                    ["ENTER" ready submit])
+    (attach-action-keys ta-in ["meta UP" prev-hist]
+                              ["meta DOWN" next-hist]
+                              ["meta ENTER" submit])))
 
 (defn apply-namespace-to-repl [doc]
   (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
@@ -364,17 +372,23 @@
 (defn next-item [cur-pos posns]
   (or (first (drop-while #(> cur-pos %) posns)) (first posns)))
 
+(defn prev-item [cur-pos posns]
+  (or (first (drop-while #(< cur-pos %) (reverse posns))) (last posns)))
+
 (def search-highlights (atom nil))
 
-(defn update-find-highlight [doc]
+(defn update-find-highlight [doc back]
   (let [sta (:search-text-area doc)
         dta (:doc-text-area doc)
         length (.. sta getText length)
         posns (find-all-in-string (.getText dta) (.getText sta))]
     (remove-highlights dta @search-highlights)
     (if (pos? (count posns))
-      (let [selected-pos (next-item (.getSelectionStart dta) posns)
+      (let [selected-pos
+             (if back (prev-item (dec (.getSelectionStart dta)) posns)
+                      (next-item (.getSelectionStart dta) posns))
             posns (remove #(= selected-pos %) posns)]
+        (println selected-pos)
         (when (pos? length)
           (reset! search-highlights
             (conj (highlight-found dta posns length)
@@ -398,13 +412,12 @@
     (remove-highlights dta @search-highlights)
     (reset! search-highlights nil)))
 
-(defn highlight-next [doc]
+(defn highlight-step [doc back]
   (let [dta (:doc-text-area doc)]
     (start-find doc)
-    (.setSelectionStart dta (.getSelectionEnd dta))
-    (update-find-highlight doc)))
-
-(def highlight-prev highlight-next)
+    (if (not back)
+        (.setSelectionStart dta (.getSelectionEnd dta)))
+    (update-find-highlight doc back)))
 
 ;; build gui
 
@@ -456,8 +469,9 @@
     (.. text-area getDocument (addUndoableEditListener
         (reify UndoableEditListener
           (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))
-    (attach-action-key text-area "meta Z" #(if (.canUndo undoMgr) (.undo undoMgr)))
-    (attach-action-key text-area "meta shift Z" #(if (.canRedo undoMgr) (.redo undoMgr)))))
+    (attach-action-keys text-area
+      ["meta Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
+      ["meta shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
 
 (defn auto-indent-str [text-comp offset]
   (let [bracket-pos (find-left-enclosing-bracket
@@ -517,9 +531,9 @@
       (.setFont (get-mono-font))
       (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
       (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (stop-find doc)))))
-    (add-text-change-listener search-text-area #(update-find-highlight doc))
-    (attach-action-key search-text-area "ENTER" #(highlight-next doc))
-    (attach-action-key search-text-area "shift ENTER" #(highlight-prev doc))
+    (add-text-change-listener search-text-area #(update-find-highlight doc false))
+    (attach-action-key search-text-area "ENTER" #(highlight-step doc false))
+    (attach-action-key search-text-area "shift ENTER" #(highlight-step doc true))
     (attach-action-key search-text-area "ESCAPE" #(stop-find doc))
     (.layoutContainer layout f)
     (doto doc-text-area
@@ -623,8 +637,8 @@
       ["Evaluate in REPL" "meta E" #(send-selected-to-repl doc)]
       ["Apply file ns to REPL" "meta L" #(apply-namespace-to-repl doc)]
       ["Find" "meta F" #(start-find doc)]
-      ["Find next" "meta G" #(highlight-next doc)]
-      ["Find prev" "meta shift G" #(highlight-prev doc)])))
+      ["Find next" "meta G" #(highlight-step doc false)]
+      ["Find prev" "meta shift G" #(highlight-step doc true)])))
 
 ;; startup
 
