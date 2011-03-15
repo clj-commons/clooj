@@ -351,12 +351,13 @@
 ;; find/replace
 
 (defn find-all-in-string [s t]
-  (loop [positions [] p-start 0]
-    (let [p (inc p-start)
-          pnew (.indexOf s t p)]
-      (if (pos? pnew)
-        (recur (conj positions pnew) pnew)
-        positions))))
+  (when (pos? (.length t))
+    (loop [positions [] p-start 0]
+      (let [p (inc p-start)
+            pnew (.indexOf s t p)]
+        (if (pos? pnew)
+          (recur (conj positions pnew) pnew)
+          positions)))))
 
 (defn highlight-found [text-comp posns length]
   (when (pos? length)
@@ -364,18 +365,21 @@
       (map #(highlight text-comp % (+ % length) Color/YELLOW)
         posns))))
 
-(defn find-next [cur-pos posns]
-  (or (first (drop-while #(>= cur-pos posns)) (first posns))))
+(defn next-item [cur-pos posns]
+  (or (first (drop-while #(>= cur-pos %) posns)) (first posns)))
 
 (let [highlights (atom nil)]
   (defn update-find-highlight [doc]
     (let [sta (:search-text-area doc)
           dta (:doc-text-area doc)
-          posns (find-all-in-string (.getText sta) dta)
-          selected-pos (find-next (.getCaretPosition dta) posns)
-          posns (remove #(= selected-pos %) posns)]
+          posns (find-all-in-string (.getText dta) (.getText sta))
+          selected-pos (next-item (.getCaretPosition dta) posns)
+          posns (remove #(= selected-pos %) posns)
+          length (.. sta getText length)]
       (remove-highlights dta @highlights)
-      (reset! highlights (highlight-found dta posns (.. sta getText length))))))
+      (reset! highlights (highlight-found dta posns length))
+     ; (set-selection dta selected-pos (+ selected-pos length))
+      )))
 
 (defn start-find [doc]
   (let [sta (doc :search-text-area)]
