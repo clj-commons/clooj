@@ -385,6 +385,7 @@
 
 (defn highlight-next [doc]
   (let [dta (:doc-text-area doc)]
+    (start-find doc)
     (.setSelectionStart dta (.getSelectionEnd dta))
     (update-find-highlight doc)))
 
@@ -393,14 +394,14 @@
 (defn start-find [doc]
   (let [sta (doc :search-text-area)]
     (doto sta
-      .show
+      (.setVisible true)
       (.requestFocus)
       (.selectAll))))
 
 (defn stop-find [doc]
   (let [sta (doc :search-text-area)
         dta (doc :doc-text-area)]
-    (.hide sta)
+    (.setVisible sta false)
     (.requestFocus dta)
     (remove-highlights dta @search-highlights)
     (reset! search-highlights nil)))
@@ -512,7 +513,7 @@
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
     (doto search-text-area
-      .hide
+      (.setVisible false)
       (.setFont (get-mono-font))
       (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
       (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (stop-find doc)))))
@@ -548,7 +549,7 @@
       (.setFilenameFilter
         (reify FilenameFilter
           (accept [this _ name] (. name endsWith suffix))))
-      .show)
+      (.setVisible true))
     d (.getDirectory dialog)
     n (.getFile dialog)]
     (if (and d n)
@@ -631,13 +632,13 @@
      (let [ta-in (doc :repl-in-text-area)
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler doc))
-     (.show (doc :frame))
+     (.setVisible (doc :frame) true)
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 
 (defn -show []
   (if (not @current-doc)
     (startup)
-    (.show (:frame current-doc))))
+    (.setVisible (:frame current-doc) true)))
 
 (defn -main [& args]
   (startup))
