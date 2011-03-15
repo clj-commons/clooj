@@ -13,7 +13,7 @@
                              DocumentFilter)
            (javax.swing.undo UndoManager)
            (java.awt Insets Rectangle)
-           (java.awt.event ActionListener KeyEvent KeyListener)
+           (java.awt.event ActionListener FocusAdapter KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
            (java.util UUID)
            (java.io File FilenameFilter FileReader FileWriter OutputStream
@@ -30,10 +30,6 @@
 
 (defn count-while [pred coll]
   (count (take-while pred coll)))
-
-(def menu-shortcut (. (Toolkit/getDefaultToolkit) getMenuShortcutKeyMask))
-
-(defn cmd-key [key] (KeyStroke/getKeyStroke key menu-shortcut))
 
 (defn get-mono-font []
   (Font. "Monaco" Font/PLAIN 11))
@@ -366,31 +362,48 @@
         posns))))
 
 (defn next-item [cur-pos posns]
-  (or (first (drop-while #(>= cur-pos %) posns)) (first posns)))
+  (or (first (drop-while #(> cur-pos %) posns)) (first posns)))
 
-(let [highlights (atom nil)]
-  (defn update-find-highlight [doc]
-    (let [sta (:search-text-area doc)
-          dta (:doc-text-area doc)
-          posns (find-all-in-string (.getText dta) (.getText sta))
-          selected-pos (next-item (.getCaretPosition dta) posns)
-          posns (remove #(= selected-pos %) posns)
-          length (.. sta getText length)]
-      (remove-highlights dta @highlights)
-      (reset! highlights (highlight-found dta posns length))
-     ; (set-selection dta selected-pos (+ selected-pos length))
-      )))
+(def search-highlights (atom nil))
+
+(defn update-find-highlight [doc]
+  (let [sta (:search-text-area doc)
+        dta (:doc-text-area doc)
+        length (.. sta getText length)
+        posns (find-all-in-string (.getText dta) (.getText sta))]
+    (remove-highlights dta @search-highlights)
+    (if (pos? (count posns))
+      (let [selected-pos (next-item (.getSelectionStart dta) posns)
+            posns (remove #(= selected-pos %) posns)]
+        (when (pos? length)
+          (reset! search-highlights
+            (conj (highlight-found dta posns length)
+                  (highlight dta selected-pos
+                             (+ selected-pos length) (.getSelectionColor dta))))
+          (set-selection dta selected-pos (+ selected-pos length))))
+      (.setSelectionEnd dta (.getSelectionStart dta)))))
+
+(defn highlight-next [doc]
+  (let [dta (:doc-text-area doc)]
+    (.setSelectionStart dta (.getSelectionEnd dta))
+    (update-find-highlight doc)))
+
+(def highlight-prev highlight-next)
 
 (defn start-find [doc]
   (let [sta (doc :search-text-area)]
     (doto sta
-      (.setVisible true)
+      .show
       (.requestFocus)
       (.selectAll))))
 
 (defn stop-find [doc]
-  (let [sta (doc :search-text-area)]
-    (.setVisible sta false)))
+  (let [sta (doc :search-text-area)
+        dta (doc :doc-text-area)]
+    (.hide sta)
+    (.requestFocus dta)
+    (remove-highlights dta @search-highlights)
+    (reset! search-highlights nil)))
 
 ;; build gui
 
@@ -442,18 +455,8 @@
     (.. text-area getDocument (addUndoableEditListener
         (reify UndoableEditListener
           (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))
-    (doto (. text-area getActionMap)
-          (.put "Undo"
-               (proxy [AbstractAction] ["Undo"]
-                 (actionPerformed [evt]
-                   (if (.canUndo undoMgr) (.undo undoMgr)))))
-          (.put "Redo"
-               (proxy [AbstractAction] ["Redo"]
-                 (actionPerformed [evt]
-                   (if (.canRedo undoMgr) (.redo undoMgr))))))
-    (doto (. text-area getInputMap)
-          (.put (cmd-key KeyEvent/VK_Z) "Undo")
-          (.put (cmd-key KeyEvent/VK_Y) "Redo"))))
+    (attach-action-key text-area "meta Z" #(if (.canUndo undoMgr) (.undo undoMgr)))
+    (attach-action-key text-area "meta shift Z" #(if (.canRedo undoMgr) (.redo undoMgr)))))
 
 (defn auto-indent-str [text-comp offset]
   (let [bracket-pos (find-left-enclosing-bracket
@@ -509,10 +512,14 @@
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
     (doto search-text-area
-      (.setVisible false)
+      .hide
       (.setFont (get-mono-font))
-      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY)))
+      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
+      (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (stop-find doc)))))
     (add-text-change-listener search-text-area #(update-find-highlight doc))
+    (attach-action-key search-text-area "ENTER" #(highlight-next doc))
+    (attach-action-key search-text-area "shift ENTER" #(highlight-prev doc))
+    (attach-action-key search-text-area "ESCAPE" #(stop-find doc))
     (.layoutContainer layout f)
     (doto doc-text-area
       (.addCaretListener
@@ -531,6 +538,7 @@
       (.add (make-scroll-pane repl-in-text-area))
       (.setResizeWeight 0.75)
       (.setBorder (BorderFactory/createEmptyBorder)))
+    (make-undoable repl-in-text-area)
     doc))
 
 (defn choose-file [frame suffix load]
@@ -585,14 +593,13 @@
 ;; menu setup
 
 (defn add-menu-item [menu item-name key-shortcut response-fn]
-  (let [k (+ KeyEvent/VK_A (- (int key-shortcut) (int \A)))]
-    (.add menu
-      (doto (JMenuItem. item-name)
-        (.setAccelerator (cmd-key k))
-        (.addActionListener
-          (reify ActionListener
-            (actionPerformed [this action-event]
-              (do (response-fn)))))))))
+  (.add menu
+    (doto (JMenuItem. item-name)
+      (.setAccelerator (KeyStroke/getKeyStroke key-shortcut))
+      (.addActionListener
+        (reify ActionListener
+          (actionPerformed [this action-event]
+            (do (response-fn))))))))
 
 (defn make-menus [doc]
   (System/setProperty "apple.laf.useScreenMenuBar" "true")
@@ -600,13 +607,15 @@
         file-menu (JMenu. "File")
         tools-menu (JMenu. "Tools")]
     (. (doc :frame) setJMenuBar menu-bar)
-    (add-menu-item file-menu "New" \N #(new-file doc))
-    (add-menu-item file-menu "Open" \O #(open-file doc ".clj"))
-    (add-menu-item file-menu "Save" \S #(save-file doc))
-    (add-menu-item file-menu "Save as..." \R #(save-file-as doc))
-    (add-menu-item tools-menu "Evaluate in REPL" \E #(send-selected-to-repl doc))
-    (add-menu-item tools-menu "Apply file ns to REPL" \L #(apply-namespace-to-repl doc))
-    (add-menu-item tools-menu "Find" \F #(start-find doc))
+    (add-menu-item file-menu "New" "meta N" #(new-file doc))
+    (add-menu-item file-menu "Open" "meta O" #(open-file doc ".clj"))
+    (add-menu-item file-menu "Save" "meta S" #(save-file doc))
+    (add-menu-item file-menu "Save as..." "meta R" #(save-file-as doc))
+    (add-menu-item tools-menu "Evaluate in REPL" "meta E" #(send-selected-to-repl doc))
+    (add-menu-item tools-menu "Apply file ns to REPL" "meta L" #(apply-namespace-to-repl doc))
+    (add-menu-item tools-menu "Find" "meta F" #(start-find doc))
+    (add-menu-item tools-menu "Find next" "meta G" #(highlight-next doc))
+    (add-menu-item tools-menu "Find prev" "meta shift G" #(highlight-prev doc))
     (. menu-bar add file-menu)
     (. menu-bar add tools-menu)))
 
