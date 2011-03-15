@@ -383,14 +383,6 @@
           (set-selection dta selected-pos (+ selected-pos length))))
       (.setSelectionEnd dta (.getSelectionStart dta)))))
 
-(defn highlight-next [doc]
-  (let [dta (:doc-text-area doc)]
-    (start-find doc)
-    (.setSelectionStart dta (.getSelectionEnd dta))
-    (update-find-highlight doc)))
-
-(def highlight-prev highlight-next)
-
 (defn start-find [doc]
   (let [sta (doc :search-text-area)]
     (doto sta
@@ -405,6 +397,14 @@
     (.requestFocus dta)
     (remove-highlights dta @search-highlights)
     (reset! search-highlights nil)))
+
+(defn highlight-next [doc]
+  (let [dta (:doc-text-area doc)]
+    (start-find doc)
+    (.setSelectionStart dta (.getSelectionEnd dta))
+    (update-find-highlight doc)))
+
+(def highlight-prev highlight-next)
 
 ;; build gui
 
@@ -602,23 +602,29 @@
           (actionPerformed [this action-event]
             (do (response-fn))))))))
 
+(defn add-menu [menu-bar title & item-triples]
+  "Each item-triple is a vector containing a
+  menu item's text, shortcut key, and the function
+  it executes."
+  (let [menu (JMenu. title)]
+    (doall (map #(apply add-menu-item menu %) item-triples))
+    (.add menu-bar menu)))
+
 (defn make-menus [doc]
   (System/setProperty "apple.laf.useScreenMenuBar" "true")
-  (let [menu-bar (JMenuBar.)
-        file-menu (JMenu. "File")
-        tools-menu (JMenu. "Tools")]
+  (let [menu-bar (JMenuBar.)]
     (. (doc :frame) setJMenuBar menu-bar)
-    (add-menu-item file-menu "New" "meta N" #(new-file doc))
-    (add-menu-item file-menu "Open" "meta O" #(open-file doc ".clj"))
-    (add-menu-item file-menu "Save" "meta S" #(save-file doc))
-    (add-menu-item file-menu "Save as..." "meta R" #(save-file-as doc))
-    (add-menu-item tools-menu "Evaluate in REPL" "meta E" #(send-selected-to-repl doc))
-    (add-menu-item tools-menu "Apply file ns to REPL" "meta L" #(apply-namespace-to-repl doc))
-    (add-menu-item tools-menu "Find" "meta F" #(start-find doc))
-    (add-menu-item tools-menu "Find next" "meta G" #(highlight-next doc))
-    (add-menu-item tools-menu "Find prev" "meta shift G" #(highlight-prev doc))
-    (. menu-bar add file-menu)
-    (. menu-bar add tools-menu)))
+    (add-menu menu-bar "File"
+      ["New" "meta N" #(new-file doc)]
+      ["Open" "meta O" #(open-file doc ".clj")]
+      ["Save" "meta S" #(save-file doc)]
+      ["Save as..." "meta R" #(save-file-as doc)])
+    (add-menu menu-bar "Tools"
+      ["Evaluate in REPL" "meta E" #(send-selected-to-repl doc)]
+      ["Apply file ns to REPL" "meta L" #(apply-namespace-to-repl doc)]
+      ["Find" "meta F" #(start-find doc)]
+      ["Find next" "meta G" #(highlight-next doc)]
+      ["Find prev" "meta shift G" #(highlight-prev doc)])))
 
 ;; startup
 
