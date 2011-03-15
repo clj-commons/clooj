@@ -388,7 +388,6 @@
              (if back (prev-item (dec (.getSelectionStart dta)) posns)
                       (next-item (.getSelectionStart dta) posns))
             posns (remove #(= selected-pos %) posns)]
-        (println selected-pos)
         (when (pos? length)
           (reset! search-highlights
             (conj (highlight-found dta posns length)
@@ -408,9 +407,12 @@
   (let [sta (doc :search-text-area)
         dta (doc :doc-text-area)]
     (.setVisible sta false)
-    (.requestFocus dta)
     (remove-highlights dta @search-highlights)
     (reset! search-highlights nil)))
+
+(defn escape-find [doc]
+  (stop-find doc)
+  (.requestFocus (:doc-text-area doc)))
 
 (defn highlight-step [doc back]
   (let [dta (:doc-text-area doc)]
@@ -534,7 +536,7 @@
     (add-text-change-listener search-text-area #(update-find-highlight doc false))
     (attach-action-key search-text-area "ENTER" #(highlight-step doc false))
     (attach-action-key search-text-area "shift ENTER" #(highlight-step doc true))
-    (attach-action-key search-text-area "ESCAPE" #(stop-find doc))
+    (attach-action-key search-text-area "ESCAPE" #(escape-find doc))
     (.layoutContainer layout f)
     (doto doc-text-area
       (.addCaretListener
