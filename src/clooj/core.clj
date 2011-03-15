@@ -373,8 +373,11 @@
     (doto sta
       (.setVisible true)
       (.requestFocus)
-      (.selectAll))
-    (add-text-change-listener sta #(update-find-highlight doc))))
+      (.selectAll))))
+
+(defn stop-find [doc]
+  (let [sta (doc :search-text-area)]
+    (.setVisible sta false)))
 
 ;; build gui
 
@@ -496,6 +499,7 @@
       (.setVisible false)
       (.setFont (get-mono-font))
       (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY)))
+    (add-text-change-listener search-text-area #(update-find-highlight doc))
     (.layoutContainer layout f)
     (doto doc-text-area
       (.addCaretListener
