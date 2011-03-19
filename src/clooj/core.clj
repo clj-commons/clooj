@@ -640,7 +640,8 @@
       ["Apply file ns to REPL" "meta L" #(apply-namespace-to-repl doc)]
       ["Find" "meta F" #(start-find doc)]
       ["Find next" "meta G" #(highlight-step doc false)]
-      ["Find prev" "meta shift G" #(highlight-step doc true)])))
+      ["Find prev" "meta shift G" #(highlight-step doc true)]
+      ["Clear REPL" "meta K" #(.setText (doc :repl-out-text-area) "")])))
 
 ;; startup
 
