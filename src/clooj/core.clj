@@ -529,14 +529,15 @@
         cp (.getContentPane f)
         layout (SpringLayout.)
         docs-tree (JTree.)
-        repl-writer (create-clojure-repl (make-repl-writer repl-out-text-area))
         doc {:doc-text-area doc-text-area
              :repl-out-text-area repl-out-text-area
              :repl-in-text-area repl-in-text-area
              :frame f
              :docs-tree docs-tree
              :search-text-area search-text-area
-             :pos-label pos-label :file (atom nil) :repl-writer repl-writer}
+             :pos-label pos-label :file (atom nil)
+             :repl-writer (create-clojure-repl
+                            (make-repl-writer repl-out-text-area))}
         doc-split-pane (make-split-pane
                          (make-scroll-pane docs-tree)
                          (make-scroll-pane doc-text-area) true 0 false)
