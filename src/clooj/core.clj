@@ -6,7 +6,7 @@
   (:import (javax.swing BorderFactory JFrame JLabel JPanel JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane JTextField
                         JTextArea SpringLayout AbstractListModel AbstractAction
-                        UIManager)
+                        UIManager JTree)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.text DefaultHighlighter
                              DefaultHighlighter$DefaultHighlightPainter
@@ -499,24 +499,51 @@
                   text)
                   attrs)))))))
 
+(defn make-split-pane [comp1 comp2 horizontal resize-weight expandable]
+  (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT 
+                                    JSplitPane/VERTICAL_SPLIT) true)
+        (.add comp1)
+        (.add comp2)
+        (.setResizeWeight resize-weight)
+        (.setOneTouchExpandable expandable)
+        (.setBorder (BorderFactory/createEmptyBorder))))
+
+(defn setup-search-text-area [doc]
+  (let [sta (doto (doc :search-text-area)
+      (.setVisible false)
+      (.setFont (get-mono-font))
+      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
+      (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (stop-find doc)))))]
+    (add-text-change-listener sta #(update-find-highlight doc false))
+    (attach-action-keys sta ["ENTER" #(highlight-step doc false)]
+                            ["shift ENTER" #(highlight-step doc true)]
+                            ["ESCAPE" #(escape-find doc)])))
+
 (defn create-doc []
   (let [doc-text-area (make-text-area)
         repl-out-text-area (make-text-area)
         repl-in-text-area (make-text-area)
         search-text-area (JTextField.)
-        split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true)
-        repl-split-pane (JSplitPane. JSplitPane/VERTICAL_SPLIT true)
         pos-label (JLabel.)
         f (JFrame.)
         cp (.getContentPane f)
         layout (SpringLayout.)
+        docs-tree (JTree.)
         repl-writer (create-clojure-repl (make-repl-writer repl-out-text-area))
         doc {:doc-text-area doc-text-area
              :repl-out-text-area repl-out-text-area
              :repl-in-text-area repl-in-text-area
-             :split-pane split-pane :frame f
+             :frame f
+             :docs-tree docs-tree
              :search-text-area search-text-area
-             :pos-label pos-label :file (atom nil) :repl-writer repl-writer}]
+             :pos-label pos-label :file (atom nil) :repl-writer repl-writer}
+        doc-split-pane (make-split-pane
+                         (make-scroll-pane docs-tree)
+                         (make-scroll-pane doc-text-area) true 0 false)
+        repl-split-pane (make-split-pane
+                          (make-scroll-pane repl-out-text-area)
+                          (make-scroll-pane repl-in-text-area) false 0.75 false)
+        split-pane (make-split-pane doc-split-pane repl-split-pane true 0.5 true)]
     (doto f
       (.setBounds 25 50 950 700)
       (.setLayout layout)
@@ -528,33 +555,14 @@
     (constrain-to-parent split-pane :n 2 :w 2 :s -16 :e -2)
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
-    (doto search-text-area
-      (.setVisible false)
-      (.setFont (get-mono-font))
-      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
-      (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (stop-find doc)))))
-    (add-text-change-listener search-text-area #(update-find-highlight doc false))
-    (attach-action-key search-text-area "ENTER" #(highlight-step doc false))
-    (attach-action-key search-text-area "shift ENTER" #(highlight-step doc true))
-    (attach-action-key search-text-area "ESCAPE" #(escape-find doc))
     (.layoutContainer layout f)
+    (setup-search-text-area doc)
     (doto doc-text-area
       (.addCaretListener
         (reify CaretListener
           (caretUpdate [this evt] (display-caret-position doc)))))
     (activate-caret-highlighter doc-text-area)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
-    (doto split-pane
-      (.add (make-scroll-pane doc-text-area))
-      (.add repl-split-pane)
-      (.setResizeWeight 0.5)
-      (.setOneTouchExpandable true)
-      (.setBorder (BorderFactory/createEmptyBorder)))
-    (doto repl-split-pane
-      (.add (make-scroll-pane repl-out-text-area))
-      (.add (make-scroll-pane repl-in-text-area))
-      (.setResizeWeight 0.75)
-      (.setBorder (BorderFactory/createEmptyBorder)))
     (make-undoable repl-in-text-area)
     doc))
 
