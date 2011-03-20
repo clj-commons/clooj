@@ -28,6 +28,8 @@
 
 ;; utils
 
+(def gap 4)
+
 (defn count-while [pred coll]
   (count (take-while pred coll)))
 
@@ -499,14 +501,14 @@
                   text)
                   attrs)))))))
 
-(defn make-split-pane [comp1 comp2 horizontal resize-weight expandable]
+(defn make-split-pane [comp1 comp2 horizontal resize-weight]
   (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT 
-                                    JSplitPane/VERTICAL_SPLIT) true)
-        (.add comp1)
-        (.add comp2)
+                                    JSplitPane/VERTICAL_SPLIT)
+                     true comp1 comp2)
         (.setResizeWeight resize-weight)
-        (.setOneTouchExpandable expandable)
-        (.setBorder (BorderFactory/createEmptyBorder))))
+        (.setOneTouchExpandable false)
+        (.setBorder (BorderFactory/createEmptyBorder))
+        (.setDividerSize gap)))
 
 (defn setup-search-text-area [doc]
   (let [sta (doto (doc :search-text-area)
@@ -540,11 +542,11 @@
                             (make-repl-writer repl-out-text-area))}
         doc-split-pane (make-split-pane
                          (make-scroll-pane docs-tree)
-                         (make-scroll-pane doc-text-area) true 0 false)
+                         (make-scroll-pane doc-text-area) true 0)
         repl-split-pane (make-split-pane
                           (make-scroll-pane repl-out-text-area)
-                          (make-scroll-pane repl-in-text-area) false 0.75 false)
-        split-pane (make-split-pane doc-split-pane repl-split-pane true 0.5 true)]
+                          (make-scroll-pane repl-in-text-area) false 0.75)
+        split-pane (make-split-pane doc-split-pane repl-split-pane true 0.5)]
     (doto f
       (.setBounds 25 50 950 700)
       (.setLayout layout)
@@ -553,7 +555,7 @@
       (.add pos-label))
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
-    (constrain-to-parent split-pane :n 2 :w 2 :s -16 :e -2)
+    (constrain-to-parent split-pane :n gap :w gap :s -16 :e (- gap))
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
     (.layoutContainer layout f)
