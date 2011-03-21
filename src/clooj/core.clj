@@ -7,10 +7,12 @@
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane JTextField
                         JTextArea SpringLayout AbstractListModel AbstractAction
                         UIManager JTree)
-           (javax.swing.event CaretListener DocumentListener UndoableEditListener)
+           (javax.swing.event CaretListener DocumentListener TreeSelectionListener
+                              UndoableEditListener)
            (javax.swing.text DefaultHighlighter
                              DefaultHighlighter$DefaultHighlightPainter
                              DocumentFilter)
+           (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel)
            (javax.swing.undo UndoManager)
            (java.awt Insets Rectangle)
            (java.awt.event ActionListener FocusAdapter KeyEvent KeyListener)
@@ -28,7 +30,7 @@
 
 ;; utils
 
-(def gap 4)
+(def gap 5)
 
 (defn count-while [pred coll]
   (count (take-while pred coll)))
@@ -291,10 +293,12 @@
                               ["meta ENTER" submit])))
 
 (defn apply-namespace-to-repl [doc]
-  (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
-    (when (= 'ns (first sexpr))
-      (send-to-repl doc (str "(ns " (second sexpr) ")")))))
-
+  (try
+    (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
+      (when (= 'ns (first sexpr))
+        (send-to-repl doc (str "(ns " (second sexpr) ")"))))
+    (catch Exception e)))
+  
 ;; highlighting
 
 (def caret-highlight (atom nil))
@@ -422,6 +426,74 @@
     (if (not back)
         (.setSelectionStart dta (.getSelectionEnd dta)))
     (update-find-highlight doc back)))
+
+
+;; projects tree
+
+(declare restart-doc)
+
+(defn get-project-root [path]
+  (let [f (File. path)
+        name (.getName f)]
+    (if (and (or (= name "src")
+                 (= name "lib"))
+             (.isDirectory f))
+      (File. (.getParent f))
+      f)))
+
+(defn get-code-files [dir suffix]
+  (let [dir (File. dir)]
+    (filter #(.endsWith (.getName %) suffix)
+            (file-seq dir))))
+
+(defn path-to-namespace [file-path]
+  (let [drop-suffix #(clojure.contrib.string/butlast 4 %)]
+    (-> file-path
+        (.split (str "src" File/separator))
+        second
+        drop-suffix
+        (.replace File/separator "."))))
+
+(defn file-node [text file-path]
+  (proxy [File] [file-path]
+    (toString [] text)))
+
+(defn add-node [parent node-str file-path]
+  (let [node  (DefaultMutableTreeNode.
+                (file-node node-str file-path))]
+    (.add parent node)
+    node))
+
+(defn add-code-file-to-src-node [src-node code-file]
+  (let [f (.getAbsolutePath code-file)
+        namespace (path-to-namespace f)]
+        (add-node src-node namespace f)))
+
+(defn add-srcs-to-src-node [src-node src-dir]
+  (doall (map #(add-code-file-to-src-node src-node %)
+              (get-code-files src-dir ".clj"))))
+
+(defn add-project-to-tree [doc project-root]
+  (let [model (.getModel (doc :docs-tree))
+        src-path (str project-root File/separator "src")]
+    (-> model
+      .getRoot
+      (add-node (.getName (File. project-root)) project-root)
+      (add-node "src" src-path)
+      (add-srcs-to-src-node src-path))
+    (.. model reload)))
+
+(defn setup-tree [doc]
+  (doto (:docs-tree doc)
+    (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
+    (.setRootVisible false)
+    (.addTreeSelectionListener
+      (reify TreeSelectionListener
+        (valueChanged [this e]
+          (let [f (.. e getPath getLastPathComponent
+                        getUserObject)]
+            (when (.. f getName (endsWith ".clj"))
+              (restart-doc doc f))))))))
 
 ;; build gui
 
@@ -567,7 +639,10 @@
     (activate-caret-highlighter doc-text-area)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (make-undoable repl-in-text-area)
+    (setup-tree doc)
     doc))
+
+;; file handling
 
 (defn choose-file [frame suffix load]
   (let [dialog
@@ -593,7 +668,8 @@
       (make-undoable text-area)
       (set-tab-as-spaces text-area 2)
       (activate-error-highlighter text-area)
-      (reset! (doc :file) file))))
+      (reset! (doc :file) file)
+      (apply-namespace-to-repl doc))))
 
 (defn open-file [doc suffix]
   (let [frame (doc :frame)]
@@ -617,6 +693,9 @@
     (if @(doc :file)
      (save-file doc)
      (.setTitle frame (.getPath file)))))
+
+(defn open-project [doc]
+  (println "not implemented."))
 
 ;; menu setup
 
@@ -644,6 +723,7 @@
     (add-menu menu-bar "File"
       ["New" "meta N" #(new-file doc)]
       ["Open" "meta O" #(open-file doc ".clj")]
+      ["Open project..." "meta shift O" #(open-project doc)]
       ["Save" "meta S" #(save-file doc)]
       ["Save as..." "meta R" #(save-file-as doc)])
     (add-menu menu-bar "Tools"
@@ -667,7 +747,8 @@
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler doc))
      (.setVisible (doc :frame) true)
-     (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
+     (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
+     (add-project-to-tree doc "/projects/clooj/")))
 
 (defn -show []
   (if (not @current-doc)
