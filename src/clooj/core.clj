@@ -44,7 +44,7 @@
 (def pref-max-bytes (* 3/4 Preferences/MAX_VALUE_LENGTH))
 
 (defn write-value-to-prefs
-  "Reads a pure clojure data structure from Preferences object."
+  "Writes a pure clojure data structure to Preferences object."
   [prefs key value]
   (let [chunks (partition-str pref-max-bytes (with-out-str (pr value)))
         node (. prefs node key)]
@@ -53,7 +53,7 @@
        (. node put (str i) (nth chunks i)))))
 
 (defn read-value-from-prefs
-  "Writes a pure clojure data structure to Preferences object."
+  "Reads a pure clojure data structure from Preferences object."
   [prefs key]
   (let [node (. prefs node key)]
     (read-string
