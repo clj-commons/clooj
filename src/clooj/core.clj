@@ -6,7 +6,7 @@
   (:import (javax.swing BorderFactory JFrame JLabel JPanel JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane JTextField
                         JTextArea SpringLayout AbstractListModel AbstractAction
-                        UIManager JTree)
+                        UIManager JTree JFileChooser)
            (javax.swing.event CaretListener DocumentListener TreeSelectionListener
                               UndoableEditListener)
            (javax.swing.text DefaultHighlighter
@@ -60,6 +60,21 @@
       (apply str
              (for [i (range (count (. node keys)))]
                (.get node (str i) nil))))))
+
+;; identify OS
+
+(defn get-os []
+  (.. System (getProperty "os.name") toLowerCase))
+
+(defn is-win []
+  (memoize (not (neg? (.indexOf (get-os) "win")))))
+
+(defn is-mac []
+  (memoize (not (neg? (.indexOf (get-os) "mac")))))
+
+(defn is-unix []
+  (memoize (not (and (neg? (.indexOf (get-os) "nix"))
+            (neg? (.indexOf (get-os) "nux"))))))
 
 ;; utils
 
@@ -677,9 +692,9 @@
 
 ;; file handling
 
-(defn choose-file [frame suffix load]
+(defn choose-file [parent title suffix load]
   (let [dialog
-    (doto (FileDialog. frame "Open clojure file"
+    (doto (FileDialog. parent title
             (if load FileDialog/LOAD FileDialog/SAVE))
       (.setFilenameFilter
         (reify FilenameFilter
@@ -689,6 +704,20 @@
     n (.getFile dialog)]
     (if (and d n)
       (File. d n))))
+
+(defn choose-directory [parent title]
+  (if-not (is-mac)
+    (let [dirs-on #(System/setProperty
+                     "apple.awt.fileDialogForDirectories" (str %))]
+      (dirs-on true)
+        (let [dir (choose-file parent title "" true)]
+          (dirs-on false)
+          dir))
+    (let [fc (JFileChooser.)]
+      (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)
+               (.setDialogTitle title))
+       (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
+         (.getSelectedFile fc)))))
 
 (defn restart-doc [doc ^File file]
   (let [frame (doc :frame)]
@@ -728,7 +757,8 @@
      (.setTitle frame (.getPath file)))))
 
 (defn open-project [doc]
-  (println "not implemented."))
+  (let [dir (choose-directory (doc :f) "Choose a project directory")]
+    (add-project-to-tree doc (.getAbsolutePath dir))))
 
 ;; menu setup
 
@@ -755,7 +785,7 @@
     (. (doc :frame) setJMenuBar menu-bar)
     (add-menu menu-bar "File"
       ["New" "meta N" #(new-file doc)]
-      ["Open" "meta O" #(open-file doc ".clj")]
+      ["Open" "meta O" #(open-file doc ".clj" "Open a clojure file")]
       ["Open project..." "meta shift O" #(open-project doc)]
       ["Save" "meta S" #(save-file doc)]
       ["Save as..." "meta R" #(save-file-as doc)])
