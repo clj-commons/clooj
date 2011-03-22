@@ -18,15 +18,48 @@
            (java.awt.event ActionListener FocusAdapter KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
            (java.util UUID)
+           (java.util.prefs Preferences)
            (java.io File FilenameFilter FileReader FileWriter OutputStream
                     OutputStreamWriter PipedReader PipedWriter PrintWriter
-                    StringReader Writer)
+                    StringReader Writer ByteArrayOutputStream ObjectOutputStream
+                    ObjectInputStream ByteArrayInputStream)
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class))
+
+;; preferences
+
+(def clooj-prefs (.. Preferences userRoot (node "clooj1")))
+
+(defn partition-str [n s]
+  (loop [rem s acc []]
+    (if (pos? (.length rem))
+      (recur (clojure.contrib.string/drop n rem)
+             (conj acc (clojure.contrib.string/take n rem)))
+      (seq acc))))
+
+(def pref-max-bytes (* 3/4 Preferences/MAX_VALUE_LENGTH))
+
+(defn write-value-to-prefs
+  "Reads a pure clojure data structure from Preferences object."
+  [prefs key value]
+  (let [chunks (partition-str pref-max-bytes (with-out-str (pr value)))
+        node (. prefs node key)]
+    (.clear node)
+    (doseq [i (range (count chunks))]
+       (. node put (str i) (nth chunks i)))))
+
+(defn read-value-from-prefs
+  "Writes a pure clojure data structure to Preferences object."
+  [prefs key]
+  (let [node (. prefs node key)]
+    (read-string
+      (apply str
+             (for [i (range (count (. node keys)))]
+               (.get node (str i) nil))))))
 
 ;; utils
 
