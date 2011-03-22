@@ -74,7 +74,7 @@
 
 (defn is-unix []
   (memoize (not (and (neg? (.indexOf (get-os) "nix"))
-            (neg? (.indexOf (get-os) "nux"))))))
+                     (neg? (.indexOf (get-os) "nux"))))))
 
 ;; utils
 
