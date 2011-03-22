@@ -706,7 +706,7 @@
       (File. d n))))
 
 (defn choose-directory [parent title]
-  (if-not (is-mac)
+  (if (is-mac)
     (let [dirs-on #(System/setProperty
                      "apple.awt.fileDialogForDirectories" (str %))]
       (dirs-on true)
@@ -733,9 +733,9 @@
       (reset! (doc :file) file)
       (apply-namespace-to-repl doc))))
 
-(defn open-file [doc suffix]
+(defn open-file [doc]
   (let [frame (doc :frame)]
-    (when-let [file (choose-file frame suffix true)]
+    (when-let [file (choose-file frame "Open a clojure source file" ".clj" true)]
       (restart-doc doc file))))
 
 (defn new-file [doc]
@@ -750,7 +750,7 @@
 
 (defn save-file-as [doc]
   (let [frame (doc :frame)
-        file (choose-file frame ".clj" false)]
+        file (choose-file frame "Save a clojure source file" ".clj" false)]
     (reset! (doc :file) file)
     (if @(doc :file)
      (save-file doc)
@@ -785,7 +785,7 @@
     (. (doc :frame) setJMenuBar menu-bar)
     (add-menu menu-bar "File"
       ["New" "meta N" #(new-file doc)]
-      ["Open" "meta O" #(open-file doc ".clj" "Open a clojure file")]
+      ["Open" "meta O" #(open-file doc)]
       ["Open project..." "meta shift O" #(open-project doc)]
       ["Save" "meta S" #(save-file doc)]
       ["Save as..." "meta R" #(save-file-as doc)])
@@ -810,8 +810,7 @@
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler doc))
      (.setVisible (doc :frame) true)
-     (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
-     (add-project-to-tree doc "/projects/clooj/")))
+     (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 
 (defn -show []
   (if (not @current-doc)
