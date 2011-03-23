@@ -12,7 +12,7 @@
            (javax.swing.text DefaultHighlighter
                              DefaultHighlighter$DefaultHighlightPainter
                              DocumentFilter)
-           (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel)
+           (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel TreePath)
            (javax.swing.undo UndoManager)
            (java.awt Insets Rectangle)
            (java.awt.event ActionListener FocusAdapter KeyEvent KeyListener)
@@ -480,6 +480,24 @@
 
 (declare restart-doc)
 
+(def project-map (atom nil))
+
+(defn save-project-map []
+  (write-value-to-prefs clooj-prefs "project-map" @project-map))
+    
+(defn load-project-map []
+  (reset! project-map (read-value-from-prefs clooj-prefs "project-map")))
+
+(defn get-root-path [tree]
+  (TreePath. (.. tree getModel getRoot)))
+
+(defn get-expanded-paths [tree]
+  (enumeration-seq
+    (.getExpandedDescendants tree (get-root-path tree))))
+
+(defn expand-paths [tree paths]
+  (dorun (map #(.expandPath tree %) paths)))
+
 (defn get-project-root [path]
   (let [f (File. path)
         name (.getName f)]
@@ -529,12 +547,14 @@
       (add-node (.getName (File. project-root)) project-root)
       (add-node "src" src-path)
       (add-srcs-to-src-node src-path))
-    (.. model reload)))
+    (.. model reload))
+  (swap! project-map assoc project-root nil))
 
 (defn setup-tree [doc]
   (doto (:docs-tree doc)
     (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
     (.setRootVisible false)
+    (.setShowsRootHandles true)
     (.addTreeSelectionListener
       (reify TreeSelectionListener
         (valueChanged [this e]
@@ -542,6 +562,7 @@
                         getUserObject)]
             (when (.. f getName (endsWith ".clj"))
               (restart-doc doc f))))))))
+
 
 ;; build gui
 
@@ -641,6 +662,26 @@
                             ["shift ENTER" #(highlight-step doc true)]
                             ["ESCAPE" #(escape-find doc)])))
 
+(defn get-shape [doc]
+  (let [f (doc :frame)]
+        {:x (.getX f) :y (.getY f) :w (.getWidth f) :h (.getHeight f)
+         :dsp (.getDividerLocation (doc :doc-split-pane))
+         :rsp (.getDividerLocation (doc :repl-split-pane))
+         :sp (.getDividerLocation (doc :split-pane))}))
+
+(defn set-shape [doc shape]
+  (let [{:keys [x y w h dsp rsp sp]} shape]
+    (.setBounds (doc :frame) x y w h)
+    (.setDividerLocation (doc :doc-split-pane) dsp)
+    (.setDividerLocation (doc :repl-split-pane) rsp)
+    (.setDividerLocation (doc :split-pane) sp)))
+
+(defn save-shape [doc]
+  (write-value-to-prefs clooj-prefs "shape" (get-shape doc)))
+
+(defn load-shape [doc]
+  (set-shape doc (read-value-from-prefs clooj-prefs "shape")))
+
 (defn create-doc []
   (let [doc-text-area (make-text-area)
         repl-out-text-area (make-text-area)
@@ -651,6 +692,13 @@
         cp (.getContentPane f)
         layout (SpringLayout.)
         docs-tree (JTree.)
+        doc-split-pane (make-split-pane
+                         (make-scroll-pane docs-tree)
+                         (make-scroll-pane doc-text-area) true 0)
+        repl-split-pane (make-split-pane
+                          (make-scroll-pane repl-out-text-area)
+                          (make-scroll-pane repl-in-text-area) false 0.75)
+        split-pane (make-split-pane doc-split-pane repl-split-pane true 0.5)
         doc {:doc-text-area doc-text-area
              :repl-out-text-area repl-out-text-area
              :repl-in-text-area repl-in-text-area
@@ -659,14 +707,10 @@
              :search-text-area search-text-area
              :pos-label pos-label :file (atom nil)
              :repl-writer (create-clojure-repl
-                            (make-repl-writer repl-out-text-area))}
-        doc-split-pane (make-split-pane
-                         (make-scroll-pane docs-tree)
-                         (make-scroll-pane doc-text-area) true 0)
-        repl-split-pane (make-split-pane
-                          (make-scroll-pane repl-out-text-area)
-                          (make-scroll-pane repl-in-text-area) false 0.75)
-        split-pane (make-split-pane doc-split-pane repl-split-pane true 0.5)]
+                            (make-repl-writer repl-out-text-area))
+             :doc-split-pane doc-split-pane
+             :repl-split-pane repl-split-pane
+             :split-pane split-pane}]
     (doto f
       (.setBounds 25 50 950 700)
       (.setLayout layout)
@@ -758,7 +802,8 @@
 
 (defn open-project [doc]
   (let [dir (choose-directory (doc :f) "Choose a project directory")]
-    (add-project-to-tree doc (.getAbsolutePath dir))))
+    (add-project-to-tree doc (.getAbsolutePath dir)))
+  (save-project-map))
 
 ;; menu setup
 
@@ -809,6 +854,8 @@
      (let [ta-in (doc :repl-in-text-area)
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler doc))
+     (doall (map #(add-project-to-tree doc %) (keys (load-project-map))))
+     (load-shape doc)
      (.setVisible (doc :frame) true)
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 
