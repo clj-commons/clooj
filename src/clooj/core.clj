@@ -8,11 +8,12 @@
                         JTextArea SpringLayout AbstractListModel AbstractAction
                         UIManager JTree JFileChooser)
            (javax.swing.event CaretListener DocumentListener TreeSelectionListener
-                              UndoableEditListener)
+                              TreeExpansionListener UndoableEditListener)
            (javax.swing.text DefaultHighlighter
                              DefaultHighlighter$DefaultHighlightPainter
                              DocumentFilter)
-           (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel TreePath)
+           (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
+                             TreePath TreeSelectionModel)
            (javax.swing.undo UndoManager)
            (java.awt Insets Rectangle)
            (java.awt.event ActionListener FocusAdapter KeyEvent KeyListener)
@@ -60,6 +61,23 @@
       (apply str
              (for [i (range (count (. node keys)))]
                (.get node (str i) nil))))))
+
+(defn write-obj-to-prefs
+  "Writes a java object to a Preferences object."
+  [prefs key obj]
+  (let [bos (ByteArrayOutputStream.)
+        os (ObjectOutputStream. bos)
+        node (. prefs node key)]
+    (.writeObject os obj)
+    (. node putByteArray "0" (.toByteArray bos))))
+
+(defn read-obj-from-prefs
+  "Reads a java object from a Preferences object."
+  [prefs key]
+  (let [node (. prefs node key)
+        bis (ByteArrayInputStream. (. node getByteArray "0" nil))
+        os (ObjectInputStream. bis)]
+      (.readObject os)))
 
 ;; identify OS
 
@@ -258,9 +276,10 @@
         ([t]
           (when (= Integer (type t))
             (.append buf (char t)))))
-      (flush [] (.append ta-out (.toString buf))
-                (scroll-to-last ta-out)
-                (.setLength buf 0))
+      (flush [] (when ta-out
+                  (.append ta-out (.toString buf))
+                  (scroll-to-last ta-out)
+                  (.setLength buf 0)))
       (close [] nil))))
 
 (defn update-repl-in [doc]
@@ -491,12 +510,20 @@
 (defn get-root-path [tree]
   (TreePath. (.. tree getModel getRoot)))
 
-(defn get-expanded-paths [tree]
-  (enumeration-seq
-    (.getExpandedDescendants tree (get-root-path tree))))
+(defn get-rows-expanded [tree]
+  (doall (map #(.isExpanded tree %) (range (.getVisibleRowCount tree)))))
 
-(defn expand-paths [tree paths]
-  (dorun (map #(.expandPath tree %) paths)))
+(defn set-rows-expanded [tree rows]
+  (doseq [i (range (count rows))]
+    (if (nth rows i)
+      (.expandRow tree i)
+      (.collapseRow tree i))))
+
+(defn save-rows-expanded [tree]
+  (write-value-to-prefs clooj-prefs "expanded-rows" (get-rows-expanded tree)))
+
+(defn load-rows-expanded [tree]
+  (set-rows-expanded tree (read-value-from-prefs clooj-prefs "expanded-rows")))
 
 (defn get-project-root [path]
   (let [f (File. path)
@@ -551,18 +578,24 @@
   (swap! project-map assoc project-root nil))
 
 (defn setup-tree [doc]
-  (doto (:docs-tree doc)
-    (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
-    (.setRootVisible false)
-    (.setShowsRootHandles true)
-    (.addTreeSelectionListener
-      (reify TreeSelectionListener
-        (valueChanged [this e]
-          (let [f (.. e getPath getLastPathComponent
-                        getUserObject)]
-            (when (.. f getName (endsWith ".clj"))
-              (restart-doc doc f))))))))
-
+  (let [tree (:docs-tree doc)
+        save #(save-rows-expanded tree)]
+    (doto tree
+      (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
+      (.setRootVisible false)
+      (.setShowsRootHandles true)
+      (.setSelectionMode TreeSelectionModel/SINGLE_TREE_SELECTION)
+      (.addTreeExpansionListener
+        (reify TreeExpansionListener
+          (treeCollapsed [this e] (save))
+          (treeExpanded [this e] (save))))
+      (.addTreeSelectionListener
+        (reify TreeSelectionListener
+          (valueChanged [this e]
+            (let [f (.. e getPath getLastPathComponent
+                          getUserObject)]
+              (when (.. f getName (endsWith ".clj"))
+                (restart-doc doc f)))))))))
 
 ;; build gui
 
@@ -768,7 +801,7 @@
     (let [text-area (doc :doc-text-area)]
       (if file
         (do (.read text-area (FileReader. (.getAbsolutePath file)) nil)
-            (.setTitle frame (.getPath file)))
+            (.setTitle frame (str "clooj  \u2014  " (.getPath file))))
         (do (.setText text-area "")
             (.setTitle frame "Untitled")))
       (make-undoable text-area)
@@ -856,6 +889,7 @@
        (add-repl-input-handler doc))
      (doall (map #(add-project-to-tree doc %) (keys (load-project-map))))
      (load-shape doc)
+     (load-rows-expanded (doc :docs-tree))
      (.setVisible (doc :frame) true)
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
 
