@@ -6,7 +6,7 @@
   (:import (javax.swing BorderFactory JFrame JLabel JPanel JScrollPane JList
                         JMenuBar JMenu JMenuItem KeyStroke JSplitPane JTextField
                         JTextArea SpringLayout AbstractListModel AbstractAction
-                        UIManager JTree JFileChooser)
+                        UIManager JTree JFileChooser SwingUtilities)
            (javax.swing.event CaretListener DocumentListener TreeSelectionListener
                               TreeExpansionListener UndoableEditListener)
            (javax.swing.text DefaultHighlighter
@@ -33,7 +33,9 @@
 
 ;; preferences
 
-(def clooj-prefs (.. Preferences userRoot (node "clooj1")))
+;; define a UUID for clooj preferences
+(def clooj-prefs (.. Preferences userRoot
+      (node "clooj") (node "c6833c87-9631-44af-af83-f417028ea7aa")))
 
 (defn partition-str [n s]
   (loop [rem s acc []]
@@ -57,10 +59,10 @@
   "Reads a pure clojure data structure from Preferences object."
   [prefs key]
   (let [node (. prefs node key)]
-    (read-string
-      (apply str
-             (for [i (range (count (. node keys)))]
-               (.get node (str i) nil))))))
+    (let [s (apply str
+              (for [i (range (count (. node keys)))]
+                (.get node (str i) nil)))]
+      (when (and s (pos? (.length s))) (read-string s)))))
 
 (defn write-obj-to-prefs
   "Writes a java object to a Preferences object."
@@ -95,6 +97,11 @@
                      (neg? (.indexOf (get-os) "nux"))))))
 
 ;; utils
+
+(defmacro do-when [f & args]
+  (let [args_ args]
+    `(when (and ~@args_)
+      (~f ~@args_))))
 
 (def gap 5)
 
@@ -166,6 +173,7 @@
                                   (clojure.main/repl-prompt))
                    :need-prompt (constantly true))
                  (catch clojure.lang.LispReader$ReaderException ex
+                   (prn (.getCause ex))
                    (prn "REPL closing"))
                  (catch java.lang.InterruptedException ex)
                  (catch java.nio.channels.ClosedByInterruptException ex)))]
@@ -180,14 +188,15 @@
          (.getText (doc :repl-in-text-area))))
 
 (defn send-to-repl [doc cmd]
-  (let [cmd-ln (str (.trim cmd) \newline)]
-    (.append (doc :repl-out-text-area) cmd-ln)
-    (.write (doc :repl-writer) cmd-ln)
-    (.flush (doc :repl-writer))
-    (swap! (:items repl-history)
-           replace-first (.trim cmd-ln))
-    (reset! (:pos repl-history) 0)
-    (swap! (:items repl-history) conj "")))
+  (SwingUtilities/invokeLater
+    #(let [cmd-ln (str (.trim cmd) \newline)]
+      (.append (doc :repl-out-text-area) cmd-ln)
+      (.write (doc :repl-writer) cmd-ln)
+      (.flush (doc :repl-writer))
+      (swap! (:items repl-history)
+             replace-first (.trim cmd-ln))
+      (reset! (:pos repl-history) 0)
+      (swap! (:items repl-history) conj ""))))
 
 (defn send-selected-to-repl [doc]
   (send-to-repl doc (.getSelectedText (doc :doc-text-area))))
@@ -361,6 +370,7 @@
 
 (defn apply-namespace-to-repl [doc]
   (try
+    (println (.. Thread currentThread getName))
     (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
       (when (= 'ns (first sexpr))
         (send-to-repl doc (str "(ns " (second sexpr) ")"))))
@@ -523,7 +533,16 @@
   (write-value-to-prefs clooj-prefs "expanded-rows" (get-rows-expanded tree)))
 
 (defn load-rows-expanded [tree]
-  (set-rows-expanded tree (read-value-from-prefs clooj-prefs "expanded-rows")))
+  (let [rows (read-value-from-prefs clooj-prefs "expanded-rows")]
+    (when rows
+      (set-rows-expanded tree rows))))
+
+(defn save-tree-selection [tree]
+  (write-value-to-prefs clooj-prefs "tree-selection" (.getMinSelectionRow tree)))
+  
+(defn load-tree-selection [tree]
+  (let [row (read-value-from-prefs clooj-prefs "tree-selection")]
+    (when row (.setSelectionRow tree row))))
 
 (defn get-project-root [path]
   (let [f (File. path)
@@ -592,6 +611,7 @@
       (.addTreeSelectionListener
         (reify TreeSelectionListener
           (valueChanged [this e]
+            (save-tree-selection tree)
             (let [f (.. e getPath getLastPathComponent
                           getUserObject)]
               (when (.. f getName (endsWith ".clj"))
@@ -713,7 +733,8 @@
   (write-value-to-prefs clooj-prefs "shape" (get-shape doc)))
 
 (defn load-shape [doc]
-  (set-shape doc (read-value-from-prefs clooj-prefs "shape")))
+  (when-let [shape (read-value-from-prefs clooj-prefs "shape")]
+    (set-shape doc shape)))
 
 (defn create-doc []
   (let [doc-text-area (make-text-area)
@@ -889,9 +910,11 @@
        (add-repl-input-handler doc))
      (doall (map #(add-project-to-tree doc %) (keys (load-project-map))))
      (load-shape doc)
-     (load-rows-expanded (doc :docs-tree))
      (.setVisible (doc :frame) true)
-     (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)))
+     (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
+     (let [tree (doc :docs-tree)]
+       (load-rows-expanded tree)
+       (load-tree-selection tree))))
 
 (defn -show []
   (if (not @current-doc)
