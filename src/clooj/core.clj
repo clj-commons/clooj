@@ -584,7 +584,7 @@
       (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
       (.setRootVisible false)
       (.setShowsRootHandles true)
-      (.setSelectionMode TreeSelectionModel/SINGLE_TREE_SELECTION)
+      (.. getSelectionModel (setSelectionMode TreeSelectionModel/SINGLE_TREE_SELECTION))
       (.addTreeExpansionListener
         (reify TreeExpansionListener
           (treeCollapsed [this e] (save))
