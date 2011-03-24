@@ -3,10 +3,11 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.core
-  (:import (javax.swing BorderFactory JFrame JLabel JPanel JScrollPane JList
-                        JMenuBar JMenu JMenuItem KeyStroke JSplitPane JTextField
-                        JTextArea SpringLayout AbstractListModel AbstractAction
-                        UIManager JTree JFileChooser SwingUtilities)
+  (:import (javax.swing AbstractAction AbstractListModel BorderFactory
+                        JFileChooser JFrame JLabel JList JMenu JMenuBar
+                        JMenuItem JPanel JScrollPane JSplitPane JTextArea
+                        JTextField JTree KeyStroke SpringLayout SwingUtilities
+                        UIManager)
            (javax.swing.event CaretListener DocumentListener TreeSelectionListener
                               TreeExpansionListener UndoableEditListener)
            (javax.swing.text DefaultHighlighter
