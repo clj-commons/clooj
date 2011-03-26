@@ -530,19 +530,20 @@
                   (enumeration-seq (.children root-node)))))]
     (get-nodes (.. tree getModel getRoot)))))
 
-(defn get-row-item [tree row]
-  (when-let [path (. tree getPathForRow row)]
-    (.. path getLastPathComponent getUserObject
-             getAbsolutePath)))
+(defn tree-path-to-file [^TreePath tree-path]
+  (when tree-path
+    (.. tree-path getLastPathComponent getUserObject getAbsolutePath)))
+
+(defn get-row-path [tree row]
+  (tree-path-to-file (. tree getPathForRow row)))
 
 (defn get-expanded-paths [tree]
   (for [i (range (.getRowCount tree)) :when (.isExpanded tree i)]
-    (get-row-item tree i)))
+    (get-row-path tree i)))
 
 (defn expand-paths [tree paths]
   (doseq [i (range) :while (< i (.getRowCount tree))]
-    (when-let [x (some #{(.. tree (getPathForRow i) getLastPathComponent
-                           getUserObject getAbsolutePath)} paths)]
+    (when-let [x (some #{(tree-path-to-file (. tree getPathForRow i))} paths)]
       (println x)
       (.expandPath tree (. tree getPathForRow i)))))
 
@@ -555,11 +556,14 @@
       (expand-paths tree paths))))
 
 (defn save-tree-selection [tree]
-  (write-value-to-prefs clooj-prefs "tree-selection" (.getMinSelectionRow tree)))
+  (write-value-to-prefs
+    clooj-prefs "tree-selection"
+    (tree-path-to-file (.getSelectionPath tree))))
   
 (defn load-tree-selection [tree]
-  (let [row (read-value-from-prefs clooj-prefs "tree-selection")]
-    (when row (.setSelectionRow tree row))))
+  (let [path (read-value-from-prefs clooj-prefs "tree-selection")]
+    (doseq [row (range (.getRowCount tree))]
+      (when (= path (get-row-path tree row)) (.setSelectionRow tree row)))))
 
 (defn get-project-root [path]
   (let [f (File. path)
