@@ -209,15 +209,6 @@
       (reset! (:pos repl-history) 0)
       (swap! (:items repl-history) conj ""))))
 
-(defn send-selected-to-repl [doc]
-  (let [ta (doc :doc-text-area)
-        txt (or
-              (.getSelectedText ta)
-              (let [[a b] (find-nearby-root-form ta)]
-                (.. ta getDocument
-                  (getText a (- b a)))))]
-      (send-to-repl doc txt)))
-
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
     (Rectangle. 0 (.getHeight text-area) 1 1)))
@@ -291,11 +282,6 @@
           (filter identity
                   (map second (concat new-stack errs)))))))
 
-(defn find-nearby-root-form [text-comp]
-  (let [pos (.getCaretPosition text-comp)
-        f #(find-enclosing-root-form text-comp %)]
-    (or (f pos) (f (dec pos)) (f (inc pos)))))
-
 (defn find-enclosing-root-form [text-comp pos]
   (let [l (.. text-comp getDocument getLength)
         text (.getText text-comp)
@@ -309,7 +295,21 @@
     (when (and lb lr (= (count left-brackets) (count right-brackets)))
       [lb lr]))))
 
+(defn find-nearby-root-form [text-comp]
+  (let [pos (.getCaretPosition text-comp)
+        f #(find-enclosing-root-form text-comp %)]
+    (or (f pos) (f (dec pos)) (f (inc pos)))))
+
 ;; repl stuff
+
+(defn send-selected-to-repl [doc]
+  (let [ta (doc :doc-text-area)
+        txt (or
+              (.getSelectedText ta)
+              (let [[a b] (find-nearby-root-form ta)]
+                (.. ta getDocument
+                  (getText a (- b a)))))]
+      (send-to-repl doc txt)))
 
 (defn make-repl-writer [ta-out]
   (let [buf (StringBuffer.)]
