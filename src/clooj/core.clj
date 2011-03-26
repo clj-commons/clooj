@@ -755,7 +755,7 @@
 (defn auto-indent-str [text-comp offset]
   (let [bracket-pos (find-left-enclosing-bracket
                       (.getText text-comp) offset)]
-    (if (pos? bracket-pos)
+    (if (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))
             indent-size (if (= bracket \() 2 1)] ;\) avoids highlighting problems
@@ -873,6 +873,8 @@
     (activate-caret-highlighter doc-text-area)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (make-undoable repl-in-text-area)
+    (set-tab-as-spaces repl-in-text-area 2)
+    (activate-error-highlighter repl-in-text-area)
     (setup-tree doc)
     doc))
 
