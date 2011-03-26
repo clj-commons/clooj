@@ -522,22 +522,37 @@
 (defn get-root-path [tree]
   (TreePath. (.. tree getModel getRoot)))
 
-(defn get-rows-expanded [tree]
-  (doall (map #(.isExpanded tree %) (range (.getVisibleRowCount tree)))))
+(comment (defn get-tree-nodes [tree]
+  (let [get-nodes     
+         (fn [root-node]
+           (cons root-node
+             (map get-nodes
+                  (enumeration-seq (.children root-node)))))]
+    (get-nodes (.. tree getModel getRoot)))))
 
-(defn set-rows-expanded [tree rows]
-  (doseq [i (range (count rows))]
-    (if (nth rows i)
-      (.expandRow tree i)
-      (.collapseRow tree i))))
+(defn get-row-item [tree row]
+  (when-let [path (. tree getPathForRow row)]
+    (.. path getLastPathComponent getUserObject
+             getAbsolutePath)))
 
-(defn save-rows-expanded [tree]
-  (write-value-to-prefs clooj-prefs "expanded-rows" (get-rows-expanded tree)))
+(defn get-expanded-paths [tree]
+  (for [i (range (.getRowCount tree)) :when (.isExpanded tree i)]
+    (get-row-item tree i)))
 
-(defn load-rows-expanded [tree]
-  (let [rows (read-value-from-prefs clooj-prefs "expanded-rows")]
-    (when rows
-      (set-rows-expanded tree rows))))
+(defn expand-paths [tree paths]
+  (doseq [i (range) :while (< i (.getRowCount tree))]
+    (when-let [x (some #{(.. tree (getPathForRow i) getLastPathComponent
+                           getUserObject getAbsolutePath)} paths)]
+      (println x)
+      (.expandPath tree (. tree getPathForRow i)))))
+
+(defn save-expanded-paths [tree]
+  (write-value-to-prefs clooj-prefs "expanded-paths" (get-expanded-paths tree)))
+
+(defn load-expanded-paths [tree]
+  (let [paths (read-value-from-prefs clooj-prefs "expanded-paths")]
+    (when paths
+      (expand-paths tree paths))))
 
 (defn save-tree-selection [tree]
   (write-value-to-prefs clooj-prefs "tree-selection" (.getMinSelectionRow tree)))
@@ -600,7 +615,7 @@
 
 (defn setup-tree [doc]
   (let [tree (:docs-tree doc)
-        save #(save-rows-expanded tree)]
+        save #(save-expanded-paths tree)]
     (doto tree
       (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
       (.setRootVisible false)
@@ -950,7 +965,7 @@
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
     ; (setup-temp-writer doc)
      (let [tree (doc :docs-tree)]
-       (load-rows-expanded tree)
+       (load-expanded-paths tree)
        (load-tree-selection tree))))
 
 (defn -show []
