@@ -135,6 +135,14 @@
 (defn set-selection [text-comp start end]
   (doto text-comp (.setSelectionStart start) (.setSelectionEnd end)))
 
+(defn scroll-to-pos [text-area offset]
+  (let [r (.modelToView text-area offset)
+        v (.getParent text-area)
+        l (.. v getViewSize height)
+        h (.. v getViewRect height)]
+    (.setViewPosition v
+      (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
+
 ;; REPL stuff
 ;; adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
 
@@ -478,7 +486,8 @@
             (conj (highlight-found dta posns length)
                   (highlight dta selected-pos
                              (+ selected-pos length) (.getSelectionColor dta))))
-          (set-selection dta selected-pos (+ selected-pos length))))
+          (do (scroll-to-pos dta selected-pos)
+              (set-selection dta selected-pos (+ selected-pos length)))))
       (.setSelectionEnd dta (.getSelectionStart dta)))))
 
 (defn start-find [doc]
