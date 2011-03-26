@@ -106,6 +106,8 @@
 
 (def gap 5)
 
+(def docs (atom {}))
+
 (defn count-while [pred coll]
   (count (take-while pred coll)))
 
@@ -371,7 +373,6 @@
 
 (defn apply-namespace-to-repl [doc]
   (try
-    (println (.. Thread currentThread getName))
     (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
       (when (= 'ns (first sexpr))
         (send-to-repl doc (str "(ns " (second sexpr) ")"))))
@@ -617,6 +618,32 @@
                           getUserObject)]
               (when (.. f getName (endsWith ".clj"))
                 (restart-doc doc f)))))))))
+;; temp files
+
+(def temp-files (atom {}))
+
+(defn dump-temp-doc [doc]
+  (try 
+    (when-let [orig-f @(doc :file)]
+      (println "dumping...")
+      (let [orig (.getAbsolutePath orig-f)
+            f (str orig "~")]
+         (spit f (.getString (doc :doc-text-area)))
+         (swap! temp-files assoc orig f)))
+    (catch Exception e)))
+
+(def temp-file-manager (agent 0))
+
+(defn update-temp [doc]
+  (send-off temp-file-manager
+    #(let [now (System/currentTimeMillis)]
+       (if (> (- now %) 10000)
+         (do (dump-temp-doc doc) now)
+         %))))
+
+(defn setup-temp-writer [doc]
+  ;(send-off temp-file-manager #(0))
+  (add-text-change-listener (:doc-text-area doc) #(update-temp doc)))
 
 ;; build gui
 
@@ -739,6 +766,7 @@
 
 (defn create-doc []
   (let [doc-text-area (make-text-area)
+        doc-text-panel (JPanel.)
         repl-out-text-area (make-text-area)
         repl-in-text-area (make-text-area)
         search-text-area (JTextField.)
@@ -749,7 +777,7 @@
         docs-tree (JTree.)
         doc-split-pane (make-split-pane
                          (make-scroll-pane docs-tree)
-                         (make-scroll-pane doc-text-area) true 0)
+                         doc-text-panel true 0)
         repl-split-pane (make-split-pane
                           (make-scroll-pane repl-out-text-area)
                           (make-scroll-pane repl-in-text-area) false 0.75)
@@ -765,16 +793,22 @@
                             (make-repl-writer repl-out-text-area))
              :doc-split-pane doc-split-pane
              :repl-split-pane repl-split-pane
-             :split-pane split-pane}]
+             :split-pane split-pane
+             :changed false}
+        doc-scroll-pane (make-scroll-pane doc-text-area)]
     (doto f
       (.setBounds 25 50 950 700)
       (.setLayout layout)
-      (.add split-pane)
-      (.add search-text-area)
-      (.add pos-label))
+      (.add split-pane))   
+    (doto doc-text-panel
+      (.setLayout (SpringLayout.))
+      (.add doc-scroll-pane)
+      (.add pos-label)
+      (.add search-text-area))
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
-    (constrain-to-parent split-pane :n gap :w gap :s -16 :e (- gap))
+    (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
+    (constrain-to-parent doc-scroll-pane :n 0 :w 0 :s -16 :e 0)
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
     (.layoutContainer layout f)
@@ -819,6 +853,7 @@
          (.getSelectedFile fc)))))
 
 (defn restart-doc [doc ^File file]
+  ;(send-off temp-file-manager #(do (dump-temp-doc doc) 0))
   (let [frame (doc :frame)]
     (let [text-area (doc :doc-text-area)]
       (if file
@@ -913,6 +948,7 @@
      (load-shape doc)
      (.setVisible (doc :frame) true)
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
+    ; (setup-temp-writer doc)
      (let [tree (doc :docs-tree)]
        (load-rows-expanded tree)
        (load-tree-selection tree))))
