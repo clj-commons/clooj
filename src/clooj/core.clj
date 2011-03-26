@@ -16,7 +16,7 @@
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (javax.swing.undo UndoManager)
-           (java.awt Insets Rectangle)
+           (java.awt Insets Point Rectangle)
            (java.awt.event ActionListener FocusAdapter KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
            (java.util UUID)
@@ -210,7 +210,13 @@
       (swap! (:items repl-history) conj ""))))
 
 (defn send-selected-to-repl [doc]
-  (send-to-repl doc (.getSelectedText (doc :doc-text-area))))
+  (let [ta (doc :doc-text-area)
+        txt (or
+              (.getSelectedText ta)
+              (let [[a b] (find-nearby-root-form ta)]
+                (.. ta getDocument
+                  (getText a (- b a)))))]
+      (send-to-repl doc txt)))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
@@ -284,6 +290,24 @@
           (recur (next t) (inc cnt) new-stack new-errs)
           (filter identity
                   (map second (concat new-stack errs)))))))
+
+(defn find-nearby-root-form [text-comp]
+  (let [pos (.getCaretPosition text-comp)
+        f #(find-enclosing-root-form text-comp %)]
+    (or (f pos) (f (dec pos)) (f (inc pos)))))
+
+(defn find-enclosing-root-form [text-comp pos]
+  (let [l (.. text-comp getDocument getLength)
+        text (.getText text-comp)
+        right-brackets
+          (next (take-while #(> l %) 
+            (iterate #(inc (find-right-enclosing-bracket text %)) pos)))
+        left-brackets
+          (next (take-while #(< 0 %)
+            (iterate #(find-left-enclosing-bracket text %) pos)))]
+    (let [lb (last left-brackets) lr (last right-brackets)]
+    (when (and lb lr (= (count left-brackets) (count right-brackets)))
+      [lb lr]))))
 
 ;; repl stuff
 
