@@ -27,6 +27,7 @@
                     ObjectInputStream ByteArrayInputStream)
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
+        [clojure.contrib.string :only (rtrim)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
@@ -382,12 +383,13 @@
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)
         get-caret-pos #(.getCaretPosition ta-in)
-        ready #(let [caret-pos (get-caret-pos)]
+        ready #(let [caret-pos (get-caret-pos)
+                     txt (.getText ta-in)]
                  (and
-                   (= (.. ta-in getDocument getLength)
+                   (<= (.length (rtrim txt))
                                 caret-pos)
                    (= -1 (find-left-enclosing-bracket
-                           (.getText ta-in)
+                           txt
                            caret-pos))))
         submit #(do (send-to-repl doc (.getText ta-in))
                     (.setText ta-in ""))
@@ -577,7 +579,6 @@
 (defn expand-paths [tree paths]
   (doseq [i (range) :while (< i (.getRowCount tree))]
     (when-let [x (some #{(tree-path-to-file (. tree getPathForRow i))} paths)]
-      (println x)
       (.expandPath tree (. tree getPathForRow i)))))
 
 (defn save-expanded-paths [tree]
