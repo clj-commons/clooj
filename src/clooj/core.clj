@@ -201,14 +201,16 @@
 
 (defn send-to-repl [doc cmd]
   (SwingUtilities/invokeLater
-    #(let [cmd-ln (str (.trim cmd) \newline)]
+    #(let [cmd-ln (str (.trim cmd) \newline)
+           cmd (.trim cmd-ln)]
       (.append (doc :repl-out-text-area) cmd-ln)
       (.write (doc :repl-writer) cmd-ln)
       (.flush (doc :repl-writer))
-      (swap! (:items repl-history)
-             replace-first (.trim cmd-ln))
-      (reset! (:pos repl-history) 0)
-      (swap! (:items repl-history) conj ""))))
+      (when (not= cmd (second @(:items repl-history)))
+        (swap! (:items repl-history)
+               replace-first cmd)
+        (swap! (:items repl-history) conj ""))
+       (reset! (:pos repl-history) 0))))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
@@ -384,9 +386,11 @@
   (let [ta-in (doc :repl-in-text-area)
         get-caret-pos #(.getCaretPosition ta-in)
         ready #(let [caret-pos (get-caret-pos)
-                     txt (.getText ta-in)]
+                     txt (.getText ta-in)
+                     trim-txt (rtrim txt)]
                  (and
-                   (<= (.length (rtrim txt))
+                   (pos? (.length trim-txt))
+                   (<= (.length trim-txt)
                                 caret-pos)
                    (= -1 (find-left-enclosing-bracket
                            txt
