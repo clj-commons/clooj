@@ -3,10 +3,10 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.core
-  (:import (javax.swing AbstractListModel BorderFactory
-                        JFileChooser JFrame JLabel JList JMenuBar
-                        JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree SpringLayout SwingUtilities
+  (:import (javax.swing AbstractAction AbstractListModel BorderFactory
+                        JFileChooser JFrame JLabel JList JMenu JMenuBar
+                        JMenuItem JPanel JScrollPane JSplitPane JTextArea
+                        JTextField JTree KeyStroke SpringLayout SwingUtilities
                         UIManager)
            (javax.swing.event CaretListener DocumentListener TreeSelectionListener
                               TreeExpansionListener UndoableEditListener)
@@ -16,8 +16,8 @@
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (javax.swing.undo UndoManager)
-           (java.awt Insets Point Rectangle)
-           (java.awt.event FocusAdapter KeyEvent KeyListener)
+           (java.awt Insets Rectangle)
+           (java.awt.event ActionListener FocusAdapter KeyEvent KeyListener)
            (java.awt Color Font Toolkit FileDialog)
            (java.util UUID)
            (java.util.prefs Preferences)
@@ -27,30 +27,114 @@
                     ObjectInputStream ByteArrayInputStream)
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
-        [clojure.pprint :only (pprint)]
-        [clooj.brackets]
-        [clooj.highlighting]
-        [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
-                            is-mac count-while get-coords add-text-change-listener
-                            set-selection scroll-to-pos add-caret-listener
-                            attach-child-action-keys attach-action-keys
-                            get-caret-coords add-menu)])
+        [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class))
 
+;; preferences
+
+;; define a UUID for clooj preferences
+(def clooj-prefs (.. Preferences userRoot
+      (node "clooj") (node "c6833c87-9631-44af-af83-f417028ea7aa")))
+
+(defn partition-str [n s]
+  (loop [rem s acc []]
+    (if (pos? (.length rem))
+      (recur (clojure.contrib.string/drop n rem)
+             (conj acc (clojure.contrib.string/take n rem)))
+      (seq acc))))
+
+(def pref-max-bytes (* 3/4 Preferences/MAX_VALUE_LENGTH))
+
+(defn write-value-to-prefs
+  "Writes a pure clojure data structure to Preferences object."
+  [prefs key value]
+  (let [chunks (partition-str pref-max-bytes (with-out-str (pr value)))
+        node (. prefs node key)]
+    (.clear node)
+    (doseq [i (range (count chunks))]
+       (. node put (str i) (nth chunks i)))))
+
+(defn read-value-from-prefs
+  "Reads a pure clojure data structure from Preferences object."
+  [prefs key]
+  (let [node (. prefs node key)]
+    (let [s (apply str
+              (for [i (range (count (. node keys)))]
+                (.get node (str i) nil)))]
+      (when (and s (pos? (.length s))) (read-string s)))))
+
+(defn write-obj-to-prefs
+  "Writes a java object to a Preferences object."
+  [prefs key obj]
+  (let [bos (ByteArrayOutputStream.)
+        os (ObjectOutputStream. bos)
+        node (. prefs node key)]
+    (.writeObject os obj)
+    (. node putByteArray "0" (.toByteArray bos))))
+
+(defn read-obj-from-prefs
+  "Reads a java object from a Preferences object."
+  [prefs key]
+  (let [node (. prefs node key)
+        bis (ByteArrayInputStream. (. node getByteArray "0" nil))
+        os (ObjectInputStream. bis)]
+      (.readObject os)))
+
+;; identify OS
+
+(defn get-os []
+  (.. System (getProperty "os.name") toLowerCase))
+
+(defn is-win []
+  (memoize (not (neg? (.indexOf (get-os) "win")))))
+
+(defn is-mac []
+  (memoize (not (neg? (.indexOf (get-os) "mac")))))
+
+(defn is-unix []
+  (memoize (not (and (neg? (.indexOf (get-os) "nix"))
+                     (neg? (.indexOf (get-os) "nux"))))))
+
+;; utils
+
+(defmacro do-when [f & args]
+  (let [args_ args]
+    `(when (and ~@args_)
+      (~f ~@args_))))
 
 (def gap 5)
 
 (def docs (atom {}))
-  
-(def mono-font
+
+(defn count-while [pred coll]
+  (count (take-while pred coll)))
+
+(defn get-mono-font []
   (Font. "Monaco" Font/PLAIN 11))
 
 (defn make-text-area []
   (doto (JTextArea.)
-    (.setFont mono-font)))  
-      
+    (.setFont (get-mono-font))))
+
+(defn get-coords [text-comp offset]
+  (let [row (.getLineOfOffset text-comp offset)
+        col (- offset (.getLineStartOffset text-comp row))]
+    {:row row :col col}))
+
+(defn add-text-change-listener [text-comp f]
+  "Executes f whenever text is changed in text component."
+  (.addDocumentListener
+    (.getDocument text-comp)
+    (reify DocumentListener
+      (insertUpdate [this _] (f))
+      (removeUpdate [this _] (f))
+      (changedUpdate [this _] (f)))))
+
+(defn set-selection [text-comp start end]
+  (doto text-comp (.setSelectionStart start) (.setSelectionEnd end)))
+
 ;; REPL stuff
 ;; adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
 
@@ -108,31 +192,92 @@
 
 (defn send-to-repl [doc cmd]
   (SwingUtilities/invokeLater
-    #(let [cmd-ln (str (.trim cmd) \newline)
-           cmd (.trim cmd-ln)]
+    #(let [cmd-ln (str (.trim cmd) \newline)]
       (.append (doc :repl-out-text-area) cmd-ln)
       (.write (doc :repl-writer) cmd-ln)
       (.flush (doc :repl-writer))
-      (when (not= cmd (second @(:items repl-history)))
-        (swap! (:items repl-history)
-               replace-first cmd)
-        (swap! (:items repl-history) conj ""))
-       (reset! (:pos repl-history) 0))))
+      (swap! (:items repl-history)
+             replace-first (.trim cmd-ln))
+      (reset! (:pos repl-history) 0)
+      (swap! (:items repl-history) conj ""))))
+
+(defn send-selected-to-repl [doc]
+  (send-to-repl doc (.getSelectedText (doc :doc-text-area))))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
     (Rectangle. 0 (.getHeight text-area) 1 1)))
 
+;; caret finding
 
-(defn send-selected-to-repl [doc]
-  (let [ta (doc :doc-text-area)
-        txt (or
-              (.getSelectedText ta)
-              (let [[a b] (find-nearby-root-form ta)]
-                (when (and a b)
-                  (.. ta getDocument
-                    (getText a (- b a))))))]
-      (when txt (send-to-repl doc txt))))
+(defn get-caret-position [text-comp]
+  (get-coords text-comp (.getCaretPosition text-comp)))
+
+(defn display-caret-position [doc]
+  (let [{:keys [row col]} (get-caret-position (:doc-text-area doc))]
+    (.setText (:pos-label doc) (str " " (inc row) "|" (inc col)))))
+
+;; bracket handling
+
+(defn bracket-score [c]
+  (condp = c 
+         \(  1 \[  1 \{  1
+         \) -1 \] -1 \} -1
+         0))
+
+(defn bracket-increment [score next-char]
+  (+ score (bracket-score next-char)))
+
+(defn count-brackets [s]
+  (reductions bracket-increment 0 s))
+
+(defn find-left-enclosing-bracket [text pos]
+  (let [before (string/take pos text)]
+    (- pos (count-while
+             (partial >= 0)
+             (count-brackets (string/reverse before))))))
+
+(defn find-right-enclosing-bracket [text pos]
+  (let [after (string/drop pos text)]
+    (+ -1 pos (count-while
+                (partial <= 0)
+                (count-brackets after)))))
+
+(defn find-enclosing-brackets [text pos]
+  [(find-left-enclosing-bracket text pos)
+   (find-right-enclosing-bracket text pos)])
+
+(defn mismatched-brackets [a b]
+  (and (or (nil? a) (some #{a} [\( \[ \{]))
+       (some #{b} [\) \] \}])
+       (not (some #{[a b]} [[\( \)] [\[ \]] [\{ \}]]))))
+
+(defn find-bad-brackets [text]
+  (loop [t text cnt 0 stack nil errs nil]
+    (let [s stack
+          c (first t)
+          l (ffirst s)
+          p (next s)
+          j (conj s [c cnt])
+          new-stack
+            (condp = l
+              \\ p
+              \" (if (= c \") p s)
+              \; (if (= c \newline) p s)
+              (condp = c
+                \" j \\ j \; j
+                \( j \[ j \{ j
+                \) p \] p \} p
+                s))
+          e (if (mismatched-brackets l c)
+              (list (first s) [c cnt]))
+          new-errs (if e (concat errs e) errs)]
+        (if (next t)
+          (recur (next t) (inc cnt) new-stack new-errs)
+          (filter identity
+                  (map second (concat new-stack errs)))))))
+
+;; repl stuff
 
 (defn make-repl-writer [ta-out]
   (let [buf (StringBuffer.)]
@@ -166,18 +311,51 @@
          #(Math/max 0 (dec %)))
   (update-repl-in doc))
 
+(defn attach-child-action-key
+  "Maps an input-key on a swing component to an action,
+  such that action-fn is executed when pred function is
+  true, but the parent (default) action when pred returns
+  false."
+  [component input-key pred action-fn]
+  (let [im (.getInputMap component)
+        am (.getActionMap component)
+        input-event (KeyStroke/getKeyStroke input-key)
+        parent-action (if-let [tag (.get im input-event)]
+                        (.get am tag))
+        child-action
+          (proxy [AbstractAction] []
+            (actionPerformed [e]
+              (if (pred)
+                (action-fn)
+                (when parent-action
+                  (.actionPerformed parent-action e)))))
+        uuid (.. UUID randomUUID toString)]
+    (.put im input-event uuid)
+    (.put am uuid child-action)))
+
+
+(defn attach-child-action-keys [comp & items]
+  (doall (map #(apply attach-child-action-key comp %) items)))
+
+(defn attach-action-key
+  "Maps an input-key on a swing component to an action-fn."
+  [component input-key action-fn]
+  (attach-child-action-key component input-key
+                           (constantly true) action-fn))
+
+(defn attach-action-keys [comp & items]
+  "Maps input keys to action-fns."
+  (doall (map #(apply attach-action-key comp %) items)))
+
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)
         get-caret-pos #(.getCaretPosition ta-in)
-        ready #(let [caret-pos (get-caret-pos)
-                     txt (.getText ta-in)
-                     trim-txt (string/rtrim txt)]
+        ready #(let [caret-pos (get-caret-pos)]
                  (and
-                   (pos? (.length trim-txt))
-                   (<= (.length trim-txt)
+                   (= (.. ta-in getDocument getLength)
                                 caret-pos)
                    (= -1 (find-left-enclosing-bracket
-                           txt
+                           (.getText ta-in)
                            caret-pos))))
         submit #(do (send-to-repl doc (.getText ta-in))
                     (.setText ta-in ""))
@@ -195,20 +373,50 @@
 
 (defn apply-namespace-to-repl [doc]
   (try
+    (println (.. Thread currentThread getName))
     (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
       (when (= 'ns (first sexpr))
         (send-to-repl doc (str "(ns " (second sexpr) ")"))))
     (catch Exception e)))
   
-
-;; caret finding
-
-(defn display-caret-position [doc]
-  (let [{:keys [row col]} (get-caret-coords (:doc-text-area doc))]
-    (.setText (:pos-label doc) (str " " (inc row) "|" (inc col)))))
-
 ;; highlighting
 
+(def caret-highlight (atom nil))
+
+(defn highlight
+  ([text-comp start stop color]
+    (.addHighlight (.getHighlighter text-comp)
+                   start stop
+                   (DefaultHighlighter$DefaultHighlightPainter. color)))
+  ([text-comp pos color] (highlight text-comp pos (inc pos) color)))
+
+(defn remove-highlight
+  ([text-comp highlight-object]
+    (.removeHighlight (.getHighlighter text-comp)
+                      highlight-object)))
+
+(defn remove-highlights
+  ([text-comp highlights]
+    (dorun (map #(remove-highlight text-comp %) highlights))))
+
+(defn highlight-enclosing-brackets [text-comp pos color]
+  (doall (map #(highlight text-comp % color)
+       (find-enclosing-brackets (.getText text-comp) pos))))
+
+(defn highlight-caret-enclosure [text-comp]
+  (when-let [ch @caret-highlight]
+    (doall (map #(remove-highlight text-comp %) ch)))
+  (reset! caret-highlight
+          (highlight-enclosing-brackets
+            text-comp (.getCaretPosition text-comp) Color/LIGHT_GRAY)))
+
+(defn highlight-bad-brackets [text-comp]
+  (doall (map #(highlight text-comp % Color/PINK)
+    (find-bad-brackets (.getText text-comp)))))
+
+(defn add-caret-listener [text-comp f]
+  (.addCaretListener text-comp
+    (reify CaretListener (caretUpdate [this evt] (f)))))
 
 (defn activate-caret-highlighter [text-comp]
   (add-caret-listener text-comp #(highlight-caret-enclosure text-comp)))
@@ -271,8 +479,7 @@
             (conj (highlight-found dta posns length)
                   (highlight dta selected-pos
                              (+ selected-pos length) (.getSelectionColor dta))))
-          (do (scroll-to-pos dta selected-pos)
-              (set-selection dta selected-pos (+ selected-pos length)))))
+          (set-selection dta selected-pos (+ selected-pos length))))
       (.setSelectionEnd dta (.getSelectionStart dta)))))
 
 (defn start-find [doc]
@@ -316,47 +523,29 @@
 (defn get-root-path [tree]
   (TreePath. (.. tree getModel getRoot)))
 
-(comment (defn get-tree-nodes [tree]
-  (let [get-nodes     
-         (fn [root-node]
-           (cons root-node
-             (map get-nodes
-                  (enumeration-seq (.children root-node)))))]
-    (get-nodes (.. tree getModel getRoot)))))
+(defn get-rows-expanded [tree]
+  (doall (map #(.isExpanded tree %) (range (.getVisibleRowCount tree)))))
 
-(defn tree-path-to-file [^TreePath tree-path]
-  (when tree-path
-    (.. tree-path getLastPathComponent getUserObject getAbsolutePath)))
+(defn set-rows-expanded [tree rows]
+  (doseq [i (range (count rows))]
+    (if (nth rows i)
+      (.expandRow tree i)
+      (.collapseRow tree i))))
 
-(defn get-row-path [tree row]
-  (tree-path-to-file (. tree getPathForRow row)))
+(defn save-rows-expanded [tree]
+  (write-value-to-prefs clooj-prefs "expanded-rows" (get-rows-expanded tree)))
 
-(defn get-expanded-paths [tree]
-  (for [i (range (.getRowCount tree)) :when (.isExpanded tree i)]
-    (get-row-path tree i)))
-
-(defn expand-paths [tree paths]
-  (doseq [i (range) :while (< i (.getRowCount tree))]
-    (when-let [x (some #{(tree-path-to-file (. tree getPathForRow i))} paths)]
-      (.expandPath tree (. tree getPathForRow i)))))
-
-(defn save-expanded-paths [tree]
-  (write-value-to-prefs clooj-prefs "expanded-paths" (get-expanded-paths tree)))
-
-(defn load-expanded-paths [tree]
-  (let [paths (read-value-from-prefs clooj-prefs "expanded-paths")]
-    (when paths
-      (expand-paths tree paths))))
+(defn load-rows-expanded [tree]
+  (let [rows (read-value-from-prefs clooj-prefs "expanded-rows")]
+    (when rows
+      (set-rows-expanded tree rows))))
 
 (defn save-tree-selection [tree]
-  (write-value-to-prefs
-    clooj-prefs "tree-selection"
-    (tree-path-to-file (.getSelectionPath tree))))
+  (write-value-to-prefs clooj-prefs "tree-selection" (.getMinSelectionRow tree)))
   
 (defn load-tree-selection [tree]
-  (let [path (read-value-from-prefs clooj-prefs "tree-selection")]
-    (doseq [row (range (.getRowCount tree))]
-      (when (= path (get-row-path tree row)) (.setSelectionRow tree row)))))
+  (let [row (read-value-from-prefs clooj-prefs "tree-selection")]
+    (when row (.setSelectionRow tree row))))
 
 (defn get-project-root [path]
   (let [f (File. path)
@@ -412,7 +601,7 @@
 
 (defn setup-tree [doc]
   (let [tree (:docs-tree doc)
-        save #(save-expanded-paths tree)]
+        save #(save-rows-expanded tree)]
     (doto tree
       (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
       (.setRootVisible false)
@@ -440,7 +629,7 @@
       (println "dumping...")
       (let [orig (.getAbsolutePath orig-f)
             f (str orig "~")]
-         (spit f (.getString (doc :doc-text-area)))
+         (.write (doc :doc-text-area) (FileWriter. f))
          (swap! temp-files assoc orig f)))
     (catch Exception e)))
 
@@ -514,7 +703,7 @@
 (defn auto-indent-str [text-comp offset]
   (let [bracket-pos (find-left-enclosing-bracket
                       (.getText text-comp) offset)]
-    (if (<= 0 bracket-pos)
+    (if (pos? bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))
             indent-size (if (= bracket \() 2 1)] ;\) avoids highlighting problems
@@ -547,7 +736,7 @@
 (defn setup-search-text-area [doc]
   (let [sta (doto (doc :search-text-area)
       (.setVisible false)
-      (.setFont mono-font)
+      (.setFont (get-mono-font))
       (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
       (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (stop-find doc)))))]
     (add-text-change-listener sta #(update-find-highlight doc false))
@@ -578,7 +767,6 @@
 
 (defn create-doc []
   (let [doc-text-area (make-text-area)
-        doc-text-panel (JPanel.)
         repl-out-text-area (make-text-area)
         repl-in-text-area (make-text-area)
         search-text-area (JTextField.)
@@ -589,7 +777,7 @@
         docs-tree (JTree.)
         doc-split-pane (make-split-pane
                          (make-scroll-pane docs-tree)
-                         doc-text-panel true 0)
+                         (make-scroll-pane doc-text-area) true 0)
         repl-split-pane (make-split-pane
                           (make-scroll-pane repl-out-text-area)
                           (make-scroll-pane repl-in-text-area) false 0.75)
@@ -606,21 +794,16 @@
              :doc-split-pane doc-split-pane
              :repl-split-pane repl-split-pane
              :split-pane split-pane
-             :changed false}
-        doc-scroll-pane (make-scroll-pane doc-text-area)]
+             :changed false}]
     (doto f
       (.setBounds 25 50 950 700)
       (.setLayout layout)
-      (.add split-pane))   
-    (doto doc-text-panel
-      (.setLayout (SpringLayout.))
-      (.add doc-scroll-pane)
-      (.add pos-label)
-      (.add search-text-area))
+      (.add split-pane)
+      (.add search-text-area)
+      (.add pos-label))
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
-    (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
-    (constrain-to-parent doc-scroll-pane :n 0 :w 0 :s -16 :e 0)
+    (constrain-to-parent split-pane :n gap :w gap :s -16 :e (- gap))
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
     (.layoutContainer layout f)
@@ -630,11 +813,8 @@
         (reify CaretListener
           (caretUpdate [this evt] (display-caret-position doc)))))
     (activate-caret-highlighter doc-text-area)
-    (activate-caret-highlighter repl-in-text-area)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (make-undoable repl-in-text-area)
-    (set-tab-as-spaces repl-in-text-area 2)
-    (activate-error-highlighter repl-in-text-area)
     (setup-tree doc)
     doc))
 
@@ -710,6 +890,25 @@
     (add-project-to-tree doc (.getAbsolutePath dir)))
   (save-project-map))
 
+;; menu setup
+
+(defn add-menu-item [menu item-name key-shortcut response-fn]
+  (.add menu
+    (doto (JMenuItem. item-name)
+      (.setAccelerator (KeyStroke/getKeyStroke key-shortcut))
+      (.addActionListener
+        (reify ActionListener
+          (actionPerformed [this action-event]
+            (do (response-fn))))))))
+
+(defn add-menu [menu-bar title & item-triples]
+  "Each item-triple is a vector containing a
+  menu item's text, shortcut key, and the function
+  it executes."
+  (let [menu (JMenu. title)]
+    (doall (map #(apply add-menu-item menu %) item-triples))
+    (.add menu-bar menu)))
+
 (defn make-menus [doc]
   (System/setProperty "apple.laf.useScreenMenuBar" "true")
   (let [menu-bar (JMenuBar.)]
@@ -744,9 +943,9 @@
      (load-shape doc)
      (.setVisible (doc :frame) true)
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
-    ; (setup-temp-writer doc)
+     (setup-temp-writer doc)
      (let [tree (doc :docs-tree)]
-       (load-expanded-paths tree)
+       (load-rows-expanded tree)
        (load-tree-selection tree))))
 
 (defn -show []
