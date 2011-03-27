@@ -310,9 +310,10 @@
         txt (or
               (.getSelectedText ta)
               (let [[a b] (find-nearby-root-form ta)]
-                (.. ta getDocument
-                  (getText a (- b a)))))]
-      (send-to-repl doc txt)))
+                (when (and a b)
+                  (.. ta getDocument
+                    (getText a (- b a))))))]
+      (when txt (send-to-repl doc txt))))
 
 (defn make-repl-writer [ta-out]
   (let [buf (StringBuffer.)]
@@ -422,24 +423,28 @@
 
 (defn highlight
   ([text-comp start stop color]
-    (.addHighlight (.getHighlighter text-comp)
-                   start stop
-                   (DefaultHighlighter$DefaultHighlightPainter. color)))
-  ([text-comp pos color] (highlight text-comp pos (inc pos) color)))
+    (when (and (<= 0 start) (< start (.. text-comp getDocument getLength)))
+      (.addHighlight (.getHighlighter text-comp)
+                     start stop
+                     (DefaultHighlighter$DefaultHighlightPainter. color))))
+    ([text-comp pos color] (highlight text-comp pos (inc pos) color)))
 
 (defn remove-highlight
   ([text-comp highlight-object]
+    (when highlight-object
     (.removeHighlight (.getHighlighter text-comp)
-                      highlight-object)))
+                      highlight-object))))
 
 (defn remove-highlights
   ([text-comp highlights]
     (dorun (map #(remove-highlight text-comp %) highlights))))
 
 (defn highlight-enclosing-brackets [text-comp pos color]
-  (doall (map #(highlight text-comp % color)
-       (find-enclosing-brackets (.getText text-comp) pos))))
-
+  (let [txt (.getText text-comp)]
+    (when txt
+      (doall (map #(highlight text-comp % color)
+                (find-enclosing-brackets txt) pos)))))
+  
 (defn highlight-caret-enclosure [text-comp]
   (when-let [ch @caret-highlight]
     (doall (map #(remove-highlight text-comp %) ch)))
@@ -875,6 +880,7 @@
         (reify CaretListener
           (caretUpdate [this evt] (display-caret-position doc)))))
     (activate-caret-highlighter doc-text-area)
+    (activate-caret-highlighter repl-in-text-area)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (make-undoable repl-in-text-area)
     (set-tab-as-spaces repl-in-text-area 2)
