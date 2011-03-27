@@ -423,7 +423,7 @@
 
 (defn highlight
   ([text-comp start stop color]
-    (when (and (<= 0 start) (< start (.. text-comp getDocument getLength)))
+    (when (and (<= 0 start) (<= stop (.. text-comp getDocument getLength)))
       (.addHighlight (.getHighlighter text-comp)
                      start stop
                      (DefaultHighlighter$DefaultHighlightPainter. color))))
@@ -443,7 +443,7 @@
   (let [txt (.getText text-comp)]
     (when txt
       (doall (map #(highlight text-comp % color)
-                (find-enclosing-brackets txt) pos)))))
+                (find-enclosing-brackets txt pos))))))
   
 (defn highlight-caret-enclosure [text-comp]
   (when-let [ch @caret-highlight]
