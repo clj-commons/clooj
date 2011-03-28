@@ -4,13 +4,15 @@
 
 (ns clooj.utils
   (:import (java.util UUID)
-           (java.awt Point)
+           (java.awt FileDialog Point)
            (java.awt.event ActionListener)
            (java.util.prefs Preferences)
            (java.io ByteArrayInputStream ByteArrayOutputStream
+                    File FilenameFilter
                     ObjectInputStream ObjectOutputStream)
-           (javax.swing AbstractAction JMenu JMenuBar JMenuItem KeyStroke)
-           (javax.swing.event CaretListener DocumentListener))
+           (javax.swing AbstractAction JFileChooser JMenu JMenuBar JMenuItem KeyStroke)
+           (javax.swing.event CaretListener DocumentListener UndoableEditListener)
+           (javax.swing.undo UndoManager))
   (:require [clojure.contrib.string :as string]
             [clooj.brackets :only (find-bad-brackets find-enclosing-brackets)]))
 
@@ -178,3 +180,44 @@
   (let [menu (JMenu. title)]
     (doall (map #(apply add-menu-item menu %) item-triples))
     (.add menu-bar menu)))
+
+;; undoability
+
+(defn make-undoable [text-area]
+  (let [undoMgr (UndoManager.)]
+    (.. text-area getDocument (addUndoableEditListener
+        (reify UndoableEditListener
+          (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))
+    (attach-action-keys text-area
+      ["meta Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
+      ["meta shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
+
+
+;; file handling
+
+(defn choose-file [parent title suffix load]
+  (let [dialog
+    (doto (FileDialog. parent title
+            (if load FileDialog/LOAD FileDialog/SAVE))
+      (.setFilenameFilter
+        (reify FilenameFilter
+          (accept [this _ name] (. name endsWith suffix))))
+      (.setVisible true))
+    d (.getDirectory dialog)
+    n (.getFile dialog)]
+    (if (and d n)
+      (File. d n))))
+
+(defn choose-directory [parent title]
+  (if (is-mac)
+    (let [dirs-on #(System/setProperty
+                     "apple.awt.fileDialogForDirectories" (str %))]
+      (dirs-on true)
+        (let [dir (choose-file parent title "" true)]
+          (dirs-on false)
+          dir))
+    (let [fc (JFileChooser.)]
+      (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)
+               (.setDialogTitle title))
+       (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
+         (.getSelectedFile fc)))))

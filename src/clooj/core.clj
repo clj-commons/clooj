@@ -4,37 +4,36 @@
 
 (ns clooj.core
   (:import (javax.swing AbstractListModel BorderFactory
-                        JFileChooser JFrame JLabel JList JMenuBar
+                        JFrame JLabel JList JMenuBar
                         JPanel JScrollPane JSplitPane JTextArea
                         JTextField JTree SpringLayout SwingUtilities
                         UIManager)
-           (javax.swing.event CaretListener DocumentListener TreeSelectionListener
-                              TreeExpansionListener UndoableEditListener)
-           (javax.swing.text DefaultHighlighter
-                             DefaultHighlighter$DefaultHighlightPainter
-                             DocumentFilter)
+           (javax.swing.event TreeSelectionListener
+                              TreeExpansionListener)
+           (javax.swing.text DocumentFilter)
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
-           (javax.swing.undo UndoManager)
            (java.awt Insets Point Rectangle)
-           (java.awt.event FocusAdapter KeyEvent KeyListener)
-           (java.awt Color Font Toolkit FileDialog)
-           (java.util UUID)
-           (java.util.prefs Preferences)
-           (java.io File FilenameFilter FileReader FileWriter OutputStream
+           (java.awt.event FocusAdapter)
+           (java.awt Color Font Toolkit)
+           (java.io File FileReader FileWriter OutputStream
                     OutputStreamWriter PipedReader PipedWriter PrintWriter
-                    StringReader Writer ByteArrayOutputStream ObjectOutputStream
-                    ObjectInputStream ByteArrayInputStream)
+                    StringReader Writer)
            (clojure.lang LineNumberingPushbackReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
         [clooj.brackets]
         [clooj.highlighting]
+        [clooj.tree :only (add-project-to-tree load-tree-selection
+                           load-expanded-paths load-project-map
+                           save-expanded-paths save-project-map
+                           save-tree-selection)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
                             attach-child-action-keys attach-action-keys
-                            get-caret-coords add-menu)])
+                            get-caret-coords add-menu make-undoable
+                            choose-file choose-directory)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class))
@@ -301,135 +300,6 @@
     (update-find-highlight doc back)))
 
 
-;; projects tree
-
-(declare restart-doc)
-
-(def project-map (atom nil))
-
-(defn save-project-map []
-  (write-value-to-prefs clooj-prefs "project-map" @project-map))
-    
-(defn load-project-map []
-  (reset! project-map (read-value-from-prefs clooj-prefs "project-map")))
-
-(defn get-root-path [tree]
-  (TreePath. (.. tree getModel getRoot)))
-
-(comment (defn get-tree-nodes [tree]
-  (let [get-nodes     
-         (fn [root-node]
-           (cons root-node
-             (map get-nodes
-                  (enumeration-seq (.children root-node)))))]
-    (get-nodes (.. tree getModel getRoot)))))
-
-(defn tree-path-to-file [^TreePath tree-path]
-  (when tree-path
-    (.. tree-path getLastPathComponent getUserObject getAbsolutePath)))
-
-(defn get-row-path [tree row]
-  (tree-path-to-file (. tree getPathForRow row)))
-
-(defn get-expanded-paths [tree]
-  (for [i (range (.getRowCount tree)) :when (.isExpanded tree i)]
-    (get-row-path tree i)))
-
-(defn expand-paths [tree paths]
-  (doseq [i (range) :while (< i (.getRowCount tree))]
-    (when-let [x (some #{(tree-path-to-file (. tree getPathForRow i))} paths)]
-      (.expandPath tree (. tree getPathForRow i)))))
-
-(defn save-expanded-paths [tree]
-  (write-value-to-prefs clooj-prefs "expanded-paths" (get-expanded-paths tree)))
-
-(defn load-expanded-paths [tree]
-  (let [paths (read-value-from-prefs clooj-prefs "expanded-paths")]
-    (when paths
-      (expand-paths tree paths))))
-
-(defn save-tree-selection [tree]
-  (write-value-to-prefs
-    clooj-prefs "tree-selection"
-    (tree-path-to-file (.getSelectionPath tree))))
-  
-(defn load-tree-selection [tree]
-  (let [path (read-value-from-prefs clooj-prefs "tree-selection")]
-    (doseq [row (range (.getRowCount tree))]
-      (when (= path (get-row-path tree row)) (.setSelectionRow tree row)))))
-
-(defn get-project-root [path]
-  (let [f (File. path)
-        name (.getName f)]
-    (if (and (or (= name "src")
-                 (= name "lib"))
-             (.isDirectory f))
-      (File. (.getParent f))
-      f)))
-
-(defn get-code-files [dir suffix]
-  (let [dir (File. dir)]
-    (filter #(.endsWith (.getName %) suffix)
-            (file-seq dir))))
-
-(defn path-to-namespace [file-path]
-  (let [drop-suffix #(clojure.contrib.string/butlast 4 %)]
-    (-> file-path
-        (.split (str "src" File/separator))
-        second
-        drop-suffix
-        (.replace File/separator "."))))
-
-(defn file-node [text file-path]
-  (proxy [File] [file-path]
-    (toString [] text)))
-
-(defn add-node [parent node-str file-path]
-  (let [node  (DefaultMutableTreeNode.
-                (file-node node-str file-path))]
-    (.add parent node)
-    node))
-
-(defn add-code-file-to-src-node [src-node code-file]
-  (let [f (.getAbsolutePath code-file)
-        namespace (path-to-namespace f)]
-        (add-node src-node namespace f)))
-
-(defn add-srcs-to-src-node [src-node src-dir]
-  (doall (map #(add-code-file-to-src-node src-node %)
-              (get-code-files src-dir ".clj"))))
-
-(defn add-project-to-tree [doc project-root]
-  (let [model (.getModel (doc :docs-tree))
-        src-path (str project-root File/separator "src")]
-    (-> model
-      .getRoot
-      (add-node (.getName (File. project-root)) project-root)
-      (add-node "src" src-path)
-      (add-srcs-to-src-node src-path))
-    (.. model reload))
-  (swap! project-map assoc project-root nil))
-
-(defn setup-tree [doc]
-  (let [tree (:docs-tree doc)
-        save #(save-expanded-paths tree)]
-    (doto tree
-      (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
-      (.setRootVisible false)
-      (.setShowsRootHandles true)
-      (.. getSelectionModel (setSelectionMode TreeSelectionModel/SINGLE_TREE_SELECTION))
-      (.addTreeExpansionListener
-        (reify TreeExpansionListener
-          (treeCollapsed [this e] (save))
-          (treeExpanded [this e] (save))))
-      (.addTreeSelectionListener
-        (reify TreeSelectionListener
-          (valueChanged [this e]
-            (save-tree-selection tree)
-            (let [f (.. e getPath getLastPathComponent
-                          getUserObject)]
-              (when (.. f getName (endsWith ".clj"))
-                (restart-doc doc f)))))))))
 ;; temp files
 
 (def temp-files (atom {}))
@@ -456,6 +326,29 @@
 (defn setup-temp-writer [doc]
   ;(send-off temp-file-manager #(0))
   (add-text-change-listener (:doc-text-area doc) #(update-temp doc)))
+
+(declare restart-doc)
+
+(defn setup-tree [doc]
+  (let [tree (:docs-tree doc)
+        save #(save-expanded-paths tree)]
+    (doto tree
+      (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
+      (.setRootVisible false)
+      (.setShowsRootHandles true)
+      (.. getSelectionModel (setSelectionMode TreeSelectionModel/SINGLE_TREE_SELECTION))
+      (.addTreeExpansionListener
+        (reify TreeExpansionListener
+          (treeCollapsed [this e] (save))
+          (treeExpanded [this e] (save))))
+      (.addTreeSelectionListener
+        (reify TreeSelectionListener
+          (valueChanged [this e]
+            (save-tree-selection tree)
+            (let [f (.. e getPath getLastPathComponent
+                          getUserObject)]
+              (when (.. f getName (endsWith ".clj"))
+                (restart-doc doc f)))))))))
 
 ;; build gui
 
@@ -501,15 +394,6 @@
       (.setHorizontalAlignment JLabel/RIGHT)
       (.setVerticalAlignment JLabel/BOTTOM))
     (.setRowHeaderView sp jl)))
-
-(defn make-undoable [text-area]
-  (let [undoMgr (UndoManager.)]
-    (.. text-area getDocument (addUndoableEditListener
-        (reify UndoableEditListener
-          (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))
-    (attach-action-keys text-area
-      ["meta Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
-      ["meta shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
 
 (defn auto-indent-str [text-comp offset]
   (let [bracket-pos (find-left-enclosing-bracket
@@ -625,10 +509,7 @@
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
     (.layoutContainer layout f)
     (setup-search-text-area doc)
-    (doto doc-text-area
-      (.addCaretListener
-        (reify CaretListener
-          (caretUpdate [this evt] (display-caret-position doc)))))
+    (add-caret-listener doc-text-area #(display-caret-position doc))
     (activate-caret-highlighter doc-text-area)
     (activate-caret-highlighter repl-in-text-area)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
@@ -638,34 +519,7 @@
     (setup-tree doc)
     doc))
 
-;; file handling
-
-(defn choose-file [parent title suffix load]
-  (let [dialog
-    (doto (FileDialog. parent title
-            (if load FileDialog/LOAD FileDialog/SAVE))
-      (.setFilenameFilter
-        (reify FilenameFilter
-          (accept [this _ name] (. name endsWith suffix))))
-      (.setVisible true))
-    d (.getDirectory dialog)
-    n (.getFile dialog)]
-    (if (and d n)
-      (File. d n))))
-
-(defn choose-directory [parent title]
-  (if (is-mac)
-    (let [dirs-on #(System/setProperty
-                     "apple.awt.fileDialogForDirectories" (str %))]
-      (dirs-on true)
-        (let [dir (choose-file parent title "" true)]
-          (dirs-on false)
-          dir))
-    (let [fc (JFileChooser.)]
-      (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)
-               (.setDialogTitle title))
-       (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
-         (.getSelectedFile fc)))))
+;; clooj docs
 
 (defn restart-doc [doc ^File file]
   ;(send-off temp-file-manager #(do (dump-temp-doc doc) 0))
