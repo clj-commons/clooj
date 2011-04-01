@@ -221,3 +221,8 @@
                (.setDialogTitle title))
        (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
          (.getSelectedFile fc)))))
+
+;; listener
+
+(comment (defmacro add-listener [comp type f]
+  `(let [methods (.getMethods type)] )

@@ -6,7 +6,7 @@
   (:import (javax.swing AbstractListModel BorderFactory
                         JFrame JLabel JList JMenuBar
                         JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree SpringLayout SwingUtilities
+                        JTextField JTree SpringLayout
                         UIManager)
            (javax.swing.event TreeSelectionListener
                               TreeExpansionListener)
@@ -15,11 +15,8 @@
                              TreePath TreeSelectionModel)
            (java.awt Insets Point Rectangle)
            (java.awt.event FocusAdapter)
-           (java.awt Color Font Toolkit)
-           (java.io File FileReader FileWriter OutputStream
-                    OutputStreamWriter PipedReader PipedWriter PrintWriter
-                    StringReader Writer)
-           (clojure.lang LineNumberingPushbackReader))
+           (java.awt Color Font)
+           (java.io File FileReader FileWriter))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
         [clooj.brackets]
@@ -356,13 +353,15 @@
       ["Open project..." "meta shift O" #(open-project doc)]
       ["Save" "meta S" #(save-file doc)]
       ["Save as..." "meta R" #(save-file-as doc)])
-    (add-menu menu-bar "Tools"
-      ["Evaluate in REPL" "meta E" #(send-selected-to-repl doc)]
-      ["Apply file ns to REPL" "meta L" #(apply-namespace-to-repl doc)]
+    (add-menu menu-bar "REPL"
+      ["Evaluate nearest root form" "meta ENTER" #(send-selected-to-repl doc)]
+      ["Apply file ns" "meta L" #(apply-namespace-to-repl doc)]
+      ["Clear output" "meta K" #(.setText (doc :repl-out-text-area) "")])
+    (add-menu menu-bar "Search"
       ["Find" "meta F" #(start-find doc)]
       ["Find next" "meta G" #(highlight-step doc false)]
       ["Find prev" "meta shift G" #(highlight-step doc true)]
-      ["Clear REPL" "meta K" #(.setText (doc :repl-out-text-area) "")])))
+      )))
 
 ;; startup
 
