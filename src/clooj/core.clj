@@ -26,7 +26,7 @@
         [clooj.tree :only (add-project-to-tree load-tree-selection
                            load-expanded-paths load-project-map
                            save-expanded-paths save-project-map
-                           save-tree-selection)]
+                           save-tree-selection get-temp-file)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
@@ -83,10 +83,6 @@
 
 (def temp-files (atom {}))
 
-(defn get-temp-file [^File orig]
-  (when orig
-    (File. (str (.getAbsolutePath orig) "~"))))
-
 (defn dump-temp-doc [doc]
   (try 
     (when-let [orig-f @(doc :file)]
@@ -94,7 +90,9 @@
       (let [orig (.getAbsolutePath orig-f)
             f (.getAbsolutePath (get-temp-file orig-f))]
          (spit f (.getText (doc :doc-text-area)))
-         (swap! temp-files assoc orig f)))
+         (swap! temp-files assoc orig f)
+         (.updateUI (doc :docs-tree))
+         (println "tree updated")))
     (catch Exception e (println e))))
 
 (def temp-file-manager (agent 0))
@@ -340,7 +338,8 @@
     (let [f @(doc :file)
           ft (File. (str (.getAbsolutePath f) "~"))]
       (.write (doc :doc-text-area) (FileWriter. f))
-      (.delete ft))))
+      (.delete ft)
+      (.updateUI (doc :docs-tree)))))
 
 (defn save-file-as [doc]
   (let [frame (doc :frame)

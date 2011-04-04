@@ -90,9 +90,16 @@
         drop-suffix
         (.replace File/separator "."))))
 
-(defn file-node [text file-path]
+
+(defn get-temp-file [^File orig]
+  (when orig
+    (File. (str (.getAbsolutePath orig) "~"))))
+
+(defn file-node [text file-path] 
   (proxy [File] [file-path]
-    (toString [] text)))
+    (toString []
+      (str text
+           (if (.exists (get-temp-file this)) "*" "")))))
 
 (defn add-node [parent node-str file-path]
   (let [node  (DefaultMutableTreeNode.
