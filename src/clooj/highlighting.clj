@@ -12,7 +12,7 @@
 
 
 ;; highlighting
-
+ 
 (def caret-highlights (atom {}))
 
 (defn highlight

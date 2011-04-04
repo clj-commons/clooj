@@ -83,15 +83,18 @@
 
 (def temp-files (atom {}))
 
+(defn get-temp-file [^File orig]
+  (File. (str (.getAbsolutePath orig) "~")))
+
 (defn dump-temp-doc [doc]
   (try 
     (when-let [orig-f @(doc :file)]
       (println "dumping...")
       (let [orig (.getAbsolutePath orig-f)
-            f (str orig "~")]
-         (spit f (.getString (doc :doc-text-area)))
+            f (.getAbsolutePath (get-temp-file orig-f))]
+         (spit f (.getText (doc :doc-text-area)))
          (swap! temp-files assoc orig f)))
-    (catch Exception e)))
+    (catch Exception e (println e))))
 
 (def temp-file-manager (agent 0))
 
@@ -103,7 +106,6 @@
          %))))
 
 (defn setup-temp-writer [doc]
-  ;(send-off temp-file-manager #(0))
   (add-text-change-listener (:doc-text-area doc) #(update-temp doc)))
 
 (declare restart-doc)
@@ -301,11 +303,13 @@
 ;; clooj docs
 
 (defn restart-doc [doc ^File file]
-  ;(send-off temp-file-manager #(do (dump-temp-doc doc) 0))
+  (send-off temp-file-manager (fn [_] (do (dump-temp-doc doc) 0)))
   (let [frame (doc :frame)]
-    (let [text-area (doc :doc-text-area)]
-      (if file
-        (do (.read text-area (FileReader. (.getAbsolutePath file)) nil)
+    (let [text-area (doc :doc-text-area)
+          temp-file (get-temp-file file)
+          file-to-open (if (.exists temp-file) temp-file file)]
+      (if file-to-open
+        (do (.read text-area (FileReader. file-to-open) nil)
             (.setTitle frame (str "clooj  \u2014  " (.getPath file))))
         (do (.setText text-area "")
             (.setTitle frame "Untitled")))
@@ -313,6 +317,7 @@
       (set-tab-as-spaces text-area 2)
       (activate-error-highlighter text-area)
       (reset! (doc :file) file)
+      (setup-temp-writer doc)
       (apply-namespace-to-repl doc))))
 
 (defn open-file [doc]
@@ -328,7 +333,10 @@
 (defn save-file [doc]
   (if-not @(doc :file)
     (save-file-as doc)
-    (.write (doc :doc-text-area) (FileWriter. @(doc :file)))))
+    (let [f @(doc :file)
+          ft (File. (str (.getAbsolutePath f) "~"))]
+      (.write (doc :doc-text-area) (FileWriter. f))
+      (.delete ft))))
 
 (defn save-file-as [doc]
   (let [frame (doc :frame)
@@ -379,7 +387,7 @@
      (load-shape doc)
      (.setVisible (doc :frame) true)
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
-    ; (setup-temp-writer doc)
+     (setup-temp-writer doc)
      (let [tree (doc :docs-tree)]
        (load-expanded-paths tree)
        (load-tree-selection tree))))
