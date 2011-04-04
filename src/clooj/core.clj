@@ -84,7 +84,8 @@
 (def temp-files (atom {}))
 
 (defn get-temp-file [^File orig]
-  (File. (str (.getAbsolutePath orig) "~")))
+  (when orig
+    (File. (str (.getAbsolutePath orig) "~"))))
 
 (defn dump-temp-doc [doc]
   (try 
@@ -304,7 +305,7 @@
 
 (defn restart-doc [doc ^File file]
   (send-off temp-file-manager
-            (fn [_] (when (.exists (get-temp-file @(:file doc)))
+            (fn [_] (when (and @(:file doc) (.exists (get-temp-file @(:file doc))))
                       (dump-temp-doc doc))
               0))
   (let [frame (doc :frame)]
