@@ -89,7 +89,7 @@
 (defn dump-temp-doc [doc]
   (try 
     (when-let [orig-f @(doc :file)]
-      (println "dumping...")
+      (println "dumping..." orig-f)
       (let [orig (.getAbsolutePath orig-f)
             f (.getAbsolutePath (get-temp-file orig-f))]
          (spit f (.getText (doc :doc-text-area)))
@@ -303,7 +303,10 @@
 ;; clooj docs
 
 (defn restart-doc [doc ^File file]
-  (send-off temp-file-manager (fn [_] (do (dump-temp-doc doc) 0)))
+  (send-off temp-file-manager
+            (fn [_] (when (.exists (get-temp-file @(:file doc)))
+                      (dump-temp-doc doc))
+              0))
   (let [frame (doc :frame)]
     (let [text-area (doc :doc-text-area)
           temp-file (get-temp-file file)
