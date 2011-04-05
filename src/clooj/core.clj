@@ -59,7 +59,6 @@
 
 ;; highlighting
 
-
 (defn activate-caret-highlighter [text-comp]
   (add-caret-listener text-comp #(highlight-caret-enclosure text-comp)))
 

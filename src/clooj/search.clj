@@ -44,6 +44,7 @@
              (if back (prev-item (dec (.getSelectionStart dta)) posns)
                       (next-item (.getSelectionStart dta) posns))
             posns (remove #(= selected-pos %) posns)]
+        (.setBackground sta Color/WHITE)
         (when (pos? length)
           (reset! search-highlights
             (conj (highlight-found dta posns length)
@@ -51,7 +52,8 @@
                              (+ selected-pos length) (.getSelectionColor dta))))
           (do (scroll-to-pos dta selected-pos)
               (set-selection dta selected-pos (+ selected-pos length)))))
-      (.setSelectionEnd dta (.getSelectionStart dta)))))
+      (do (.setSelectionEnd dta (.getSelectionStart dta))
+          (.setBackground sta (if (pos? length) Color/PINK Color/WHITE))))))
 
 (defn start-find [doc]
   (let [sta (doc :search-text-area)]
