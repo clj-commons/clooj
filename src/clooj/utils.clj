@@ -140,15 +140,28 @@
   (range (.getLineOfOffset text-comp (.getSelectionStart text-comp))
          (inc (.getLineOfOffset text-comp (.getSelectionEnd text-comp)))))
 
-(defn comment-out [text-comp]
+(defn prepend-selected-lines [text-comp txt]
   (SwingUtilities/invokeLater
-    (fn [] (dorun (map #(prepend-line text-comp % ";")
+    (fn [] (dorun (map #(prepend-line text-comp % txt)
                         (get-selected-rows text-comp))))))
 
-(defn uncomment-out [text-comp]
+(defn shave-selected-lines [text-comp txt]
   (SwingUtilities/invokeLater
-    (fn [] (dorun (map #(shave-line text-comp % ";")
+    (fn [] (dorun (map #(shave-line text-comp % txt)
                        (get-selected-rows text-comp))))))
+
+(defn comment-out [text-comp]
+  (prepend-selected-lines text-comp ";"))
+
+(defn uncomment-out [text-comp]
+  (shave-selected-lines text-comp ";"))
+
+(defn indent [text-comp]
+  (prepend-selected-line text-comp "  "))
+
+(defn unindent [text-comp]
+  (shave-selected-lines text-comp "  "))
+                     
 
 ;; actions
 

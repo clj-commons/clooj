@@ -33,7 +33,8 @@
                             attach-child-action-keys attach-action-keys
                             get-caret-coords add-menu make-undoable
                             choose-file choose-directory
-                            comment-out uncomment-out)])
+                            comment-out uncomment-out
+                            indent unindent)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class))
