@@ -32,7 +32,8 @@
                             set-selection scroll-to-pos add-caret-listener
                             attach-child-action-keys attach-action-keys
                             get-caret-coords add-menu make-undoable
-                            choose-file choose-directory)])
+                            choose-file choose-directory
+                            comment-out uncomment-out)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class))
@@ -363,6 +364,9 @@
       ["Open project..." "meta shift O" #(open-project doc)]
       ["Save" "meta S" #(save-file doc)]
       ["Save as..." "meta R" #(save-file-as doc)])
+    (add-menu menu-bar "Source"
+      ["Comment-out" "meta SEMICOLON" #(comment-out (:doc-text-area doc))]
+      ["Uncomment-out" "meta shift SEMICOLON" #(uncomment-out (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
       ["Evaluate nearest root form" "meta ENTER" #(send-selected-to-repl doc)]
       ["Apply file ns" "meta L" #(apply-namespace-to-repl doc)]

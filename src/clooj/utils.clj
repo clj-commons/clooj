@@ -10,7 +10,8 @@
            (java.io ByteArrayInputStream ByteArrayOutputStream
                     File FilenameFilter
                     ObjectInputStream ObjectOutputStream)
-           (javax.swing AbstractAction JFileChooser JMenu JMenuBar JMenuItem KeyStroke)
+           (javax.swing AbstractAction JFileChooser JMenu JMenuBar 
+                        JMenuItem KeyStroke SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.undo UndoManager))
   (:require [clojure.contrib.string :as string]
@@ -122,7 +123,32 @@
         l (.. v getViewSize height)
         h (.. v getViewRect height)]
     (.setViewPosition v
-      (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
+       (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
+
+(defn prepend-line [text-comp line-no txt]
+  (let [pos (.getLineStartOffset text-comp line-no)]
+    (.insert text-comp txt pos)))
+
+(defn shave-line [text-comp line-no txt]
+  (let [pos (.getLineStartOffset text-comp line-no)
+        doc (.getDocument text-comp)
+        len (.length txt)]
+    (when (= txt (.getText doc pos len))
+      (.remove doc pos len))))
+
+(defn get-selected-rows [text-comp]
+  (range (.getLineOfOffset text-comp (.getSelectionStart text-comp))
+         (inc (.getLineOfOffset text-comp (.getSelectionEnd text-comp)))))
+
+(defn comment-out [text-comp]
+  (SwingUtilities/invokeLater
+    (fn [] (dorun (map #(prepend-line text-comp % ";")
+                        (get-selected-rows text-comp))))))
+
+(defn uncomment-out [text-comp]
+  (SwingUtilities/invokeLater
+    (fn [] (dorun (map #(shave-line text-comp % ";")
+                       (get-selected-rows text-comp))))))
 
 ;; actions
 
