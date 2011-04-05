@@ -19,7 +19,7 @@
 
 
 ;; preferences
-
+  
 ;; define a UUID for clooj preferences
 (def clooj-prefs (.. Preferences userRoot
       (node "clooj") (node "c6833c87-9631-44af-af83-f417028ea7aa")))
@@ -125,42 +125,30 @@
     (.setViewPosition v
        (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
 
-(defn prepend-line [text-comp line-no txt]
-  (let [pos (.getLineStartOffset text-comp line-no)]
-    (.insert text-comp txt pos)))
-
-(defn shave-line [text-comp line-no txt]
-  (let [pos (.getLineStartOffset text-comp line-no)
-        doc (.getDocument text-comp)
-        len (.length txt)]
-    (when (= txt (.getText doc pos len))
-      (.remove doc pos len))))
-
-(defn get-selected-rows [text-comp]
-  (range (.getLineOfOffset text-comp (.getSelectionStart text-comp))
-         (inc (.getLineOfOffset text-comp (.getSelectionEnd text-comp)))))
-
-(defn prepend-selected-lines [text-comp txt]
+(defn replace-in-selected-row-headers [text-comp txt-old txt-new]
   (SwingUtilities/invokeLater
-    (fn [] (dorun (map #(prepend-line text-comp % txt)
-                        (get-selected-rows text-comp))))))
-
-(defn shave-selected-lines [text-comp txt]
-  (SwingUtilities/invokeLater
-    (fn [] (dorun (map #(shave-line text-comp % txt)
-                       (get-selected-rows text-comp))))))
+    #(let [row1 (.getLineOfOffset text-comp (.getSelectionStart text-comp))
+           row2 (.getLineOfOffset text-comp (.getSelectionEnd text-comp))
+           start (dec (.getLineStartOffset text-comp row1))
+           end (dec (.getLineEndOffset text-comp row2))
+           s-old (.. text-comp getDocument (getText start (- end start)))
+           s-new (.replace s-old (str "\n" txt-old) (str "\n" txt-new))]
+      (.replaceRange text-comp s-new start end)
+      (set-selection text-comp
+        (.getLineStartOffset text-comp row1)
+        (dec (.getLineEndOffset text-comp row2))))))
 
 (defn comment-out [text-comp]
-  (prepend-selected-lines text-comp ";"))
+  (replace-in-selected-row-headers text-comp "" ";"))
 
 (defn uncomment-out [text-comp]
-  (shave-selected-lines text-comp ";"))
+  (replace-in-selected-row-headers text-comp ";" ""))
 
 (defn indent [text-comp]
-  (prepend-selected-line text-comp "  "))
+  (replace-in-selected-row-headers text-comp "" "  "))
 
 (defn unindent [text-comp]
-  (shave-selected-lines text-comp "  "))
+  (replace-in-selected-row-headers text-comp "  " ""))
                      
 
 ;; actions
