@@ -13,6 +13,8 @@
 
 ;; projects tree
 
+(declare restart-doc)
+
 (def project-map (atom nil))
 
 (defn save-project-map []

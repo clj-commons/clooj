@@ -41,6 +41,8 @@
 
 
 (def gap 5)
+
+(def docs (atom {}))
   
 (def mono-font
   (Font. "Monaco" Font/PLAIN 11))
@@ -48,6 +50,8 @@
 (defn make-text-area []
   (doto (JTextArea.)
     (.setFont mono-font)))  
+      
+  
 
 ;; caret finding
 
