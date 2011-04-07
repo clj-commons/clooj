@@ -58,10 +58,10 @@
     (when paths
       (expand-paths tree paths))))
 
-(defn save-tree-selection [tree]
+(defn save-tree-selection [tree path]
   (write-value-to-prefs
     clooj-prefs "tree-selection"
-    (tree-path-to-file (.getSelectionPath tree))))
+    (tree-path-to-file path)))
   
 (defn load-tree-selection [tree]
   (let [path (read-value-from-prefs clooj-prefs "tree-selection")]

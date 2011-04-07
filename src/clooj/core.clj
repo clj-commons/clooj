@@ -6,7 +6,7 @@
   (:import (javax.swing AbstractListModel BorderFactory
                         JFrame JLabel JList JMenuBar
                         JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree SpringLayout
+                        JTextField JTree SpringLayout SwingUtilities
                         UIManager)
            (javax.swing.event TreeSelectionListener
                               TreeExpansionListener)
@@ -82,28 +82,27 @@
 
 ;; temp files
 
-(def temp-files (atom {}))
-
-(defn dump-temp-doc [doc]
+(defn dump-temp-doc [doc orig-f txt]
   (try 
-    (when-let [orig-f @(doc :file)]
-      (println "dumping..." orig-f)
+    (when orig-f
+   ;   (println "dumping..." orig-f)
       (let [orig (.getAbsolutePath orig-f)
             f (.getAbsolutePath (get-temp-file orig-f))]
-         (spit f (.getText (doc :doc-text-area)))
-         (swap! temp-files assoc orig f)
-         (.updateUI (doc :docs-tree))
-         (println "tree updated")))
-    (catch Exception e (println e))))
+         (spit f txt)
+         (SwingUtilities/invokeLater #(.updateUI (doc :docs-tree)))))
+    (catch Exception e (println e orig-f))))
 
 (def temp-file-manager (agent 0))
 
 (defn update-temp [doc]
-  (send-off temp-file-manager
-    #(let [now (System/currentTimeMillis)]
-       (if (> (- now %) 10000)
-         (do (dump-temp-doc doc) now)
-         %))))
+  (let [txt (.getText (doc :doc-text-area))
+        f @(doc :file)]
+   ; (println "update-temp")
+    (send-off temp-file-manager
+      #(let [now (System/currentTimeMillis)]
+         (if (> (- now %) 10000)
+           (do (dump-temp-doc doc f txt) now)
+           %)))))
 
 (defn setup-temp-writer [doc]
   (add-text-change-listener (:doc-text-area doc) #(update-temp doc)))
@@ -125,11 +124,12 @@
       (.addTreeSelectionListener
         (reify TreeSelectionListener
           (valueChanged [this e]
-            (save-tree-selection tree)
+           ; (println e)
+            (save-tree-selection tree (.getNewLeadSelectionPath e))
             (let [f (.. e getPath getLastPathComponent
                           getUserObject)]
               (when (.. f getName (endsWith ".clj"))
-                (restart-doc doc f)))))))))
+                (SwingUtilities/invokeLater #(restart-doc doc f))))))))))
 
 ;; build gui
 
@@ -302,11 +302,14 @@
 
 ;; clooj docs
 
-(defn restart-doc [doc ^File file]
+(defn restart-doc [doc ^File file] 
   (send-off temp-file-manager
-            (fn [_] (when (and @(:file doc) (.exists (get-temp-file @(:file doc))))
-                      (dump-temp-doc doc))
-              0))
+    (let [f @(:file doc)
+          txt (.getText (:doc-text-area doc))]        
+      (fn [_] (when (and f (.exists (get-temp-file f)))
+             ;   (println "about to dump: "f)
+                (dump-temp-doc doc f txt))
+              0)))
   (let [frame (doc :frame)]
     (let [text-area (doc :doc-text-area)
           temp-file (get-temp-file file)
@@ -339,6 +342,7 @@
     (let [f @(doc :file)
           ft (File. (str (.getAbsolutePath f) "~"))]
       (.write (doc :doc-text-area) (FileWriter. f))
+      (send-off temp-file-manager (fn [_] 0))
       (.delete ft)
       (.updateUI (doc :docs-tree)))))
 
