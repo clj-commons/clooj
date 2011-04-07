@@ -49,8 +49,7 @@
                                (.printStackTrace e *out*)
                                (prn (clojure.main/repl-exception e)))
                              (flush))
-                   :prompt (fn [] (if @first-prompt (reset! first-prompt false) (println))
-                                  (clojure.main/repl-prompt))
+                   :prompt (fn [] (printf "\n") (clojure.main/repl-prompt))
                    :need-prompt (constantly true))
                  (catch clojure.lang.LispReader$ReaderException ex
                    (prn (.getCause ex))
@@ -105,9 +104,10 @@
           (when (= Integer (type t))
             (.append buf (char t)))))
       (flush [] (when ta-out
-                  (.append ta-out (.toString buf))
-                  (scroll-to-last ta-out)
-                  (.setLength buf 0)))
+                  (SwingUtilities/invokeLater
+                    #(do (.append ta-out (.toString buf))
+                         (scroll-to-last ta-out)
+                         (.setLength buf 0)))))
       (close [] nil))))
 
 (defn update-repl-in [doc]
