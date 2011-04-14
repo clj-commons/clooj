@@ -47,7 +47,7 @@
 (def mono-font
   (if (is-mac)
     (Font. "Monaco" Font/PLAIN 11)
-    (Font. "Courier" Font/PLAIN 12)))
+    (Font. "Courier New" Font/PLAIN 12)))
 
 (defn make-text-area []
   (doto (JTextArea.)
