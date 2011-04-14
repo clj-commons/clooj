@@ -25,6 +25,11 @@
     (.startsWith (.getMessage throwable) "java.lang.Exception: EOF while reading")
     (.startsWith (.getMessage throwable) "java.io.IOException: Write end dead"))))
 
+(defn repl-print [x]
+  (if (var? x)
+    (print x)
+    (pprint x)))
+
 (defn create-clojure-repl [result-writer]
   "This function creates an instance of clojure repl, with output going to output-writer
   Returns an input writer."
@@ -39,7 +44,7 @@
                (try
                  (clojure.main/repl
                    :init (fn [] (in-ns 'user))
-                   :print (fn [& args] (doall (map pprint args)))
+                   :print (fn [& args] (doall (map repl-print args)))
                    :read (fn [prompt exit]
                            (read))
                    :caught (fn [e]
