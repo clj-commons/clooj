@@ -85,7 +85,7 @@
 (defn path-to-namespace [file-path]
   (let [drop-suffix #(clojure.contrib.string/butlast 4 %)]
     (-> file-path
-        (.split (str "src" File/separator))
+        (.split (str "src" (.replace File/separator "\\" "\\\\")))
         second
         drop-suffix
         (.replace File/separator "."))))

@@ -45,7 +45,9 @@
 (def docs (atom {}))
   
 (def mono-font
-  (Font. "Monaco" Font/PLAIN 11))
+  (if (is-mac)
+    (Font. "Monaco" Font/PLAIN 11)
+    (Font. "Courier" Font/PLAIN 12)))
 
 (defn make-text-area []
   (doto (JTextArea.)
@@ -364,22 +366,22 @@
   (let [menu-bar (JMenuBar.)]
     (. (doc :frame) setJMenuBar menu-bar)
     (add-menu menu-bar "File"
-      ["New" "meta N" #(new-file doc)]
-      ["Open" "meta O" #(open-file doc)]
-      ["Open project..." "meta shift O" #(open-project doc)]
-      ["Save" "meta S" #(save-file doc)]
-      ["Save as..." "meta R" #(save-file-as doc)])
+      ["New" "cmd N" #(new-file doc)]
+      ["Open" "cmd O" #(open-file doc)]
+      ["Open project..." "cmd shift O" #(open-project doc)]
+      ["Save" "cmd S" #(save-file doc)]
+      ["Save as..." "cmd R" #(save-file-as doc)])
     (add-menu menu-bar "Source"
-      ["Comment-out" "meta SEMICOLON" #(comment-out (:doc-text-area doc))]
-      ["Uncomment-out" "meta shift SEMICOLON" #(uncomment-out (:doc-text-area doc))])
+      ["Comment-out" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
+      ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
-      ["Evaluate nearest root form" "meta ENTER" #(send-selected-to-repl doc)]
-      ["Apply file ns" "meta L" #(apply-namespace-to-repl doc)]
-      ["Clear output" "meta K" #(.setText (doc :repl-out-text-area) "")])
+      ["Evaluate nearest root form" "cmd ENTER" #(send-selected-to-repl doc)]
+      ["Apply file ns" "cmd L" #(apply-namespace-to-repl doc)]
+      ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")])
     (add-menu menu-bar "Search"
-      ["Find" "meta F" #(start-find doc)]
-      ["Find next" "meta G" #(highlight-step doc false)]
-      ["Find prev" "meta shift G" #(highlight-step doc true)]
+      ["Find" "cmd F" #(start-find doc)]
+      ["Find next" "cmd G" #(highlight-step doc false)]
+      ["Find prev" "cmd shift G" #(highlight-step doc true)]
       )))
 
 ;; startup

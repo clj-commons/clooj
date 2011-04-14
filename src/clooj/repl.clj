@@ -155,9 +155,9 @@
     (attach-child-action-keys ta-in ["UP" at-top prev-hist]
                                     ["DOWN" at-bottom next-hist]
                                     ["ENTER" ready submit])
-    (attach-action-keys ta-in ["meta UP" prev-hist]
-                              ["meta DOWN" next-hist]
-                              ["meta ENTER" submit])))
+    (attach-action-keys ta-in ["cmd UP" prev-hist]
+                              ["cmd DOWN" next-hist]
+                              ["cmd ENTER" submit])))
 
 (defn apply-namespace-to-repl [doc]
   (try

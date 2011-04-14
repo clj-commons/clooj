@@ -73,14 +73,14 @@
 (defn get-os []
   (.. System (getProperty "os.name") toLowerCase))
 
-(defn is-win []
-  (memoize (not (neg? (.indexOf (get-os) "win")))))
+(def is-win
+  (memoize #(not (neg? (.indexOf (get-os) "win")))))
 
-(defn is-mac []
-  (memoize (not (neg? (.indexOf (get-os) "mac")))))
+(def is-mac
+  (memoize #(not (neg? (.indexOf (get-os) "mac")))))
 
-(defn is-unix []
-  (memoize (not (and (neg? (.indexOf (get-os) "nix"))
+(def is-unix
+  (memoize #(not (and (neg? (.indexOf (get-os) "nix"))
                      (neg? (.indexOf (get-os) "nux"))))))
 
 ;; utils
@@ -151,6 +151,13 @@
   (replace-in-selected-row-headers text-comp "  " ""))
                      
 
+;; keys
+
+(defn get-keystroke [key-shortcut]
+  (KeyStroke/getKeyStroke
+    (.replace key-shortcut "cmd"
+      (if (is-mac) "meta" "ctrl"))))
+
 ;; actions
 
 (defn attach-child-action-key
@@ -161,7 +168,7 @@
   [component input-key pred action-fn]
   (let [im (.getInputMap component)
         am (.getActionMap component)
-        input-event (KeyStroke/getKeyStroke input-key)
+        input-event (get-keystroke input-key)
         parent-action (if-let [tag (.get im input-event)]
                         (.get am tag))
         child-action
@@ -194,7 +201,7 @@
 (defn add-menu-item [menu item-name key-shortcut response-fn]
   (.add menu
     (doto (JMenuItem. item-name)
-      (.setAccelerator (KeyStroke/getKeyStroke key-shortcut))
+      (.setAccelerator (get-keystroke key-shortcut))
       (.addActionListener
         (reify ActionListener
           (actionPerformed [this action-event]
