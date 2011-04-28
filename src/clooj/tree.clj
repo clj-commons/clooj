@@ -98,8 +98,8 @@
 (defn file-node [text file-path] 
   (proxy [File] [file-path]
     (toString []
-      (str text
-           (if (.exists (get-temp-file this)) "*" "")))))
+      (let [mark (if (.exists (get-temp-file this)) "*" "")]
+        (str mark text mark)))))
 
 (defn add-node [parent node-str file-path]
   (let [node  (DefaultMutableTreeNode.
