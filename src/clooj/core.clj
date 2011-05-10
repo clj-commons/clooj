@@ -370,12 +370,13 @@
       ["Open" "cmd O" #(open-file doc)]
       ["Open project..." "cmd shift O" #(open-project doc)]
       ["Save" "cmd S" #(save-file doc)]
-      ["Save as..." "cmd R" #(save-file-as doc)])
+      ["Save as..." "cmd shift S" #(save-file-as doc)])
     (add-menu menu-bar "Source"
       ["Comment-out" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
       ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
       ["Evaluate nearest root form" "cmd ENTER" #(send-selected-to-repl doc)]
+      ["Evaluate entire file" "cmd R" #(send-doc-to-repl doc)]
       ["Apply file ns" "cmd L" #(apply-namespace-to-repl doc)]
       ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")])
     (add-menu menu-bar "Search"

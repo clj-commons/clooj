@@ -99,6 +99,9 @@
                     (getText a (- b a))))))]
       (when txt (send-to-repl doc txt))))
 
+(defn send-doc-to-repl [doc]
+  (->> doc :doc-text-area .getText (send-to-repl doc)))
+
 (defn make-repl-writer [ta-out]
   (let [buf (StringBuffer.)]
     (proxy [Writer] []
