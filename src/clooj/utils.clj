@@ -11,12 +11,25 @@
                     File FilenameFilter
                     ObjectInputStream ObjectOutputStream)
            (javax.swing AbstractAction JFileChooser JMenu JMenuBar 
-                        JMenuItem KeyStroke SwingUtilities)
+                        JMenuItem KeyStroke SpringLayout SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.undo UndoManager))
   (:require [clojure.contrib.string :as string]
             [clooj.brackets :only (find-bad-brackets find-enclosing-brackets)]))
 
+
+;; utils
+
+(defmacro do-when [f & args]
+  (let [args_ args]
+    `(when (and ~@args_)
+      (~f ~@args_))))
+
+(defn count-while [pred coll]
+  (count (take-while pred coll)))
+
+(defn remove-nth [s n]
+  (lazy-cat (take n s) (drop (inc n) s)))
 
 ;; preferences
   
@@ -83,15 +96,30 @@
   (memoize #(not (and (neg? (.indexOf (get-os) "nix"))
                      (neg? (.indexOf (get-os) "nux"))))))
 
-;; utils
 
-(defmacro do-when [f & args]
-  (let [args_ args]
-    `(when (and ~@args_)
-      (~f ~@args_))))
+;; swing layout
 
-(defn count-while [pred coll]
-  (count (take-while pred coll)))
+(defn put-constraint [comp1 edge1 comp2 edge2 dist]
+  (let [edges {:n SpringLayout/NORTH
+               :w SpringLayout/WEST
+               :s SpringLayout/SOUTH
+               :e SpringLayout/EAST}]
+  (.. comp1 getParent getLayout
+            (putConstraint (edges edge1) comp1 
+                           dist (edges edge2) comp2))))
+
+(defn put-constraints [comp & args]
+  (let [args (partition 3 args)
+        edges [:n :w :s :e]]
+    (dorun (map #(apply put-constraint comp %1 %2) edges args))))
+
+(defn constrain-to-parent
+  "Distance from edges of parent comp args"
+  [comp & args]
+  (apply put-constraints comp
+         (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
+
+;; text components
 
 (defn get-coords [text-comp offset]
   (let [row (.getLineOfOffset text-comp offset)
@@ -223,8 +251,8 @@
         (reify UndoableEditListener
           (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))
     (attach-action-keys text-area
-      ["meta Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
-      ["meta shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
+      ["cmd Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
+      ["cmd shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
 
 
 ;; file handling

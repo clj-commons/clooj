@@ -247,6 +247,7 @@
   (let [doc-text-area (make-text-area)
         doc-text-panel (JPanel.)
         repl-out-text-area (make-text-area)
+        repl-out-writer (make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area)
         search-text-area (JTextField.)
         pos-label (JLabel.)
@@ -268,8 +269,8 @@
              :docs-tree docs-tree
              :search-text-area search-text-area
              :pos-label pos-label :file (atom nil)
-             :repl-writer (create-clojure-repl
-                            (make-repl-writer repl-out-text-area))
+             :repl-out-writer repl-out-writer
+             :repl (atom (create-clojure-repl repl-out-writer))
              :doc-split-pane doc-split-pane
              :repl-split-pane repl-split-pane
              :split-pane split-pane
@@ -376,9 +377,10 @@
       ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
       ["Evaluate nearest root form" "cmd ENTER" #(send-selected-to-repl doc)]
-      ["Evaluate entire file" "cmd R" #(send-doc-to-repl doc)]
+      ["Evaluate entire file" "cmd E" #(send-doc-to-repl doc)]
       ["Apply file ns" "cmd L" #(apply-namespace-to-repl doc)]
-      ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")])
+      ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")]
+      ["Restart" "cmd R" #(restart-repl doc)])
     (add-menu menu-bar "Search"
       ["Find" "cmd F" #(start-find doc)]
       ["Find next" "cmd G" #(highlight-step doc false)]

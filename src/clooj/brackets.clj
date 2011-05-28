@@ -78,8 +78,10 @@
           (next (take-while #(< 0 %)
             (iterate #(find-left-enclosing-bracket text %) pos)))]
     (let [lb (last left-brackets) lr (last right-brackets)]
-    (when (and lb lr (= (count left-brackets) (count right-brackets)))
-      [lb lr]))))
+      (println "lb lr:" lb lr)
+      (println "counts: " left-brackets right-brackets)
+      (when (and lb lr (= (count left-brackets) (count right-brackets)))
+        [lb lr]))))
 
 (defn find-nearby-root-form [text-comp]
   (let [pos (.getCaretPosition text-comp)

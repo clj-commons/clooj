@@ -46,7 +46,10 @@
                    :init (fn [] (in-ns 'user))
                    :print (fn [& args] (doall (map repl-print args)))
                    :read (fn [prompt exit]
-                           (read))
+                           (let [form (read)]
+                             (if (= form 'EXIT-REPL)
+                               exit
+                               form)))
                    :caught (fn [e]
                              (when (is-eof-ex? e)
                                (throw e))
@@ -60,9 +63,10 @@
                    (prn (.getCause ex))
                    (prn "REPL closing"))
                  (catch java.lang.InterruptedException ex)
-                 (catch java.nio.channels.ClosedByInterruptException ex)))]
-    (.start (Thread. repl-thread-fn))
-    input-writer))
+                 (catch java.nio.channels.ClosedByInterruptException ex)))
+        thread (Thread. repl-thread-fn)]
+    (.start thread)
+    {:thread thread :input-writer input-writer}))
 
 (defn replace-first [coll x]
   (cons x (next coll)))
@@ -76,8 +80,8 @@
     #(let [cmd-ln (str (.trim cmd) \newline)
            cmd (.trim cmd-ln)]
       (.append (doc :repl-out-text-area) cmd-ln)
-      (.write (doc :repl-writer) cmd-ln)
-      (.flush (doc :repl-writer))
+      (.write (:input-writer @(doc :repl)) cmd-ln)
+      (.flush (:input-writer @(doc :repl)))
       (when (not= cmd (second @(:items repl-history)))
         (swap! (:items repl-history)
                replace-first cmd)
@@ -134,6 +138,13 @@
   (swap! (:pos repl-history)
          #(Math/max 0 (dec %)))
   (update-repl-in doc))
+
+(defn restart-repl [doc]
+  (.append (doc :repl-out-text-area) "\n======= RESTARTING REPL ====================\n")
+    (let [input (-> doc :repl deref :input-writer)]
+    (.write input "'EXIT-REPL")
+    (.flush input))
+  (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer))))
 
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)
