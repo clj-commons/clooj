@@ -305,6 +305,9 @@
 
 ;; clooj docs
 
+(defn get-project [^File file]
+  (
+
 (defn restart-doc [doc ^File file] 
   (send-off temp-file-manager
     (let [f @(:file doc)
@@ -358,8 +361,9 @@
      (.setTitle frame (.getPath file)))))
 
 (defn open-project [doc]
-  (let [dir (choose-directory (doc :f) "Choose a project directory")]
-    (add-project-to-tree doc (.getAbsolutePath dir)))
+  (let [dir (choose-directory (doc :f) "Choose a project directory")
+        project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
+    (add-project-to-tree doc (.getAbsolutePath project-dir)))
   (save-project-map))
 
 (defn make-menus [doc]
