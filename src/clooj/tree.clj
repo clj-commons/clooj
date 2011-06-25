@@ -90,7 +90,6 @@
         drop-suffix
         (.replace File/separator "."))))
 
-
 (defn get-temp-file [^File orig]
   (when orig
     (File. (str (.getAbsolutePath orig) "~"))))
@@ -127,4 +126,26 @@
     (.. model reload))
   (swap! project-map assoc project-root nil))
 
+(defn get-project-node [tree node]
+  (let [parent-node (.getParent node)]
+    (if (= parent-node
+           (.getLastPathComponent (get-root-path tree)))
+      node
+      (get-project-node tree (.getParent node)))))
+
+(defn remove-project [tree node]
+  (.removeNodeFromParent (.getModel tree) node)
+  (swap! project-map dissoc (.. node getUserObject getAbsolutePath))
+  (save-project-map))
+
+(defn remove-selected-project [doc]
+  (println "remove selected proejct")
+  (let [tree (doc :docs-tree)
+        selections (.getSelectionPaths tree)]
+    (doseq [selection selections]
+      (->> selection .getLastPathComponent
+                     (get-project-node tree)
+                     (remove-project tree)))))
+      
+      
 

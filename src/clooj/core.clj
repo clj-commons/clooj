@@ -26,7 +26,8 @@
         [clooj.tree :only (add-project-to-tree load-tree-selection
                            load-expanded-paths load-project-map
                            save-expanded-paths save-project-map
-                           save-tree-selection get-temp-file)]
+                           save-tree-selection get-temp-file
+                           remove-selected-project)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
@@ -305,9 +306,6 @@
 
 ;; clooj docs
 
-(defn get-project [^File file]
-  (
-
 (defn restart-doc [doc ^File file] 
   (send-off temp-file-manager
     (let [f @(:file doc)
@@ -374,6 +372,7 @@
       ["New" "cmd N" #(new-file doc)]
       ["Open" "cmd O" #(open-file doc)]
       ["Open project..." "cmd shift O" #(open-project doc)]
+      ["Remove project" nil #(remove-selected-project doc)]
       ["Save" "cmd S" #(save-file doc)]
       ["Save as..." "cmd shift S" #(save-file-as doc)])
     (add-menu menu-bar "Source"

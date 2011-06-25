@@ -227,13 +227,14 @@
 ;; menus
 
 (defn add-menu-item [menu item-name key-shortcut response-fn]
-  (.add menu
-    (doto (JMenuItem. item-name)
-      (.setAccelerator (get-keystroke key-shortcut))
-      (.addActionListener
-        (reify ActionListener
-          (actionPerformed [this action-event]
-            (do (response-fn))))))))
+  (let [menu-item (JMenuItem. item-name)]  
+    (when key-shortcut
+      (.setAccelerator menu-item (get-keystroke key-shortcut)))
+    (.addActionListener menu-item
+      (reify ActionListener
+        (actionPerformed [this action-event]
+          (response-fn))))
+    (.add menu menu-item)))
 
 (defn add-menu [^JMenuBar menu-bar title & item-triples]
   "Each item-triple is a vector containing a
