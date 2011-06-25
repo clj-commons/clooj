@@ -17,7 +17,7 @@
 
 (defn highlight
   ([text-comp start stop color]
-    (when (and (<= 0 start) (< stop (.. text-comp getDocument getLength)))
+    (when (and (<= 0 start) (<= stop (.. text-comp getDocument getLength)))
       (.addHighlight (.getHighlighter text-comp)
                      start stop
                      (DefaultHighlighter$DefaultHighlightPainter. color))))

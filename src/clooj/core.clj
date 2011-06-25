@@ -379,7 +379,7 @@
       ["Comment-out" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
       ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
-      ["Evaluate nearest root form" "cmd ENTER" #(send-selected-to-repl doc)]
+      ["Evaluate nearby lines" "cmd ENTER" #(send-selected-to-repl doc)]
       ["Evaluate entire file" "cmd E" #(send-doc-to-repl doc)]
       ["Apply file ns" "cmd L" #(apply-namespace-to-repl doc)]
       ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")]

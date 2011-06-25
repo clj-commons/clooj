@@ -8,7 +8,7 @@
            (java.awt Rectangle)
            (javax.swing SwingUtilities))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys)]
-        [clooj.brackets :only (find-nearby-root-form find-left-enclosing-bracket)]
+        [clooj.brackets :only (find-line-group find-left-enclosing-bracket)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]))
 
@@ -97,8 +97,8 @@
   (let [ta (doc :doc-text-area)
         txt (or
               (.getSelectedText ta)
-              (let [[a b] (find-nearby-root-form ta)]
-                (when (and a b)
+              (let [[a b] (find-line-group ta)]
+                (when (and a b (< a b))
                   (.. ta getDocument
                     (getText a (- b a))))))]
       (when txt (send-to-repl doc txt))))

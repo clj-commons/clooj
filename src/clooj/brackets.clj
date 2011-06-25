@@ -68,22 +68,26 @@
           (filter identity
                   (map second (concat new-stack errs)))))))
 
-(defn find-enclosing-root-form [text-comp pos]
-  (let [l (.. text-comp getDocument getLength)
-        text (.getText text-comp)
-        right-brackets
-          (next (take-while #(> l %) 
-            (iterate #(inc (find-right-enclosing-bracket text %)) pos)))
-        left-brackets
-          (next (take-while #(< 0 %)
-            (iterate #(find-left-enclosing-bracket text %) pos)))]
-    (let [lb (last left-brackets) lr (last right-brackets)]
-      (println "lb lr:" lb lr)
-      (println "counts: " left-brackets right-brackets)
-      (when (and lb lr (= (count left-brackets) (count right-brackets)))
-        [lb lr]))))
+(defn blank-line-matcher [s]
+  (re-matcher #"[\n\r]\s*?[\n\r]" s))
 
-(defn find-nearby-root-form [text-comp]
-  (let [pos (.getCaretPosition text-comp)
-        f #(find-enclosing-root-form text-comp %)]
-    (or (f pos) (f (dec pos)) (f (inc pos)))))
+(defn find-left-gap [text pos]
+  (let [p (min (.length text) (inc pos))
+        before-reverse (string/reverse (string/take p text))
+        matcher (blank-line-matcher before-reverse)]
+    (if (.find matcher)
+      (- p (.start matcher))
+      0)))
+
+(defn find-right-gap [text pos]
+  (let [p (max 0 (dec pos))
+        after (string/drop p text)
+        matcher (blank-line-matcher after) ]
+    (if (.find matcher)
+      (+ p (.start matcher))
+      (.length text))))
+
+(defn find-line-group [text-comp]
+  (let [text (.getText text-comp)
+        pos (.getCaretPosition text-comp)]
+    [(find-left-gap text pos) (find-right-gap text pos)]))
