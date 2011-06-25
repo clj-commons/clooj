@@ -365,7 +365,8 @@
   (save-project-map))
 
 (defn make-menus [doc]
-  (System/setProperty "apple.laf.useScreenMenuBar" "true")
+  (when (is-mac)
+    (System/setProperty "apple.laf.useScreenMenuBar" "true"))
   (let [menu-bar (JMenuBar.)]
     (. (doc :frame) setJMenuBar menu-bar)
     (add-menu menu-bar "File"
