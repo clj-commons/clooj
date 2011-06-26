@@ -17,11 +17,11 @@
 
 (defn process-bracket-stack
   "Receiving a bracket stack s, deal with the next character c
-   at position pos."
-  [s c pos]
+   and datum dat."
+  [s c dat]
   (let [l (ffirst s)        ;last char
         p (next s)          ;pop stack
-        j (conj s [c pos])] ;conj [char pos] to stack
+        j (conj s [c dat])] ;conj [char dat] to stack
     (condp = l
       \\ p
       \" (condp = c, \" p, \\ j, s)
