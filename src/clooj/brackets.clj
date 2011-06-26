@@ -10,61 +10,53 @@
 
 ;; bracket handling
 
-(defn bracket-score [c]
-  (condp = c 
-         \(  1 \[  1 \{  1
-         \) -1 \] -1 \} -1
-         0))
-
-(defn bracket-increment [score next-char]
-  (+ score (bracket-score next-char)))
-
-(defn count-brackets [s]
-  (reductions bracket-increment 0 s))
-
-(defn find-left-enclosing-bracket [text pos]
-  (let [before (string/take pos text)]
-    (- pos (count-while
-             (partial >= 0)
-             (count-brackets (string/reverse before))))))
-
-(defn find-right-enclosing-bracket [text pos]
-  (let [after (string/drop pos text)]
-    (+ -1 pos (count-while
-                (partial <= 0)
-                (count-brackets after)))))
-
-(defn find-enclosing-brackets [text pos]
-  [(find-left-enclosing-bracket text pos)
-   (find-right-enclosing-bracket text pos)])
-
 (defn mismatched-brackets [a b]
   (and (or (nil? a) (some #{a} [\( \[ \{]))
        (some #{b} [\) \] \}])
        (not (some #{[a b]} [[\( \)] [\[ \]] [\{ \}]]))))
 
+(defn process-bracket-stack
+  "Receiving a bracket stack s, deal with the next character c
+   at position pos."
+  [s c pos]
+  (let [l (ffirst s)        ;last char
+        p (next s)          ;pop stack
+        j (conj s [c pos])] ;conj [char pos] to stack
+    (condp = l
+      \\ p
+      \" (condp = c, \" p, \\ j, s)
+      \; (if (= c \newline) p s)
+      (condp = c
+        \" j \\ j \; j
+        \( j \[ j \{ j
+        \) p \] p \} p
+        s))))
+
+(defn find-right-enclosing-bracket [text pos]
+  (let [after (string/drop pos text)]
+    (+ -1 pos (count-while identity
+                (reductions #(process-bracket-stack %1 %2 nil) '([]) after)))))
+
+(defn find-left-enclosing-bracket [text pos]
+  (let [before (string/take pos text)
+        scores (map count
+                 (reverse
+                   (reductions #(process-bracket-stack %1 %2 nil) nil before)))]
+    (- pos (count-while #(<= (first scores) %) scores))))
+
+(defn find-enclosing-brackets [text pos]
+  [(find-left-enclosing-bracket text pos)
+   (find-right-enclosing-bracket text pos)])
+
 (defn find-bad-brackets [text]
-  (loop [t text cnt 0 stack nil errs nil]
-    (let [s stack
-          c (first t)        ;this char
-          l (ffirst s)       ;last char
-          p (next s)         ;pop stack
-          j (conj s [c cnt]) ;conj [char pos] to stack
-          new-stack
-            (condp = l
-              \\ p
-              \" (condp = c, \" p, \\ j, s)
-              \; (if (= c \newline) p s)
-              (condp = c
-                \" j \\ j \; j
-                \( j \[ j \{ j
-                \) p \] p \} p
-                s))
-          e (if (mismatched-brackets l c)
-              (list (first s) [c cnt]))
+  (loop [t text pos 0 stack nil errs nil]
+    (let [c (first t)        ;this char
+          new-stack (process-bracket-stack stack c pos)
+          e (if (mismatched-brackets (ffirst stack) c)
+              (list (first stack) [c pos]))
           new-errs (if e (concat errs e) errs)]
         (if (next t)
-          (recur (next t) (inc cnt) new-stack new-errs)
+          (recur (next t) (inc pos) new-stack new-errs)
           (filter identity
                   (map second (concat new-stack errs)))))))
 
