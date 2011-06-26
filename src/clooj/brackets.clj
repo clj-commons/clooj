@@ -46,14 +46,14 @@
 (defn find-bad-brackets [text]
   (loop [t text cnt 0 stack nil errs nil]
     (let [s stack
-          c (first t)
-          l (ffirst s)
-          p (next s)
-          j (conj s [c cnt])
+          c (first t)        ;this char
+          l (ffirst s)       ;last char
+          p (next s)         ;pop stack
+          j (conj s [c cnt]) ;conj [char pos] to stack
           new-stack
             (condp = l
               \\ p
-              \" (if (= c \") p s)
+              \" (condp = c, \" p, \\ j, s)
               \; (if (= c \newline) p s)
               (condp = c
                 \" j \\ j \; j
