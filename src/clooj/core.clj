@@ -78,7 +78,7 @@
 (defn close-bracket [text-area] ;; doesn't work yet
   (let [text (.getText text-area)
         right-pos (.getCaretPosition text-area)
-        left-pos (find-left-enclosing-bracket text right-pos)
+        left-pos (first (find-enclosing-brackets text right-pos))
         left-char (.charAt text left-pos)]
     (if-let [right-char (get {\( \), \{ \}, \[ \]} left-char)]
       (.insert text-area (str right-char) right-pos))))
@@ -180,8 +180,8 @@
     (.setRowHeaderView sp jl)))
 
 (defn auto-indent-str [text-comp offset]
-  (let [bracket-pos (find-left-enclosing-bracket
-                      (.getText text-comp) offset)]
+  (let [bracket-pos (first (find-enclosing-brackets
+                             (.getText text-comp) offset))]
     (if (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))

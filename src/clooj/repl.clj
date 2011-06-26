@@ -8,7 +8,7 @@
            (java.awt Rectangle)
            (javax.swing SwingUtilities))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys)]
-        [clooj.brackets :only (find-line-group find-left-enclosing-bracket)]
+        [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]))
 
@@ -156,9 +156,9 @@
                    (pos? (.length trim-txt))
                    (<= (.length trim-txt)
                                 caret-pos)
-                   (= -1 (find-left-enclosing-bracket
-                           txt
-                           caret-pos))))
+                   (= -1 (first (find-enclosing-brackets
+                                  txt
+                                  caret-pos)))))
         submit #(do (send-to-repl doc (.getText ta-in))
                     (.setText ta-in ""))
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
