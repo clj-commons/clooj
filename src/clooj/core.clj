@@ -318,6 +318,7 @@
     (let [text-area (doc :doc-text-area)
           temp-file (get-temp-file file)
           file-to-open (if (.exists temp-file) temp-file file)]
+      (.. text-area getHighlighter removeAllHighlights)
       (if file-to-open
         (do (.read text-area (FileReader. file-to-open) nil)
             (.setTitle frame (str "clooj  \u2014  " (.getPath file))))
@@ -328,7 +329,8 @@
       (activate-error-highlighter text-area)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
-      (apply-namespace-to-repl doc))))
+      (apply-namespace-to-repl doc)
+      (highlight-bad-brackets text-area))))
 
 (defn open-file [doc]
   (let [frame (doc :frame)]
