@@ -32,21 +32,18 @@
         \) p \] p \} p
         s))))
 
-(defn find-right-enclosing-bracket [text pos]
-  (let [after (string/drop pos text)]
-    (+ -1 pos (count-while identity
-                (reductions #(process-bracket-stack %1 %2 nil) '([]) after)))))
-
-(defn find-left-enclosing-bracket [text pos]
-  (let [before (string/take pos text)
-        scores (map count
-                 (reverse
-                   (reductions #(process-bracket-stack %1 %2 nil) nil before)))]
-    (- pos (count-while #(<= (first scores) %) scores))))
-
 (defn find-enclosing-brackets [text pos]
-  [(find-left-enclosing-bracket text pos)
-   (find-right-enclosing-bracket text pos)])
+  (let [process #(process-bracket-stack %1 %2 nil)
+        reckon-dist (fn [stacks]
+                      (let [scores (map count stacks)]
+                        (count-while #(<= (first scores) %) scores)))
+        before (string/take pos text)
+        stacks-before (reverse (reductions process nil before))
+        left (- pos (reckon-dist stacks-before))
+        after (string/drop pos text)
+        stacks-after (reductions process (first stacks-before) after)
+        right (+ -1 pos (reckon-dist stacks-after))]
+    [left right]))
 
 (defn find-bad-brackets [text]
   (loop [t text pos 0 stack nil errs nil]
