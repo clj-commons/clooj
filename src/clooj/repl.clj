@@ -5,8 +5,7 @@
 
 (ns clooj.repl
   (:import (java.io PipedReader PipedWriter PrintWriter Writer)
-           (java.awt Rectangle)
-           (javax.swing SwingUtilities))
+           (java.awt Rectangle))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
@@ -117,10 +116,10 @@
           (when (= Integer (type t))
             (.append buf (char t)))))
       (flush [] (when ta-out
-                  (SwingUtilities/invokeLater
-                    #(do (.append ta-out (.toString buf))
-                         (scroll-to-last ta-out)
-                         (.setLength buf 0)))))
+                  (awt-event
+                    (do (.append ta-out (.toString buf))
+                        (scroll-to-last ta-out)
+                        (.setLength buf 0)))))
       (close [] nil))))
 
 (defn update-repl-in [doc]
