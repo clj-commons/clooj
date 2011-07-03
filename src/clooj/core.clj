@@ -97,14 +97,15 @@
 (def temp-file-manager (agent 0))
 
 (defn update-temp [doc]
-  (let [txt (.getText (doc :doc-text-area))
+  (let [text-comp (doc :doc-text-area)
+        txt (.getText text-comp)
         f @(doc :file)]
-   ; (println "update-temp")
     (send-off temp-file-manager
-      #(let [now (System/currentTimeMillis)]
-         (if (> (- now %) 10000)
-           (do (dump-temp-doc doc f txt) now)
-           %)))))
+      (fn [old-pos]
+        (let [pos (.getCaretPosition text-comp)]
+          (when-not (== old-pos pos)
+            (dump-temp-doc doc f txt))
+          pos)))))
 
 (defn setup-temp-writer [doc]
   (add-text-change-listener (:doc-text-area doc) #(update-temp doc)))
