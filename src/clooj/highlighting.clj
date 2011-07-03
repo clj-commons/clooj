@@ -45,8 +45,7 @@
     (fn [old-pos]
       (let [pos (.getCaretPosition text-comp)]
         (when-not (= pos old-pos)
-          (let [x (Thread/sleep 250)
-                brackets (find-enclosing-brackets (.getText text-comp) pos)]
+          (let [brackets (find-enclosing-brackets (.getText text-comp) pos)]
             (awt-event
               (remove-highlights text-comp (get @caret-highlights text-comp))
               (swap! caret-highlights assoc text-comp
