@@ -33,6 +33,7 @@
         s))))
 
 (defn find-enclosing-brackets [text pos]
+ ; (Thread/sleep 250)
   (let [process #(process-bracket-stack %1 %2 nil)
         reckon-dist (fn [stacks]
                       (let [scores (map count stacks)]

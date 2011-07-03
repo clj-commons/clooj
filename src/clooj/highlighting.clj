@@ -8,6 +8,7 @@
            (java.awt Color)
            (javax.swing.event CaretListener))
   (:use [clooj.core :only ()]
+        [clooj.utils :only (awt-event)]
         [clooj.brackets :only (find-bad-brackets find-enclosing-brackets)]))
 
 
@@ -26,26 +27,32 @@
 (defn remove-highlight
   ([text-comp highlight-object]
     (when highlight-object
-    (.removeHighlight (.getHighlighter text-comp)
+      (.removeHighlight (.getHighlighter text-comp)
                       highlight-object))))
 
 (defn remove-highlights
   ([text-comp highlights]
+    ;(println "remove-highlights:" highlights)
     (dorun (map #(remove-highlight text-comp %) highlights))))
 
-(defn highlight-enclosing-brackets [text-comp pos color]
-  (let [txt (.getText text-comp)]
-    (when txt
-      (doall (map #(highlight text-comp % color)
-               (find-enclosing-brackets txt pos))))))
+(def caret-agent (agent nil))
+
+(defn get-caret-data [text-comp]
+   [(.getText text-comp) (.getCaretPosition text-comp)])
 
 (defn highlight-caret-enclosure [text-comp]
-  (when-let [ch (get @caret-highlights text-comp)]
-    (doall (map #(remove-highlight text-comp %) ch)))
-  (swap! caret-highlights assoc text-comp
-         (highlight-enclosing-brackets
-           text-comp (.getCaretPosition text-comp) Color/LIGHT_GRAY)))
+  (send-off caret-agent
+    (fn [old-pos]
+      (let [pos (.getCaretPosition text-comp)]
+        (when-not (= pos old-pos)
+          (let [x (Thread/sleep 250)
+                brackets (find-enclosing-brackets (.getText text-comp) pos)]
+            (awt-event
+              (remove-highlights text-comp (get @caret-highlights text-comp))
+              (swap! caret-highlights assoc text-comp
+              (doall (map #(highlight text-comp % Color/LIGHT_GRAY) brackets))))
+            pos))))))
 
 (defn highlight-bad-brackets [text-comp]
   (doall (map #(highlight text-comp % Color/PINK)
-    (find-bad-brackets (.getText    text-comp)))))
+    (find-bad-brackets (.getText text-comp)))))

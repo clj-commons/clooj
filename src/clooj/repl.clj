@@ -7,7 +7,8 @@
   (:import (java.io PipedReader PipedWriter PrintWriter Writer)
            (java.awt Rectangle)
            (javax.swing SwingUtilities))
-  (:use [clooj.utils :only (attach-child-action-keys attach-action-keys)]
+  (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
+                            awt-event)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]))
@@ -76,8 +77,8 @@
          (.getText (doc :repl-in-text-area))))
 
 (defn send-to-repl [doc cmd]
-  (SwingUtilities/invokeLater
-    #(let [cmd-ln (str (.trim cmd) \newline)
+  (awt-event
+    (let [cmd-ln (str (.trim cmd) \newline)
            cmd (.trim cmd-ln)]
       (.append (doc :repl-out-text-area) cmd-ln)
       (.write (:input-writer @(doc :repl)) cmd-ln)

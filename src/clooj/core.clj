@@ -6,7 +6,7 @@
   (:import (javax.swing AbstractListModel BorderFactory
                         JFrame JLabel JList JMenuBar
                         JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree SpringLayout SwingUtilities
+                        JTextField JTree SpringLayout
                         UIManager)
            (javax.swing.event TreeSelectionListener
                               TreeExpansionListener)
@@ -35,7 +35,7 @@
                             get-caret-coords add-menu make-undoable
                             choose-file choose-directory
                             comment-out uncomment-out
-                            indent unindent)])
+                            indent unindent awt-event)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class))
@@ -92,7 +92,7 @@
       (let [orig (.getAbsolutePath orig-f)
             f (.getAbsolutePath (get-temp-file orig-f))]
          (spit f txt)
-         (SwingUtilities/invokeLater #(.updateUI (doc :docs-tree)))))
+         (awt-event (.updateUI (doc :docs-tree)))))
     (catch Exception e (println e orig-f))))
 
 (def temp-file-manager (agent 0))
@@ -132,7 +132,7 @@
             (let [f (.. e getPath getLastPathComponent
                           getUserObject)]
               (when (.. f getName (endsWith ".clj"))
-                (SwingUtilities/invokeLater #(restart-doc doc f))))))))))
+                (awt-event (restart-doc doc f))))))))))
 
 ;; build gui
 

@@ -31,6 +31,9 @@
 (defn remove-nth [s n]
   (lazy-cat (take n s) (drop (inc n) s)))
 
+(defmacro awt-event [& body]
+  `(SwingUtilities/invokeLater (fn [] ~@body)))
+
 ;; preferences
   
 ;; define a UUID for clooj preferences
@@ -154,13 +157,13 @@
        (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
 
 (defn replace-in-selected-row-headers [text-comp txt-old txt-new]
-  (SwingUtilities/invokeLater
-    #(let [row1 (.getLineOfOffset text-comp (.getSelectionStart text-comp))
-           row2 (.getLineOfOffset text-comp (.getSelectionEnd text-comp))
-           start (dec (.getLineStartOffset text-comp row1))
-           end (dec (.getLineEndOffset text-comp row2))
-           s-old (.. text-comp getDocument (getText start (- end start)))
-           s-new (.replace s-old (str "\n" txt-old) (str "\n" txt-new))]
+  (awt-event
+    (let [row1 (.getLineOfOffset text-comp (.getSelectionStart text-comp))
+          row2 (.getLineOfOffset text-comp (.getSelectionEnd text-comp))
+          start (dec (.getLineStartOffset text-comp row1))
+          end (dec (.getLineEndOffset text-comp row2))
+          s-old (.. text-comp getDocument (getText start (- end start)))
+          s-new (.replace s-old (str "\n" txt-old) (str "\n" txt-new))]
       (.replaceRange text-comp s-new start end)
       (set-selection text-comp
         (.getLineStartOffset text-comp row1)
