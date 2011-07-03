@@ -70,8 +70,7 @@
 (defn activate-error-highlighter [text-comp]
   (add-text-change-listener
     text-comp 
-    #(do (.. text-comp getHighlighter removeAllHighlights)
-             (highlight-bad-brackets text-comp))))
+    #(highlight-caret-enclosure text-comp)))
 
 ;; paren closing (doesn't work)
 
@@ -330,7 +329,7 @@
       (reset! (doc :file) file)
       (setup-temp-writer doc)
       (apply-namespace-to-repl doc)
-      (highlight-bad-brackets text-area))))
+      (highlight-caret-enclosure text-area))))
 
 (defn open-file [doc]
   (let [frame (doc :frame)]
