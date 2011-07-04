@@ -13,10 +13,10 @@
 (defn highlight
   ([text-comp start stop color]
     (when (and (<= 0 start) (<= stop (.. text-comp getDocument getLength)))
-      (.addHighlight (.getHighlighter text-comp)
-                     start stop
-                     (DefaultHighlighter$DefaultHighlightPainter. color))))
-    ([text-comp pos color] (highlight text-comp pos (inc pos) color)))
+      (.. text-comp getHighlighter
+          (addHighlight start stop
+                        (DefaultHighlighter$DefaultHighlightPainter. color)))))
+  ([text-comp pos color] (highlight text-comp pos (inc pos) color)))
 
 (defn remove-highlight
   ([text-comp highlight-object]
