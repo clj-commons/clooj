@@ -2,7 +2,6 @@
 ; All rights reserved.
 ; arthuredelstein@gmail.com
 
-
 (ns clooj.repl
   (:import (java.io PipedReader PipedWriter PrintWriter Writer)
            (java.awt Rectangle))
@@ -15,7 +14,7 @@
 (def repl-history {:items (atom nil) :pos (atom 0)})
 
 ;; REPL stuff
-;; adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
+;; Partly adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
 
 (def *printStackTrace-on-error* false)
 

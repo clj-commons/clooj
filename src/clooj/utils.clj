@@ -17,8 +17,7 @@
   (:require [clojure.contrib.string :as string]
             [clooj.brackets :only (find-bad-brackets find-enclosing-brackets)]))
 
-
-;; utils
+;; general
 
 (defmacro do-when [f & args]
   (let [args_ args]

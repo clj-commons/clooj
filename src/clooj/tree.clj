@@ -10,7 +10,6 @@
   (:use [clooj.utils :only (clooj-prefs read-value-from-prefs
                             write-value-to-prefs)]))
 
-
 ;; projects tree
 
 (declare restart-doc)
@@ -148,4 +147,3 @@
                      (remove-project tree)))))
       
       
-

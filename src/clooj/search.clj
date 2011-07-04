@@ -7,9 +7,6 @@
   (:use [clooj.highlighting :only (highlight remove-highlights)]
         [clooj.utils :only (scroll-to-pos set-selection)]))
 
-
-;; find/replace
-
 (defn find-all-in-string [s t]
   (when (pos? (.length t))
     (loop [positions [] p-start 0]

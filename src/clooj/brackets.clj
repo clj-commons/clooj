@@ -7,9 +7,6 @@
   (:require [clojure.contrib.string :as string])
   (:use [clooj.utils :only (count-while)]))
 
-
-;; bracket handling
-
 (defn mismatched-brackets [a b]
   (and (or (nil? a) (some #{a} [\( \[ \{]))
        (some #{b} [\) \] \}])
@@ -33,7 +30,6 @@
         s))))
 
 (defn find-enclosing-brackets [text pos]
- ; (Thread/sleep 250)
   (let [process #(process-bracket-stack %1 %2 nil)
         reckon-dist (fn [stacks]
                       (let [scores (map count stacks)]
