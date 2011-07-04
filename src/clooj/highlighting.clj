@@ -7,12 +7,8 @@
                              DefaultHighlighter$DefaultHighlightPainter)
            (java.awt Color)
            (javax.swing.event CaretListener))
-  (:use [clooj.core :only ()]
-        [clooj.utils :only (awt-event)]
+  (:use [clooj.utils :only (awt-event)]
         [clooj.brackets :only (find-bad-brackets find-enclosing-brackets)]))
-
-
-;; highlighting
  
 (defn highlight
   ([text-comp start stop color]
@@ -28,16 +24,14 @@
       (.removeHighlight (.getHighlighter text-comp)
                       highlight-object))))
 
-(defn remove-highlights
-  ([text-comp highlights]
-    ;(println "remove-highlights:" highlights)
-    (dorun (map #(remove-highlight text-comp %) highlights))))
+(defn remove-highlights [text-comp highlights]
+    (dorun (map #(remove-highlight text-comp %) highlights)))
 
 (def highlight-agent (agent nil))
 
 (def highlights (atom {}))
 
-(defn highlight-caret-enclosure [text-comp]
+(defn highlight-brackets [text-comp]
   (send-off highlight-agent
     (fn [old-pos]
       (let [pos (.getCaretPosition text-comp)]

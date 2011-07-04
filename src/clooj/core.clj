@@ -65,12 +65,12 @@
 ;; highlighting
 
 (defn activate-caret-highlighter [text-comp]
-  (add-caret-listener text-comp #(highlight-caret-enclosure text-comp)))
+  (add-caret-listener text-comp #(highlight-brackets text-comp)))
 
 (defn activate-error-highlighter [text-comp]
   (add-text-change-listener
     text-comp 
-    #(highlight-caret-enclosure text-comp)))
+    #(highlight-brackets text-comp)))
 
 ;; paren closing (doesn't work)
 
@@ -330,7 +330,7 @@
       (reset! (doc :file) file)
       (setup-temp-writer doc)
       (apply-namespace-to-repl doc)
-      (highlight-caret-enclosure text-area))))
+      (highlight-brackets text-area))))
 
 (defn open-file [doc]
   (let [frame (doc :frame)]
