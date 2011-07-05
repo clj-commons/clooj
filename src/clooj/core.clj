@@ -35,7 +35,7 @@
                             get-caret-coords add-menu make-undoable
                             choose-file choose-directory
                             comment-out uncomment-out
-                            indent unindent awt-event)])
+                            indent unindent awt-event persist-window-shape)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class))
@@ -223,27 +223,6 @@
                             ["shift ENTER" #(highlight-step doc true)]
                             ["ESCAPE" #(escape-find doc)])))
 
-(defn get-shape [doc]
-  (let [f (doc :frame)]
-        {:x (.getX f) :y (.getY f) :w (.getWidth f) :h (.getHeight f)
-         :dsp (.getDividerLocation (doc :doc-split-pane))
-         :rsp (.getDividerLocation (doc :repl-split-pane))
-         :sp (.getDividerLocation (doc :split-pane))}))
-
-(defn set-shape [doc shape]
-  (let [{:keys [x y w h dsp rsp sp]} shape]
-    (.setBounds (doc :frame) x y w h)
-    (.setDividerLocation (doc :doc-split-pane) dsp)
-    (.setDividerLocation (doc :repl-split-pane) rsp)
-    (.setDividerLocation (doc :split-pane) sp)))
-
-(defn save-shape [doc]
-  (write-value-to-prefs clooj-prefs "shape" (get-shape doc)))
-
-(defn load-shape [doc]
-  (when-let [shape (read-value-from-prefs clooj-prefs "shape")]
-    (set-shape doc shape)))
-
 (defn create-doc []
   (let [doc-text-area (make-text-area)
         doc-text-panel (JPanel.)
@@ -280,7 +259,7 @@
     (doto f
       (.setBounds 25 50 950 700)
       (.setLayout layout)
-      (.add split-pane))   
+      (.add split-pane))
     (doto doc-text-panel
       (.setLayout (SpringLayout.))
       (.add doc-scroll-pane)
@@ -406,7 +385,7 @@
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler doc))
      (doall (map #(add-project-to-tree doc %) (keys (load-project-map))))
-     (load-shape doc)
+     (persist-window-shape clooj-prefs "main-window" (doc :frame)) 
      (.setVisible (doc :frame) true)
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
      (setup-temp-writer doc)
