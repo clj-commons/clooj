@@ -43,6 +43,8 @@
 
 (def gap 5)
 
+(def embedded (atom false))
+
 (def docs (atom {}))
   
 (def mono-font
@@ -394,11 +396,13 @@
        (load-tree-selection tree))))
 
 (defn -show []
+  (reset! embedded true)
   (if (not @current-doc)
     (startup)
     (.setVisible (:frame current-doc) true)))
 
 (defn -main [& args]
+  (reset! embedded false)
   (startup))
 
 ;; testing
