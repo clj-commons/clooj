@@ -118,11 +118,12 @@
         ([t]
           (when (= Integer (type t))
             (awt-event (.append buf (char t))))))
-      (flush [] (when ta-out
-                  (awt-event
-                    (do (.append ta-out (.toString buf))
-                        (scroll-to-last ta-out)
-                        (.setLength buf 0)))))
+      (flush []
+        (when ta-out
+          (awt-event
+            (do (.append ta-out (.toString buf))
+                (scroll-to-last ta-out)
+                (.setLength buf 0)))))
       (close [] nil))))
 
 (defn update-repl-in [doc]
