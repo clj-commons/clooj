@@ -230,11 +230,7 @@
   (when-not @embedded
     (.addWindowListener f
       (proxy [WindowAdapter] []
-        (windowClosed [_]
-          (println "window closed")
-          (System/exit 0))
         (windowClosing [_]
-          (println "window closing")
           (System/exit 0))))))
 
 (defn create-doc []
