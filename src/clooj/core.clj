@@ -13,8 +13,8 @@
            (javax.swing.text DocumentFilter)
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
-           (java.awt Insets Point Rectangle)
-           (java.awt.event FocusAdapter)
+           (java.awt Insets Point Rectangle Window)
+           (java.awt.event FocusAdapter WindowAdapter)
            (java.awt Color Font)
            (java.io File FileReader FileWriter))
   (:use [clojure.contrib.duck-streams :only (writer)]
@@ -38,7 +38,8 @@
                             indent unindent awt-event persist-window-shape)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
-  (:gen-class))
+  (:gen-class
+   :methods [^{:static true} [show [] void]]))
 
 
 (def gap 5)
@@ -225,6 +226,17 @@
                             ["shift ENTER" #(highlight-step doc true)]
                             ["ESCAPE" #(escape-find doc)])))
 
+(defn exit-if-closed [^java.awt.Window f]
+  (when-not @embedded
+    (.addWindowListener f
+      (proxy [WindowAdapter] []
+        (windowClosed [_]
+          (println "window closed")
+          (System/exit 0))
+        (windowClosing [_]
+          (println "window closing")
+          (System/exit 0))))))
+
 (defn create-doc []
   (let [doc-text-area (make-text-area)
         doc-text-panel (JPanel.)
@@ -274,6 +286,7 @@
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
     (.layoutContainer layout f)
+    (exit-if-closed f)
     (setup-search-text-area doc)
     (add-caret-listener doc-text-area #(display-caret-position doc))
     (activate-caret-highlighter doc-text-area)

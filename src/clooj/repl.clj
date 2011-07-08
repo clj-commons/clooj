@@ -35,15 +35,16 @@
   (let [first-prompt (atom true)
         input-writer (PipedWriter.)
         piped-in (clojure.lang.LineNumberingPushbackReader. (PipedReader. input-writer))
-        piped-out (PrintWriter. result-writer)
+        out (PrintWriter. result-writer true)
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
                                   *in* piped-in
-                                  *out* piped-out
+                                  *out* out
                                   *err* *out*]
                (try
                  (clojure.main/repl
                    :init (fn [] (in-ns 'user))
-                   :print (fn [& args] (doall (map repl-print args)))
+                   :print (fn [& args]
+                            (dorun (map repl-print args)))
                    :read (fn [prompt exit]
                            (let [form (read)]
                              (if (= form 'EXIT-REPL)
@@ -54,10 +55,13 @@
                                (throw e))
                              (if *printStackTrace-on-error*
                                (.printStackTrace e *out*)
-                               (prn (clojure.main/repl-exception e)))
-                             (flush))
-                   :prompt (fn [] (printf "\n") (clojure.main/repl-prompt))
-                   :need-prompt (constantly true))
+                               (prn (clojure.main/repl-exception e))))
+                   :prompt (fn []
+                             (println)
+                             (clojure.main/repl-prompt)
+                             (println))
+                   :need-prompt (constantly true)
+                   )
                  (catch clojure.lang.LispReader$ReaderException ex
                    (prn (.getCause ex))
                    (prn "REPL closing"))
@@ -110,10 +114,10 @@
     (proxy [Writer] []
       (write
         ([char-array offset length]
-          (.append buf char-array offset length))
+          (awt-event (.append buf char-array offset length)))
         ([t]
           (when (= Integer (type t))
-            (.append buf (char t)))))
+            (awt-event (.append buf (char t))))))
       (flush [] (when ta-out
                   (awt-event
                     (do (.append ta-out (.toString buf))
