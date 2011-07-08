@@ -27,6 +27,7 @@
                            load-expanded-paths load-project-map
                            save-expanded-paths save-project-map
                            save-tree-selection get-temp-file
+                           get-selected-project
                            remove-selected-project)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
@@ -260,7 +261,7 @@
              :search-text-area search-text-area
              :pos-label pos-label :file (atom nil)
              :repl-out-writer repl-out-writer
-             :repl (atom (create-clojure-repl repl-out-writer))
+             :repl (atom (create-clojure-repl repl-out-writer :EMPTY))
              :doc-split-pane doc-split-pane
              :repl-split-pane repl-split-pane
              :split-pane split-pane
@@ -319,6 +320,7 @@
       (activate-error-highlighter text-area)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
+      (switch-repl doc (str (get-selected-project doc)))
       (apply-namespace-to-repl doc)
       (highlight-brackets text-area))))
 
@@ -376,7 +378,8 @@
       ["Evaluate entire file" "cmd E" #(send-doc-to-repl doc)]
       ["Apply file ns" "cmd L" #(apply-namespace-to-repl doc)]
       ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")]
-      ["Restart" "cmd R" #(restart-repl doc)])
+      ["Restart" "cmd R" #(restart-repl doc
+                            (str (get-selected-project doc)))])
     (add-menu menu-bar "Search"
       ["Find" "cmd F" #(start-find doc)]
       ["Find next" "cmd G" #(highlight-step doc false)]

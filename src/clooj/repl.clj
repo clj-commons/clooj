@@ -13,8 +13,7 @@
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
 
-;; REPL stuff
-;; Partly adapted from http://clojure101.blogspot.com/2009/05/creating-clojure-repl-in-your.html
+(def repls (atom {}))
 
 (def *printStackTrace-on-error* false)
 
@@ -29,7 +28,7 @@
     (print x)
     (pprint x)))
 
-(defn create-clojure-repl [result-writer]
+(defn create-clojure-repl [result-writer project]
   "This function creates an instance of clojure repl, with output going to output-writer
   Returns an input writer."
   (let [first-prompt (atom true)
@@ -69,7 +68,11 @@
                  (catch java.nio.channels.ClosedByInterruptException ex)))
         thread (Thread. repl-thread-fn)]
     (.start thread)
-    {:thread thread :input-writer input-writer}))
+    (let [repl {:thread thread
+                :input-writer input-writer
+                :project project}]
+      (swap! repls assoc project repl)
+      repl)))
 
 (defn replace-first [coll x]
   (cons x (next coll)))
@@ -143,12 +146,21 @@
          #(Math/max 0 (dec %)))
   (update-repl-in doc))
 
-(defn restart-repl [doc]
-  (.append (doc :repl-out-text-area) "\n======= RESTARTING REPL ====================\n")
+(defn restart-repl [doc project]
+  (.append (doc :repl-out-text-area)
+           (str "\n=== RESTARTING " project " REPL ===\n"))
     (let [input (-> doc :repl deref :input-writer)]
     (.write input "'EXIT-REPL")
     (.flush input))
-  (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer))))
+  (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project)))
+
+(defn switch-repl [doc project]
+  (when (not= project (-> doc :repl deref :project))
+    (.append (doc :repl-out-text-area)
+             (str "\n=== Switching to " project " REPL ===\n"))
+    (let [repl (or (get @repls project)
+                   (create-clojure-repl (doc :repl-out-writer) project))]
+      (reset! (:repl doc) repl))))
 
 (defn add-repl-input-handler [doc]
   (let [ta-in (doc :repl-in-text-area)

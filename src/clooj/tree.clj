@@ -132,6 +132,12 @@
       node
       (get-project-node tree (.getParent node)))))
 
+(defn get-selected-project [doc]
+  (let [tree (doc :docs-tree)]
+    (->> tree .getSelectionPaths first
+      .getLastPathComponent
+      (get-project-node tree))))
+
 (defn remove-project [tree node]
   (.removeNodeFromParent (.getModel tree) node)
   (swap! project-map dissoc (.. node getUserObject getAbsolutePath))
