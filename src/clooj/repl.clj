@@ -3,12 +3,13 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.repl
-  (:import (java.io PipedReader PipedWriter PrintWriter Writer)
+  (:import (java.io File PipedReader PipedWriter PrintWriter Writer)
            (java.awt Rectangle))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
-        [clojure.pprint :only (pprint)])
+        [clojure.pprint :only (pprint)]
+        [classlojure :only (classlojure with-classloader)])
   (:require [clojure.contrib.string :as string]))
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
@@ -28,7 +29,14 @@
     (print x)
     (pprint x)))
 
-(defn create-clojure-repl [result-writer project]
+(defn get-lib-dir [project-path]
+  (File. project-path "lib"))
+
+(defn create-class-loader [project-path]
+  (let [files (.listFiles (get-lib-dir project-path))]
+    (apply classlojure (map #(.. % toURL toString) files))))
+    
+(defn create-clojure-repl [result-writer project-path]
   "This function creates an instance of clojure repl, with output going to output-writer
   Returns an input writer."
   (let [first-prompt (atom true)
@@ -70,8 +78,8 @@
     (.start thread)
     (let [repl {:thread thread
                 :input-writer input-writer
-                :project project}]
-      (swap! repls assoc project repl)
+                :project-path project-path}]
+      (swap! repls assoc project-path repl)
       repl)))
 
 (defn replace-first [coll x]
@@ -146,20 +154,20 @@
          #(Math/max 0 (dec %)))
   (update-repl-in doc))
 
-(defn restart-repl [doc project]
+(defn restart-repl [doc project-path]
   (.append (doc :repl-out-text-area)
-           (str "\n=== RESTARTING " project " REPL ===\n"))
+           (str "\n=== RESTARTING " project-path " REPL ===\n"))
     (let [input (-> doc :repl deref :input-writer)]
     (.write input "'EXIT-REPL")
     (.flush input))
-  (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project)))
+  (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project-path)))
 
-(defn switch-repl [doc project]
-  (when (not= project (-> doc :repl deref :project))
+(defn switch-repl [doc project-path]
+  (when (not= project-path (-> doc :repl deref :project))
     (.append (doc :repl-out-text-area)
-             (str "\n=== Switching to " project " REPL ===\n"))
-    (let [repl (or (get @repls project)
-                   (create-clojure-repl (doc :repl-out-writer) project))]
+             (str "\n=== Switching to " project-path " REPL ===\n"))
+    (let [repl (or (get @repls project-path)
+                   (create-clojure-repl (doc :repl-out-writer) project-path))]
       (reset! (:repl doc) repl))))
 
 (defn add-repl-input-handler [doc]

@@ -27,7 +27,7 @@
                            load-expanded-paths load-project-map
                            save-expanded-paths save-project-map
                            save-tree-selection get-temp-file
-                           get-selected-project
+                           get-selected-project-path
                            remove-selected-project)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
@@ -320,7 +320,7 @@
       (activate-error-highlighter text-area)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
-      (switch-repl doc (str (get-selected-project doc)))
+      (switch-repl doc (get-selected-project-path doc))
       (apply-namespace-to-repl doc)
       (highlight-brackets text-area))))
 
@@ -379,7 +379,7 @@
       ["Apply file ns" "cmd L" #(apply-namespace-to-repl doc)]
       ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")]
       ["Restart" "cmd R" #(restart-repl doc
-                            (str (get-selected-project doc)))])
+                            (get-selected-project-path doc))])
     (add-menu menu-bar "Search"
       ["Find" "cmd F" #(start-find doc)]
       ["Find next" "cmd G" #(highlight-step doc false)]
