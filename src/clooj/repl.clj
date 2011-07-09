@@ -9,8 +9,7 @@
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
-        [clojure.pprint :only (pprint)]
-        [classlojure :only (classlojure eval-in)])
+        [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]))
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
@@ -30,13 +29,14 @@
     (print x)
     (pprint x)))
 
-(defn get-lib-dir [project-path]
+(defn get-lib-dirs [project-path]
   (when project-path
-    (File. project-path "lib")))
+    (list (File. project-path "lib")
+          (File. project-path "jars"))))
 
 (defn create-class-loader [project-path]
-  (when-let [lib-dir (get-lib-dir project-path)]
-    (let [files (.listFiles lib-dir)
+  (when-let [lib-dirs (get-lib-dirs project-path)]
+    (let [files (apply concat (map #(.listFiles %) lib-dirs))
           urls (map #(.toURL %) files)]
       (URLClassLoader.
         (into-array URL urls)
@@ -82,10 +82,8 @@
                  (catch java.lang.InterruptedException ex)
                  (catch java.nio.channels.ClosedByInterruptException ex)))
         thread (Thread. repl-thread-fn)]
-    (if classloader
-      (dorun (map println (.getURLs classloader)))
-      (println "no classloader"))
-    (.setContextClassLoader thread classloader)
+    (when classloader
+      (.setContextClassLoader thread classloader))
     (.start thread)
     (let [repl {:thread thread
                 :input-writer input-writer
@@ -165,13 +163,21 @@
          #(Math/max 0 (dec %)))
   (update-repl-in doc))
 
+(defn apply-namespace-to-repl [doc]
+  (try
+    (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
+      (when (= 'ns (first sexpr))
+        (send-to-repl doc (str "(ns " (second sexpr) ")"))))
+    (catch Exception e)))
+
 (defn restart-repl [doc project-path]
   (.append (doc :repl-out-text-area)
            (str "\n=== RESTARTING " project-path " REPL ===\n"))
     (let [input (-> doc :repl deref :input-writer)]
     (.write input "'EXIT-REPL")
     (.flush input))
-  (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project-path)))
+  (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project-path))
+  (apply-namespace-to-repl doc))
 
 (defn switch-repl [doc project-path]
   (when (not= project-path (-> doc :repl deref :project))
@@ -207,10 +213,3 @@
     (attach-action-keys ta-in ["cmd UP" prev-hist]
                               ["cmd DOWN" next-hist]
                               ["cmd ENTER" submit])))
-
-(defn apply-namespace-to-repl [doc]
-  (try
-    (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
-      (when (= 'ns (first sexpr))
-        (send-to-repl doc (str "(ns " (second sexpr) ")"))))
-    (catch Exception e)))
