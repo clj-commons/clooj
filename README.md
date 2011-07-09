@@ -19,5 +19,8 @@ The upper part of clooj's REPL display column shows the REPL history (inputs and
 ### more work needed
 clooj is a work in progress. Your suggestions, criticisms and code contributions are appreciated.
 
+### known issues
+The "New" and "Open" menus don't work at present. Creating a new clojure project or an additional source file needs to be done from the command line.
+
 -- Arthur Edelstein
 
