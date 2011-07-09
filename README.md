@@ -20,7 +20,7 @@ The upper part of clooj's REPL display column shows the REPL history (inputs and
 clooj is a work in progress. Your suggestions, criticisms and code contributions are appreciated.
 
 ### known problems
-The "New" and "Open" menus don't work at present. Creating a new clojure project or an additional source file needs to be done from the command line. There is also no way to edit a project's project.clj file.
+The "New" and "Open" menus don't work at present. Creating a new clojure project or an additional source file needs to be done from the command line. There is also currently no way to edit a project's project.clj file from inside clooj.
 
 -- Arthur Edelstein
 
