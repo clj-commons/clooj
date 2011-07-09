@@ -4,12 +4,13 @@
 
 (ns clooj.repl
   (:import (java.io File PipedReader PipedWriter PrintWriter Writer)
-           (java.awt Rectangle))
+           (java.awt Rectangle)
+           (java.net URL URLClassLoader))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
-        [classlojure :only (classlojure with-classloader)])
+        [classlojure :only (classlojure eval-in)])
   (:require [clojure.contrib.string :as string]))
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
@@ -30,16 +31,22 @@
     (pprint x)))
 
 (defn get-lib-dir [project-path]
-  (File. project-path "lib"))
+  (when project-path
+    (File. project-path "lib")))
 
 (defn create-class-loader [project-path]
-  (let [files (.listFiles (get-lib-dir project-path))]
-    (apply classlojure (map #(.. % toURL toString) files))))
+  (when-let [lib-dir (get-lib-dir project-path)]
+    (let [files (.listFiles lib-dir)
+          urls (map #(.toURL %) files)]
+      (URLClassLoader.
+        (into-array URL urls)
+        (.getClassLoader clojure.lang.RT)))))
     
 (defn create-clojure-repl [result-writer project-path]
   "This function creates an instance of clojure repl, with output going to output-writer
   Returns an input writer."
-  (let [first-prompt (atom true)
+  (let [classloader (create-class-loader project-path)
+        first-prompt (atom true)
         input-writer (PipedWriter.)
         piped-in (clojure.lang.LineNumberingPushbackReader. (PipedReader. input-writer))
         out (PrintWriter. result-writer true)
@@ -75,6 +82,10 @@
                  (catch java.lang.InterruptedException ex)
                  (catch java.nio.channels.ClosedByInterruptException ex)))
         thread (Thread. repl-thread-fn)]
+    (if classloader
+      (dorun (map println (.getURLs classloader)))
+      (println "no classloader"))
+    (.setContextClassLoader thread classloader)
     (.start thread)
     (let [repl {:thread thread
                 :input-writer input-writer

@@ -261,7 +261,7 @@
              :search-text-area search-text-area
              :pos-label pos-label :file (atom nil)
              :repl-out-writer repl-out-writer
-             :repl (atom (create-clojure-repl repl-out-writer :EMPTY))
+             :repl (atom (create-clojure-repl repl-out-writer nil))
              :doc-split-pane doc-split-pane
              :repl-split-pane repl-split-pane
              :split-pane split-pane
