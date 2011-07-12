@@ -4,7 +4,7 @@
 
 (ns clooj.core
   (:import (javax.swing AbstractListModel BorderFactory
-                        JFrame JLabel JList JMenuBar
+                        JFrame JLabel JList JMenuBar JOptionPane
                         JPanel JScrollPane JSplitPane JTextArea
                         JTextField JTree SpringLayout
                         UIManager)
@@ -358,6 +358,29 @@
     (add-project-to-tree doc (.getAbsolutePath project-dir)))
   (save-project-map))
 
+(defn new-project [doc]
+  (let [dir (choose-file (doc :frame) "Create a project directory" "" false)]
+    (when dir
+      (.mkdirs (File. dir "src"))
+      (add-project-to-tree doc (.getAbsolutePath dir))
+      (save-project-map))))
+
+(defn create-file [doc]
+  (when-let [namespace (JOptionPane/showInputDialog
+                         "Please enter a fully-qualified namespace")]
+    (let [tokens (.split namespace "\\.")
+          dirs (cons "src" (butlast tokens))
+          dirstring (apply str (interpose File/separator dirs))
+          name (last tokens)
+          project-dir (get-selected-project-path doc)
+          the-dir (File. project-dir dirstring)]
+      (println namespace)
+      (println dirs)
+    (.mkdirs the-dir)
+    (println the-dir)
+    (spit (File. the-dir (str name ".clj")) (str "(ns " namespace ")\n")))
+   ))
+
 (defn make-menus [doc]
   (when (is-mac)
     (System/setProperty "apple.laf.useScreenMenuBar" "true"))
@@ -366,6 +389,7 @@
     (add-menu menu-bar "File"
       ["New" "cmd N" #(new-file doc)]
       ["Open" "cmd O" #(open-file doc)]
+      ["New project..." "cmd shift N" #(new-project doc)]
       ["Open project..." "cmd shift O" #(open-project doc)]
       ["Remove project" nil #(remove-selected-project doc)]
       ["Save" "cmd S" #(save-file doc)]
@@ -388,7 +412,7 @@
 
 ;; startup
 
-(def current-doc (atom nil))
+(defonce current-doc (atom nil))
 
 (defn startup []
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
