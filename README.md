@@ -19,8 +19,5 @@ The upper part of clooj's REPL display column shows the REPL history (inputs and
 ### more work needed
 clooj is a work in progress. Your suggestions, criticisms and code contributions are appreciated.
 
-### known problems
-There is currently no way to edit a project's project.clj file from inside clooj.
-
 -- Arthur Edelstein
 
