@@ -1,4 +1,4 @@
----
+ ---
 clooj, a lightweight IDE for clojure
 ---
 
