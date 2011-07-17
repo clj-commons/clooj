@@ -1,5 +1,5 @@
 ---
-clooj
+clooj, a lightweight IDE for clojure
 ---
 
 ### the application
