@@ -336,7 +336,7 @@
             :split-pane
                 (.setDividerLocation comp (:location (second shape)))
             nil))
-        (catch Exception e (println e))))
+        (catch Exception e nil)))
     (when (next comps)
       (recur (next comps) (next shapes)))))
 

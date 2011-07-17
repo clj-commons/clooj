@@ -18,7 +18,6 @@
 (def project-set (atom (sorted-set)))
 
 (defn save-project-set []
-  (println "saving" @project-set)
   (write-value-to-prefs clooj-prefs "project-set" @project-set))
     
 (defn load-project-set []
@@ -112,11 +111,12 @@
 (defn project-set-to-tree-model []
    (let [model (DefaultTreeModel. (DefaultMutableTreeNode. "projects"))]
      (doseq [project @project-set]
-       (let [src-path (str project File/separator "src")]
-         (-> model .getRoot
-           (add-node (.getName (File. project)) project)
-           (add-node "src" src-path)
-           (add-srcs-to-src-node src-path))))
+       (let [src-path (str project File/separator "src")
+             project-clj-path (str project File/separator "project.clj")
+             root (.getRoot model)
+             project (add-node root (.getName (File. project)) project)]
+           (add-node project "project.clj" project-clj-path)
+           (add-srcs-to-src-node (add-node project "src" src-path) src-path)))
      model))
 
 (defn update-project-tree [tree]
@@ -164,7 +164,6 @@
         (JOptionPane/showMessageDialog nil "Unable to move project.")))))
 
 (defn remove-selected-project [doc]
-  (println "remove selected proejct")
   (apply swap! project-set disj (get-selected-projects doc))
   (update-project-tree (doc :docs-tree)))     
       

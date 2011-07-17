@@ -84,12 +84,11 @@
 (defn dump-temp-doc [doc orig-f txt]
   (try 
     (when orig-f
-   ;   (println "dumping..." orig-f)
       (let [orig (.getAbsolutePath orig-f)
             f (.getAbsolutePath (get-temp-file orig-f))]
          (spit f txt)
          (awt-event (.updateUI (doc :docs-tree)))))
-    (catch Exception e (println e orig-f))))
+    (catch Exception e nil)))
 
 (def temp-file-manager (agent 0))
 
@@ -124,7 +123,6 @@
       (.addTreeSelectionListener
         (reify TreeSelectionListener
           (valueChanged [this e]
-           ; (println e)
             (save-tree-selection tree (.getNewLeadSelectionPath e))
             (let [f (.. e getPath getLastPathComponent
                           getUserObject)]
@@ -297,7 +295,6 @@
     (let [f @(:file doc)
           txt (.getText (:doc-text-area doc))]        
       (fn [_] (when (and f (.exists (get-temp-file f)))
-             ;   (println "about to dump: "f)
                 (dump-temp-doc doc f txt))
               0)))
   (let [frame (doc :frame)]
@@ -351,14 +348,11 @@
           name (last tokens)
           project-dir (first (get-selected-projects doc))
           the-dir (File. project-dir dirstring)]
-      (println namespace)
-      (println dirs)
       (.mkdirs the-dir)
       [(File. the-dir (str name ".clj")) namespace])))
       
  (defn create-file [doc]
    (let [[file namespace] (specify-source doc "Create a source file")]
-     (println file)
      (spit file (str "(ns " namespace ")\n")))
     (update-project-tree (:docs-tree doc)))
 
@@ -376,7 +370,6 @@
                    (let [p (-> f .getParentFile .getAbsolutePath)]
                      (or (.contains p (str File/separator "src" File/separator))
                          (.endsWith p (str File/separator "src")))))
-          (println (.listFiles f) (empty? (.listFiles f)))
           (.delete f)
           (recur (.getParentFile f))))
       (update-project-tree (doc :docs-tree)))))
