@@ -332,9 +332,24 @@
         project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
     (add-project doc (.getAbsolutePath project-dir))))
 
+
+(def project-clj-text (.trim
+"
+(defproject PROJECTNAME \"1.0.0-SNAPSHOT\"
+  :description \"FIXME: write\"
+  :dependencies [[org.clojure/clojure \"1.2.0\"]
+                 [org.clojure/clojure-contrib \"1.2.0\"]])
+"))
+
+(defn new-project-clj [doc project-dir]
+  (let [project-name (.getName project-dir)
+        file-text (.replace project-clj-text "PROJECTNAME" project-name)]
+    (spit (File. project-dir "project.clj") file-text)))
+
 (defn new-project [doc]
   (when-let [dir (choose-file (doc :frame) "Create a project directory" "" false)]
     (.mkdirs (File. dir "src"))
+    (new-project-clj doc dir)
     (add-project doc (.getAbsolutePath dir))))
 
 (defn specify-source [doc title]
