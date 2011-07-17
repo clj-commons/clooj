@@ -115,7 +115,8 @@
              project-clj-path (str project File/separator "project.clj")
              root (.getRoot model)
              project (add-node root (.getName (File. project)) project)]
-           (add-node project "project.clj" project-clj-path)
+           (when (.exists (File. project-clj-path))
+             (add-node project "project.clj" project-clj-path))
            (add-srcs-to-src-node (add-node project "src" src-path) src-path)))
      model))
 
