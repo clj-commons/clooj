@@ -4,39 +4,34 @@
 
 (ns clooj.tree 
   (:import (java.io File)
-           (javax.swing JTree)
+           (javax.swing JTree JOptionPane)
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel))
   (:use [clooj.utils :only (clooj-prefs read-value-from-prefs
-                            write-value-to-prefs)]))
+                            write-value-to-prefs awt-event
+                            choose-file)]))
 
 ;; projects tree
 
 (declare restart-doc)
 
-(def project-map (atom nil))
+(def project-set (atom (sorted-set)))
 
-(defn save-project-map []
-  (write-value-to-prefs clooj-prefs "project-map" @project-map))
+(defn save-project-set []
+  (println "saving" @project-set)
+  (write-value-to-prefs clooj-prefs "project-set" @project-set))
     
-(defn load-project-map []
-  (reset! project-map (read-value-from-prefs clooj-prefs "project-map")))
+(defn load-project-set []
+  (reset! project-set (into (sorted-set)
+                        (read-value-from-prefs clooj-prefs "project-set"))))
 
 (defn get-root-path [tree]
   (TreePath. (.. tree getModel getRoot)))
 
-(comment (defn get-tree-nodes [tree]
-  (let [get-nodes     
-         (fn [root-node]
-           (cons root-node
-             (map get-nodes
-                  (enumeration-seq (.children root-node)))))]
-    (get-nodes (.. tree getModel getRoot)))))
-
 (defn tree-path-to-file [^TreePath tree-path]
   (when tree-path
-    (.. tree-path getLastPathComponent getUserObject getAbsolutePath)))
-
+    (try (.. tree-path getLastPathComponent getUserObject getAbsolutePath)
+      (catch Exception e nil))))
 (defn get-row-path [tree row]
   (tree-path-to-file (. tree getPathForRow row)))
 
@@ -114,16 +109,23 @@
   (doall (map #(add-code-file-to-src-node src-node %)
               (get-code-files src-dir ".clj"))))
 
-(defn add-project-to-tree [doc project-root]
-  (let [model (.getModel (doc :docs-tree))
-        src-path (str project-root File/separator "src")]
-    (-> model
-      .getRoot
-      (add-node (.getName (File. project-root)) project-root)
-      (add-node "src" src-path)
-      (add-srcs-to-src-node src-path))
-    (.. model reload))
-  (swap! project-map assoc project-root nil))
+(defn project-set-to-tree-model []
+   (let [model (DefaultTreeModel. (DefaultMutableTreeNode. "projects"))]
+     (doseq [project @project-set]
+       (let [src-path (str project File/separator "src")]
+         (-> model .getRoot
+           (add-node (.getName (File. project)) project)
+           (add-node "src" src-path)
+           (add-srcs-to-src-node src-path))))
+     model))
+
+(defn update-project-tree [tree]
+  (let [model (project-set-to-tree-model)]
+    (awt-event
+      (.setModel tree model)
+      (save-project-set)
+      (load-expanded-paths tree)
+      (save-expanded-paths tree))))
 
 (defn get-project-node [tree node]
   (let [parent-node (.getParent node)]
@@ -135,24 +137,34 @@
 (defn get-node-path [node]
   (.. node getUserObject getAbsolutePath))
 
-(defn get-selected-project-path [doc]
-  (let [tree (doc :docs-tree)]
-    (->> tree .getSelectionPaths first
-      .getLastPathComponent
-      (get-project-node tree) get-node-path)))
+(defn get-selected-file-path [doc]
+  (-> doc
+    :docs-tree .getSelectionPaths first
+    .getLastPathComponent .getUserObject .getAbsolutePath))
 
-(defn remove-project [tree node]
-  (.removeNodeFromParent (.getModel tree) node)
-  (swap! project-map dissoc (.. node getUserObject getAbsolutePath))
-  (save-project-map))
+(defn get-selected-projects [doc]
+  (let [tree (doc :docs-tree)
+        selections (.getSelectionPaths tree)]
+    (for [selection selections]
+      (->> selection .getLastPathComponent (get-project-node tree)
+                     .getUserObject .getAbsolutePath))))
+
+(defn add-project [doc project-path]
+  (swap! project-set conj project-path)
+  (update-project-tree (doc :docs-tree)))
+
+(defn rename-project [doc]
+  (when-let [dir (choose-file (doc :frame) "Move/rename project directory" "" false)]
+    (let [old-project (first (get-selected-projects doc))]
+      (if (.renameTo (File. old-project) dir)
+        (do
+          (swap! project-set
+                 #(-> % (disj old-project) (conj (.getAbsolutePath dir))))
+          (update-project-tree (:docs-tree doc)))
+        (JOptionPane/showMessageDialog nil "Unable to move project.")))))
 
 (defn remove-selected-project [doc]
   (println "remove selected proejct")
-  (let [tree (doc :docs-tree)
-        selections (.getSelectionPaths tree)]
-    (doseq [selection selections]
-      (->> selection .getLastPathComponent
-                     (get-project-node tree)
-                     (remove-project tree)))))
-      
+  (apply swap! project-set disj (get-selected-projects doc))
+  (update-project-tree (doc :docs-tree)))     
       

@@ -23,12 +23,14 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
-        [clooj.tree :only (add-project-to-tree load-tree-selection
-                           load-expanded-paths load-project-map
-                           save-expanded-paths save-project-map
+        [clooj.tree :only (add-project load-tree-selection
+                           load-expanded-paths load-project-set
+                           save-expanded-paths
                            save-tree-selection get-temp-file
-                           get-selected-project-path
-                           remove-selected-project)]
+                           get-selected-projects
+                           get-selected-file-path
+                           remove-selected-project update-project-tree
+                           rename-project)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
@@ -36,7 +38,8 @@
                             get-caret-coords add-menu make-undoable
                             choose-file choose-directory
                             comment-out uncomment-out
-                            indent unindent awt-event persist-window-shape)])
+                            indent unindent awt-event persist-window-shape
+                            confirmed?)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class
@@ -76,16 +79,6 @@
     text-comp 
     #(highlight-brackets text-comp)))
 
-;; paren closing (doesn't work)
-
-(defn close-bracket [text-area] ;; doesn't work yet
-  (let [text (.getText text-area)
-        right-pos (.getCaretPosition text-area)
-        left-pos (first (find-enclosing-brackets text right-pos))
-        left-char (.charAt text left-pos)]
-    (if-let [right-char (get {\( \), \{ \}, \[ \]} left-char)]
-      (.insert text-area (str right-char) right-pos))))
-
 ;; temp files
 
 (defn dump-temp-doc [doc orig-f txt]
@@ -119,8 +112,8 @@
 (defn setup-tree [doc]
   (let [tree (:docs-tree doc)
         save #(save-expanded-paths tree)]
+   ; (update-project-tree tree)
     (doto tree
-      (.setModel (DefaultTreeModel. (DefaultMutableTreeNode. "projects")))
       (.setRootVisible false)
       (.setShowsRootHandles true)
       (.. getSelectionModel (setSelectionMode TreeSelectionModel/SINGLE_TREE_SELECTION))
@@ -278,6 +271,7 @@
       (.add search-text-area))
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
+    (.setModel docs-tree (DefaultTreeModel. nil))
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
     (constrain-to-parent doc-scroll-pane :n 0 :w 0 :s -16 :e 0)
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
@@ -320,80 +314,103 @@
       (activate-error-highlighter text-area)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
-      (switch-repl doc (get-selected-project-path doc))
+      (switch-repl doc (first (get-selected-projects doc)))
       (apply-namespace-to-repl doc)
       (highlight-brackets text-area))))
-
-(defn open-file [doc]
-  (let [frame (doc :frame)]
-    (when-let [file (choose-file frame "Open a clojure source file" ".clj" true)]
-      (restart-doc doc file))))
 
 (defn new-file [doc]
   (restart-doc doc nil))
 
-(declare save-file-as)
-
 (defn save-file [doc]
-  (if-not @(doc :file)
-    (save-file-as doc)
-    (let [f @(doc :file)
-          ft (File. (str (.getAbsolutePath f) "~"))]
-      (.write (doc :doc-text-area) (FileWriter. f))
-      (send-off temp-file-manager (fn [_] 0))
-      (.delete ft)
-      (.updateUI (doc :docs-tree)))))
-
-(defn save-file-as [doc]
-  (let [frame (doc :frame)
-        file (choose-file frame "Save a clojure source file" ".clj" false)]
-    (reset! (doc :file) file)
-    (if @(doc :file)
-     (save-file doc)
-     (.setTitle frame (.getPath file)))))
+  (let [f @(doc :file)
+        ft (File. (str (.getAbsolutePath f) "~"))]
+    (.write (doc :doc-text-area) (FileWriter. f))
+    (send-off temp-file-manager (fn [_] 0))
+    (.delete ft)
+    (.updateUI (doc :docs-tree))))
 
 (defn open-project [doc]
   (let [dir (choose-directory (doc :f) "Choose a project directory")
         project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
-    (add-project-to-tree doc (.getAbsolutePath project-dir)))
-  (save-project-map))
+    (add-project doc (.getAbsolutePath project-dir))))
 
 (defn new-project [doc]
-  (let [dir (choose-file (doc :frame) "Create a project directory" "" false)]
-    (when dir
-      (.mkdirs (File. dir "src"))
-      (add-project-to-tree doc (.getAbsolutePath dir))
-      (save-project-map))))
+  (when-let [dir (choose-file (doc :frame) "Create a project directory" "" false)]
+    (.mkdirs (File. dir "src"))
+    (add-project doc (.getAbsolutePath dir))))
 
-(defn create-file [doc]
-  (when-let [namespace (JOptionPane/showInputDialog
-                         "Please enter a fully-qualified namespace")]
+(defn specify-source [doc title]
+  (when-let [namespace (JOptionPane/showInputDialog nil
+                         "Please enter a fully-qualified namespace"
+                         title
+                         JOptionPane/QUESTION_MESSAGE)]
     (let [tokens (.split namespace "\\.")
           dirs (cons "src" (butlast tokens))
           dirstring (apply str (interpose File/separator dirs))
           name (last tokens)
-          project-dir (get-selected-project-path doc)
+          project-dir (first (get-selected-projects doc))
           the-dir (File. project-dir dirstring)]
       (println namespace)
       (println dirs)
-    (.mkdirs the-dir)
-    (println the-dir)
-    (spit (File. the-dir (str name ".clj")) (str "(ns " namespace ")\n")))
-   ))
+      (.mkdirs the-dir)
+      [(File. the-dir (str name ".clj")) namespace])))
+      
+ (defn create-file [doc]
+   (let [[file namespace] (specify-source doc "Create a source file")]
+     (println file)
+     (spit file (str "(ns " namespace ")\n")))
+    (update-project-tree (:docs-tree doc)))
 
+(defn rename-file [doc]
+  (let [[file namespace] (specify-source doc "Rename a source file")]
+    (when file
+      (.renameTo @(doc :file) file)
+      (update-project-tree (:docs-tree doc)))))
+
+(defn delete-file [doc]
+  (let [path (get-selected-file-path doc)]
+    (when (confirmed? "Are you sure you want to delete this file?" path)
+      (loop [f (File. path)]
+        (when (and (empty? (.listFiles f))
+                   (let [p (-> f .getParentFile .getAbsolutePath)]
+                     (or (.contains p (str File/separator "src" File/separator))
+                         (.endsWith p (str File/separator "src")))))
+          (println (.listFiles f) (empty? (.listFiles f)))
+          (.delete f)
+          (recur (.getParentFile f))))
+      (update-project-tree (doc :docs-tree)))))
+
+(defn remove-project [doc]
+  (when (confirmed? "Remove the project from list? (No files will be deleted.)"
+                    "Remove project")
+    (remove-selected-project doc)))
+
+(defn revert-file [doc]
+  (when-let [f @(:file doc)]
+    (let [temp-file (get-temp-file f)]
+      (when (.exists temp-file))
+        (let [path (.getAbsolutePath f)]
+          (when (confirmed? "Revert the file? This cannot be undone." path)
+            (.delete temp-file)
+            (update-project-tree (:docs-tree doc))
+            (restart-doc doc f))))))
+      
 (defn make-menus [doc]
   (when (is-mac)
     (System/setProperty "apple.laf.useScreenMenuBar" "true"))
   (let [menu-bar (JMenuBar.)]
     (. (doc :frame) setJMenuBar menu-bar)
     (add-menu menu-bar "File"
-      ["New" "cmd N" #(new-file doc)]
-      ["Open" "cmd O" #(open-file doc)]
-      ["New project..." "cmd shift N" #(new-project doc)]
-      ["Open project..." "cmd shift O" #(open-project doc)]
-      ["Remove project" nil #(remove-selected-project doc)]
+      ["New" "cmd N" #(create-file doc)]
       ["Save" "cmd S" #(save-file doc)]
-      ["Save as..." "cmd shift S" #(save-file-as doc)])
+      ["Move/Rename" nil #(rename-file doc)]
+      ["Revert" nil #(revert-file doc)]
+      ["Delete" nil #(delete-file doc)])
+    (add-menu menu-bar "Project"
+      ["New..." "cmd shift N" #(new-project doc)]
+      ["Open..." "cmd shift O" #(open-project doc)]
+      ["Move/Rename" nil #(rename-project doc)]
+      ["Remove" nil #(remove-project doc)])
     (add-menu menu-bar "Source"
       ["Comment-out" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
       ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))])
@@ -403,12 +420,11 @@
       ["Apply file ns" "cmd L" #(apply-namespace-to-repl doc)]
       ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")]
       ["Restart" "cmd R" #(restart-repl doc
-                            (get-selected-project-path doc))])
+                            (first (get-selected-projects doc)))])
     (add-menu menu-bar "Search"
       ["Find" "cmd F" #(start-find doc)]
       ["Find next" "cmd G" #(highlight-step doc false)]
-      ["Find prev" "cmd shift G" #(highlight-step doc true)]
-      )))
+      ["Find prev" "cmd shift G" #(highlight-step doc true)])))
 
 ;; startup
 
@@ -422,7 +438,7 @@
      (let [ta-in (doc :repl-in-text-area)
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler doc))
-     (doall (map #(add-project-to-tree doc %) (keys (load-project-map))))
+     (doall (map #(add-project doc %) (load-project-set)))
      (persist-window-shape clooj-prefs "main-window" (doc :frame)) 
      (.setVisible (doc :frame) true)
      (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
@@ -435,7 +451,7 @@
   (reset! embedded true)
   (if (not @current-doc)
     (startup)
-    (.setVisible (:frame current-doc) true)))
+    (.setVisible (:frame @current-doc) true)))
 
 (defn -main [& args]
   (reset! embedded false)

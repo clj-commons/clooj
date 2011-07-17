@@ -165,7 +165,7 @@
 
 (defn apply-namespace-to-repl [doc]
   (try
-    (when-let [sexpr (read-string (. (doc :doc-text-area)  getText))]
+    (when-let [sexpr (read-string (. (doc :doc-text-area) getText))]
       (when (= 'ns (first sexpr))
         (send-to-repl doc (str "(ns " (second sexpr) ")"))))
     (catch Exception e)))
@@ -173,7 +173,7 @@
 (defn restart-repl [doc project-path]
   (.append (doc :repl-out-text-area)
            (str "\n=== RESTARTING " project-path " REPL ===\n"))
-    (let [input (-> doc :repl deref :input-writer)]
+  (let [input (-> doc :repl deref :input-writer)]
     (.write input "'EXIT-REPL")
     (.flush input))
   (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project-path))

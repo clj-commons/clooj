@@ -10,8 +10,8 @@
            (java.io ByteArrayInputStream ByteArrayOutputStream
                     File FilenameFilter
                     ObjectInputStream ObjectOutputStream)
-           (javax.swing AbstractAction JFileChooser JMenu JMenuBar 
-                        JMenuItem JSplitPane KeyStroke SpringLayout SwingUtilities)
+           (javax.swing AbstractAction JFileChooser JMenu JMenuBar JMenuItem
+                        JOptionPane JSplitPane KeyStroke SpringLayout SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.undo UndoManager))
   (:require [clojure.contrib.string :as string]
@@ -344,6 +344,11 @@
     (set-shape components (read-value-from-prefs prefs name))
     (catch Exception e)))
     
+(defn confirmed? [question title]
+  (= JOptionPane/YES_OPTION
+    (JOptionPane/showConfirmDialog
+      nil question title  JOptionPane/YES_NO_OPTION)))
+
 (defn persist-window-shape [prefs name ^java.awt.Window window]
   (let [components (widget-seq window)
         shape-persister (agent nil)]
