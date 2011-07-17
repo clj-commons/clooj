@@ -1,7 +1,7 @@
 # clooj
 
 ### the application
-clooj is a small, simple IDE (integrated development environment) for the clojure programming language. clooj is written entirely in clojure and uses a swing-based GUI. It is intended to be cross-platform (assuming Java 1.6 has been installed on your operating system), and run as a standalone application or as a clojure editor embedded in another java or clojure application. The standalone version (containing the clojure core) is a single jar file that can be launched by double-clicking its file icon or running
+clooj is a small, simple IDE (integrated development environment) for the clojure programming language. clooj is written entirely in clojure and uses a swing-based GUI. It is cross-platform (assuming Java 1.6 has been installed on your operating system), and runs as a standalone application or as a clojure editor embedded in another java or clojure application. The standalone version (containing the clojure core) is a single jar file that can be launched by double-clicking its file icon or running
 java -jar clooj-XXX-STANDALONE.jar from the command line. To embed in java, call clooj.core.show().
 
 ### the layout
