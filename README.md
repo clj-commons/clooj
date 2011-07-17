@@ -1,4 +1,4 @@
- ---
+---
 clooj, a lightweight IDE for clojure
 ---
 
@@ -11,6 +11,7 @@ The clooj GUI consists of three columns. The left-most column is a tree showing 
 
 ### the source editor
 The source code editor offers a few simple things to make writing clojure code easier:
+
  *  A non-traditional bracket-matching feature highlights in gray those brackets that contain the innermost form you are currently editing.
  *  Mismatched or unmatched brackets are highlighted in pink.
  *  TAB indents, and shift+TAB unindents.
