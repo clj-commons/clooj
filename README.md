@@ -11,13 +11,13 @@ The clooj GUI consists of three columns. The left-most column is a tree showing 
 
 ### the source editor
 The source code editor offers a few simple things to make writing clojure code easier:
-- A non-traditional bracket-matching feature highlights in gray those brackets that contain the innermost form you are currently editing.
-- Mismatched or unmatched brackets are highlighted in pink.
-- TAB indents, and shift+TAB unindents.
-- Automatically comment-out (and un-comment out) multiple lines.
-- When newlines are entered, the next line is automatically indented. 
-- Press ctrl-ENTER to send either the nearest root form or the selected text to the REPL.
-- Source files are continuously saved in the background to prevent accidental loss of your work in the event of a crash.
+-  A non-traditional bracket-matching feature highlights in gray those brackets that contain the innermost form you are currently editing.
+-  Mismatched or unmatched brackets are highlighted in pink.
+-  TAB indents, and shift+TAB unindents.
+-  Automatically comment-out (and un-comment out) multiple lines.
+-  When newlines are entered, the next line is automatically indented. 
+-  Press ctrl-ENTER to send either the nearest root form or the selected text to the REPL.
+-  Source files are continuously saved in the background to prevent accidental loss of your work in the event of a crash.
 
 ### clojure projects
 Each clojure project corresponds to a project directory somewhere in the hard drive, containing a src directory. Inside the src directory is the source code hierarchy, composed of directories and .clj files. Note this directory structure is completely compatible with the lein and cake clojure build programs and you are encouraged to use one of these from the command line in conjunction with the clooj editor. Clicking different source files in the projects tree will automatically change the source file currently being edited, as well as switch the REPL to the corresponding current namespace.
