@@ -1,4 +1,4 @@
-(defproject clooj "0.0.6-SNAPSHOT"
+(defproject clooj "0.0.7-SNAPSHOT"
   :description "clooj, a small IDE for clojure"
   :main clooj.core
   :dependencies [[clojure "1.2.0"]

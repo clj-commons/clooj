@@ -112,12 +112,14 @@
    (let [model (DefaultTreeModel. (DefaultMutableTreeNode. "projects"))]
      (doseq [project @project-set]
        (let [src-path (str project File/separator "src")
+             src-file (File. src-path)
              project-clj-path (str project File/separator "project.clj")
              root (.getRoot model)
              project (add-node root (.getName (File. project)) project)]
            (when (.exists (File. project-clj-path))
              (add-node project "project.clj" project-clj-path))
-           (add-srcs-to-src-node (add-node project "src" src-path) src-path)))
+           (when (and (.exists src-file) (not (empty? (.listFiles src-file))))
+             (add-srcs-to-src-node (add-node project "src" src-path) src-path))))
      model))
 
 (defn update-project-tree [tree]
