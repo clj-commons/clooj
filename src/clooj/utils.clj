@@ -154,30 +154,34 @@
     (.setViewPosition v
        (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
 
-(defn replace-in-selected-row-headers [text-comp txt-old txt-new]
-  (awt-event
-    (let [row1 (.getLineOfOffset text-comp (.getSelectionStart text-comp))
-          row2 (.getLineOfOffset text-comp (.getSelectionEnd text-comp))
-          start (dec (.getLineStartOffset text-comp row1))
-          end (dec (.getLineEndOffset text-comp row2))
-          s-old (.. text-comp getDocument (getText start (- end start)))
-          s-new (.replace s-old (str "\n" txt-old) (str "\n" txt-new))]
-      (.replaceRange text-comp s-new start end)
-      (set-selection text-comp
-        (.getLineStartOffset text-comp row1)
-        (dec (.getLineEndOffset text-comp row2))))))
+(defn get-selected-line-starts [text-comp]
+  (let [row1 (.getLineOfOffset text-comp (.getSelectionStart text-comp))
+        row2 (inc (.getLineOfOffset text-comp (.getSelectionEnd text-comp)))]
+    (map #(.getLineStartOffset text-comp %) (reverse (range row1 row2)))))
 
+(defn insert-in-selected-row-headers [text-comp txt]
+  (awt-event
+    (let [starts (get-selected-line-starts text-comp)]
+      (dorun (map #(.insert text-comp txt %) starts)))))
+
+(defn remove-from-selected-row-headers [text-comp txt]
+  (awt-event
+    (let [len (count txt)]
+      (doseq [start (get-selected-line-starts text-comp)]
+        (when (= (.getText text-comp start len) txt)
+          (.replaceRange text-comp "" start (+ start len)))))))
+  
 (defn comment-out [text-comp]
-  (replace-in-selected-row-headers text-comp "" ";"))
+  (insert-in-selected-row-headers text-comp ";"))
 
 (defn uncomment-out [text-comp]
-  (replace-in-selected-row-headers text-comp ";" ""))
+  (remove-from-selected-row-headers text-comp ";"))
 
 (defn indent [text-comp]
-  (replace-in-selected-row-headers text-comp "" "  "))
+  (insert-in-selected-row-headers text-comp "  "))
 
 (defn unindent [text-comp]
-  (replace-in-selected-row-headers text-comp "  " ""))
+  (remove-from-selected-row-headers text-comp "  "))
                      
 
 ;; keys

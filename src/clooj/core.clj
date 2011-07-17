@@ -134,7 +134,7 @@
 ;; build gui
 
 (defn make-scroll-pane [text-area]
-    (JScrollPane. text-area))
+  (JScrollPane. text-area))
 
 (defn put-constraint [comp1 edge1 comp2 edge2 dist]
   (let [edges {:n SpringLayout/NORTH
@@ -186,19 +186,20 @@
         (apply str "\n" (repeat (+ col indent-size) " ")))
       "\n")))
      
-(defn set-tab-as-spaces [text-comp n]
-  (let [tab-str (apply str (repeat n " "))]
-    (.. text-comp getDocument
-        (setDocumentFilter
-          (proxy [DocumentFilter] []
-            (replace [fb offset len text attrs]
-              (.replace
-                fb offset len
-                (condp = text
-                  "\t" tab-str
-                  "\n" (auto-indent-str text-comp offset)
-                  text)
-                  attrs)))))))
+(defn set-tab-as-spaces [text-comp]
+  (attach-action-keys text-comp
+    ["TAB" #(indent text-comp)]
+    ["shift TAB" #(unindent text-comp)])
+  (.. text-comp getDocument
+      (setDocumentFilter
+        (proxy [DocumentFilter] []
+          (replace [fb offset len text attrs]
+            (.replace
+              fb offset len
+              (condp = text
+                "\n" (auto-indent-str text-comp offset)
+                text)
+                attrs))))))
 
 (defn make-split-pane [comp1 comp2 horizontal resize-weight]
   (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT 
@@ -284,7 +285,7 @@
     (activate-caret-highlighter repl-in-text-area)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (make-undoable repl-in-text-area)
-    (set-tab-as-spaces repl-in-text-area 2)
+    (set-tab-as-spaces repl-in-text-area)
     (activate-error-highlighter repl-in-text-area)
     (setup-tree doc)
     doc))
@@ -310,7 +311,7 @@
         (do (.setText text-area "")
             (.setTitle frame "Untitled")))
       (make-undoable text-area)
-      (set-tab-as-spaces text-area 2)
+      (set-tab-as-spaces text-area)
       (activate-error-highlighter text-area)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
