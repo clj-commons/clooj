@@ -14,8 +14,7 @@
                         JOptionPane JSplitPane KeyStroke SpringLayout SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.undo UndoManager))
-  (:require [clojure.contrib.string :as string]
-            [clooj.brackets :only (find-bad-brackets find-enclosing-brackets)]))
+  (:require [clojure.contrib.string :as string]))
 
 ;; general
 
