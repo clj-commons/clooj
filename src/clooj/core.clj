@@ -184,7 +184,7 @@
         (apply str "\n" (repeat (+ col indent-size) " ")))
       "\n")))
      
-(defn set-tab-as-spaces [text-comp]
+(defn setup-autoindent [text-comp]
   (attach-action-keys text-comp
     ["TAB" #(indent text-comp)]
     ["shift TAB" #(unindent text-comp)])
@@ -283,7 +283,7 @@
     (activate-caret-highlighter repl-in-text-area)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (make-undoable repl-in-text-area)
-    (set-tab-as-spaces repl-in-text-area)
+    (setup-autoindent repl-in-text-area)
     (activate-error-highlighter repl-in-text-area)
     (setup-tree doc)
     doc))
@@ -308,7 +308,7 @@
         (do (.setText text-area "")
             (.setTitle frame "Untitled")))
       (make-undoable text-area)
-      (set-tab-as-spaces text-area)
+      (setup-autoindent text-area)
       (activate-error-highlighter text-area)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
