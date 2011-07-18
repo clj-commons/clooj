@@ -36,7 +36,7 @@
 
 (defn create-class-loader [project-path]
   (when-let [lib-dirs (get-lib-dirs project-path)]
-    (let [files (apply concat (map #(.listFiles %) lib-dirs))
+    (let [files (conj (apply concat (map #(.listFiles %) lib-dirs)) (File. project-path "src"))
           urls (map #(.toURL %) files)]
       (URLClassLoader.
         (into-array URL urls)
