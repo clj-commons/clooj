@@ -15,7 +15,7 @@ The source code editor offers a few simple things to make writing clojure code e
  *  A non-traditional bracket-matching feature highlights in gray those brackets that contain the innermost form you are currently editing.
  *  Mismatched or unmatched brackets are highlighted in pink.
  *  TAB indents, and shift+TAB unindents.
- *  Automatically comment-out (and un-comment out) multiple lines.
+ *  Automatically comment-out (and un-comment-out) multiple lines.
  *  When newlines are entered, the next line is automatically indented. 
  *  Press ctrl-ENTER to send either the nearest root form or the selected text to the REPL.
  *  Source files are continuously saved in the background to prevent accidental loss of your work in the event of a crash.
