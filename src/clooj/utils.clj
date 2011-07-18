@@ -10,7 +10,7 @@
            (java.io ByteArrayInputStream ByteArrayOutputStream
                     File FilenameFilter
                     ObjectInputStream ObjectOutputStream)
-           (javax.swing AbstractAction JFileChooser JMenu JMenuBar JMenuItem
+           (javax.swing AbstractAction JButton JFileChooser JMenu JMenuBar JMenuItem
                         JOptionPane JSplitPane KeyStroke SpringLayout SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.undo UndoManager))
@@ -229,6 +229,14 @@
   "Maps input keys to action-fns."
   (doall (map #(apply attach-action-key comp %) items)))
   
+;; buttons
+ 
+(defn create-button [text fn]
+  (doto (JButton. text)
+    (.addActionListener
+      (reify ActionListener
+        (actionPerformed [_ _] (fn))))))
+
 ;; menus
 
 (defn add-menu-item [menu item-name key-shortcut response-fn]

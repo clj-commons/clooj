@@ -3,7 +3,7 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.core
-  (:import (javax.swing AbstractListModel BorderFactory
+  (:import (javax.swing AbstractListModel BorderFactory JDialog
                         JFrame JLabel JList JMenuBar JOptionPane
                         JPanel JScrollPane JSplitPane JTextArea
                         JTextField JTree SpringLayout
@@ -15,7 +15,7 @@
                              TreePath TreeSelectionModel)
            (java.awt Insets Point Rectangle Window)
            (java.awt.event FocusAdapter WindowAdapter)
-           (java.awt Color Font)
+           (java.awt Color Font GridLayout)
            (java.io File FileReader FileWriter))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
@@ -39,7 +39,7 @@
                             choose-file choose-directory
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
-                            confirmed?)])
+                            confirmed? create-button)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class
@@ -360,6 +360,20 @@
                          "Unable to create project."
                          "Oops" JOptionPane/ERROR_MESSAGE))))
   
+(defn choose-new-or-open [doc]
+  (let [dialog (JDialog. (JFrame.) "Get started" true)]
+    (doto dialog
+      (.setLayout (GridLayout. 2 1))
+      (.add (create-button "New project"
+              #(do (.hide dialog)
+                   (new-project doc))))
+      (.add (create-button "Open existing project"
+              #(do (.hide dialog)
+                   (open-project doc))))
+      .pack
+      (.setLocationRelativeTo nil)
+      .show)))
+  
 (defn specify-source [doc title]
   (when-let [namespace (JOptionPane/showInputDialog nil
                          "Please enter a fully-qualified namespace"
@@ -462,7 +476,9 @@
      (setup-temp-writer doc)
      (let [tree (doc :docs-tree)]
        (load-expanded-paths tree)
-       (load-tree-selection tree))))
+       (load-tree-selection tree))
+    (when (zero? (count @clooj.tree/project-set))
+      (choose-new-or-open doc))))
 
 (defn -show []
   (reset! embedded true)
