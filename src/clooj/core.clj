@@ -320,13 +320,17 @@
   (restart-doc doc nil))
 
 (defn save-file [doc]
-  (let [f @(doc :file)
-        ft (File. (str (.getAbsolutePath f) "~"))]
-    (.write (doc :doc-text-area) (FileWriter. f))
-    (send-off temp-file-manager (fn [_] 0))
-    (.delete ft)
-    (.updateUI (doc :docs-tree))))
-
+  (try
+    (let [f @(doc :file)
+          ft (File. (str (.getAbsolutePath f) "~"))]
+      (.write (doc :doc-text-area) (FileWriter. f))
+      (send-off temp-file-manager (fn [_] 0))
+      (.delete ft)
+      (.updateUI (doc :docs-tree)))
+    (catch Exception e (JOptionPane/showMessageDialog
+                         nil "Unable to save file."
+                         "Oops" JOptionPane/ERROR_MESSAGE))))
+  
 (defn open-project [doc]
   (let [dir (choose-directory (doc :f) "Choose a project directory")
         project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
@@ -347,11 +351,15 @@
     (spit (File. project-dir "project.clj") file-text)))
 
 (defn new-project [doc]
-  (when-let [dir (choose-file (doc :frame) "Create a project directory" "" false)]
-    (.mkdirs (File. dir "src"))
-    (new-project-clj doc dir)
-    (add-project doc (.getAbsolutePath dir))))
-
+  (try
+    (when-let [dir (choose-file (doc :frame) "Create a project directory" "" false)]
+      (.mkdirs (File. dir "src"))
+      (new-project-clj doc dir)
+      (add-project doc (.getAbsolutePath dir)))
+    (catch Exception e (JOptionPane/showMessageDialog nil
+                         "Unable to create project."
+                         "Oops" JOptionPane/ERROR_MESSAGE))))
+  
 (defn specify-source [doc title]
   (when-let [namespace (JOptionPane/showInputDialog nil
                          "Please enter a fully-qualified namespace"
