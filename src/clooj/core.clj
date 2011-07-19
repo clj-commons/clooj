@@ -23,15 +23,15 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
-        [clooj.tree :only (add-project load-tree-selection
-                           load-expanded-paths load-project-set
-                           save-expanded-paths
-                           save-tree-selection get-temp-file
-                           get-selected-projects
-                           get-selected-file-path
-                           remove-selected-project update-project-tree
-                           rename-project set-tree-selection
-                           get-code-files get-selected-namespace)]
+        [clooj.project :only (add-project load-tree-selection
+                              load-expanded-paths load-project-set
+                              save-expanded-paths
+                              save-tree-selection get-temp-file
+                              get-selected-projects
+                              get-selected-file-path
+                              remove-selected-project update-project-tree
+                              rename-project set-tree-selection
+                              get-code-files get-selected-namespace)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
