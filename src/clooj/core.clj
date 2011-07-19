@@ -30,7 +30,8 @@
                            get-selected-projects
                            get-selected-file-path
                            remove-selected-project update-project-tree
-                           rename-project set-tree-selection)]
+                           rename-project set-tree-selection
+                           get-code-files)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
@@ -111,7 +112,6 @@
 (defn setup-tree [doc]
   (let [tree (:docs-tree doc)
         save #(save-expanded-paths tree)]
-   ; (update-project-tree tree)
     (doto tree
       (.setRootVisible false)
       (.setShowsRootHandles true)
@@ -226,6 +226,18 @@
         (windowClosing [_]
           (System/exit 0))))))
 
+(def no-project-txt
+    "Welcome to clooj, a lightweight IDE for clojure\n
+     To start coding, you can:
+       1. create a new project (select the Project > New... menu)
+       2. open an existing project (select the Project > Open...)")
+
+(def no-file-txt
+    "To edit source code you need to either: <br>
+     &nbsp;1. create a new file 
+     (select menu <b>File > New...</b>)<br>
+     &nbsp;2. edit an existing file by selecting one at left.</html>")
+
 (defn create-doc []
   (let [doc-text-area (make-text-area)
         doc-text-panel (JPanel.)
@@ -286,6 +298,8 @@
     (setup-autoindent repl-in-text-area)
     (activate-error-highlighter repl-in-text-area)
     (setup-tree doc)
+    (when-not @(doc :file)
+      (restart-doc doc nil))
     doc))
 
 ;; clooj docs
@@ -293,20 +307,23 @@
 (defn restart-doc [doc ^File file] 
   (send-off temp-file-manager
     (let [f @(:file doc)
-          txt (.getText (:doc-text-area doc))]        
-      (fn [_] (when (and f (.exists (get-temp-file f)))
-                (dump-temp-doc doc f txt))
-              0)))
+          txt (.getText (:doc-text-area doc))]
+      (let [temp-file (get-temp-file f)]
+        (fn [_] (when (and f temp-file (.exists temp-file))
+                  (dump-temp-doc doc f txt))
+                0))))
   (let [frame (doc :frame)]
     (let [text-area (doc :doc-text-area)
           temp-file (get-temp-file file)
-          file-to-open (if (.exists temp-file) temp-file file)]
+          file-to-open (if (and temp-file (.exists temp-file)) temp-file file)]
       (.. text-area getHighlighter removeAllHighlights)
       (if file-to-open
         (do (.read text-area (FileReader. file-to-open) nil)
-            (.setTitle frame (str "clooj  \u2014  " (.getPath file))))
-        (do (.setText text-area "")
-            (.setTitle frame "Untitled")))
+            (.setTitle frame (str "clooj  \u2014  " (.getPath file)))
+            (.setEditable text-area true))
+        (do (.setText text-area no-project-txt)
+            (.setTitle frame (str "clooj \u2014 (No file selected)"))
+            (.setEditable text-area false)))
       (make-undoable text-area)
       (setup-autoindent text-area)
       (activate-error-highlighter text-area)
@@ -314,7 +331,8 @@
       (setup-temp-writer doc)
       (switch-repl doc (first (get-selected-projects doc)))
       (apply-namespace-to-repl doc)
-      (highlight-brackets text-area))))
+      (highlight-brackets text-area))
+    doc))
 
 (defn new-file [doc]
   (restart-doc doc nil))
@@ -334,8 +352,14 @@
 (defn open-project [doc]
   (let [dir (choose-directory (doc :f) "Choose a project directory")
         project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
-    (add-project doc (.getAbsolutePath project-dir))))
-
+    (add-project doc (.getAbsolutePath project-dir))
+    (when-let [clj-file (-> (File. project-dir "src")
+                            .getAbsolutePath
+                            (get-code-files ".clj")
+                            first
+                            .getAbsolutePath)]
+      (println "clj-file:" clj-file)
+      (awt-event (set-tree-selection (doc :docs-tree) clj-file)))))
 
 (def project-clj-text (.trim
 "
@@ -391,20 +415,6 @@
                                "Unable to create project."
                                "Oops" JOptionPane/ERROR_MESSAGE)
                            (.printStackTrace e)))))
-    
-(defn choose-new-or-open [doc]
-  (let [dialog (JDialog. (JFrame.) "Get started" true)]
-    (doto dialog
-      (.setLayout (GridLayout. 2 1))
-      (.add (create-button "New project"
-              #(do (.hide dialog)
-                   (new-project doc))))
-      (.add (create-button "Open existing project"
-              #(do (.hide dialog)
-                   (open-project doc))))
-      .pack
-      (.setLocationRelativeTo nil)
-      .show)))
   
 (defn rename-file [doc]
   (let [[file namespace] (specify-source doc "Rename a source file")]
@@ -489,9 +499,7 @@
      (setup-temp-writer doc)
      (let [tree (doc :docs-tree)]
        (load-expanded-paths tree)
-       (load-tree-selection tree))
-    (when (zero? (count @clooj.tree/project-set))
-      (choose-new-or-open doc))))
+       (load-tree-selection tree))))
 
 (defn -show []
   (reset! embedded true)
