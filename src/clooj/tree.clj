@@ -25,6 +25,12 @@
   (reset! project-set (into (sorted-set)
                         (read-value-from-prefs clooj-prefs "project-set"))))
 
+(defn tree-nodes [tree]
+  (when-let [root (.. tree getModel getRoot)]
+    (tree-seq (complement #(.isLeaf %))
+              #(for [i (range (.getChildCount %))] (.getChildAt % i))
+              root)))
+
 (defn get-root-path [tree]
   (TreePath. (.. tree getModel getRoot)))
 
@@ -32,12 +38,21 @@
   (when tree-path
     (try (.. tree-path getLastPathComponent getUserObject getAbsolutePath)
       (catch Exception e nil))))
+
 (defn get-row-path [tree row]
   (tree-path-to-file (. tree getPathForRow row)))
 
 (defn get-expanded-paths [tree]
   (for [i (range (.getRowCount tree)) :when (.isExpanded tree i)]
     (get-row-path tree i)))
+
+(defn row-for-path [tree path]
+  (first
+    (for [i (range 1 (.getRowCount tree))
+          :when (= path
+                   (-> tree (.getPathForRow i)
+                            .getPath last .getUserObject .getAbsolutePath))]
+      i)))
 
 (defn expand-paths [tree paths]
   (doseq [i (range) :while (< i (.getRowCount tree))]
@@ -57,10 +72,25 @@
     clooj-prefs "tree-selection"
     (tree-path-to-file path)))
   
+(defn path-to-node [tree path]
+  (first
+    (for [node (rest (tree-nodes tree))
+      :when (= path (try (.. node getUserObject getAbsolutePath)
+                      (catch Exception e)))]
+      node)))
+
+(defn set-tree-selection [tree path]
+  (awt-event
+    (when-let [node (path-to-node tree path)]
+      (let [node-path (.getPath node)
+            paths (map #(.. % getUserObject getAbsolutePath) (rest node-path))]
+        (expand-paths tree paths)
+        (when-let [row (row-for-path tree path)]
+          (.setSelectionRow tree row))))))
+
 (defn load-tree-selection [tree]
   (let [path (read-value-from-prefs clooj-prefs "tree-selection")]
-    (doseq [row (range (.getRowCount tree))]
-      (when (= path (get-row-path tree row)) (.setSelectionRow tree row)))))
+    (set-tree-selection tree path)))
 
 (defn get-project-root [path]
   (let [f (File. path)
@@ -111,7 +141,7 @@
 
 (defn project-set-to-tree-model []
    (let [model (DefaultTreeModel. (DefaultMutableTreeNode. "projects"))]
-     (doseq [project @project-set]
+     (doseq [project (sort-by #(.getName (File. %)) @project-set)]
        (let [src-path (str project File/separator "src")
              src-file (File. src-path)
              project-clj-path (str project File/separator "project.clj")

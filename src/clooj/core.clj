@@ -30,7 +30,7 @@
                            get-selected-projects
                            get-selected-file-path
                            remove-selected-project update-project-tree
-                           rename-project)]
+                           rename-project set-tree-selection)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
@@ -341,9 +341,36 @@
 "
 (defproject PROJECTNAME \"1.0.0-SNAPSHOT\"
   :description \"FIXME: write\"
-  :dependencies [[org.clojure/clojure \"1.2.0\"]
+  :dependencies [[org.clojure/clojure \"1.2.1\"]
                  [org.clojure/clojure-contrib \"1.2.0\"]])
 "))
+      
+(defn specify-source [project-dir title default-namespace]
+  (when-let [namespace (JOptionPane/showInputDialog nil
+                         "Please enter a fully-qualified namespace"
+                         title
+                         JOptionPane/QUESTION_MESSAGE
+                         nil
+                         nil
+                         default-namespace)]
+    (let [tokens (.split namespace "\\.")
+          dirs (cons "src" (butlast tokens))
+          dirstring (apply str (interpose File/separator dirs))
+          name (last tokens)
+          the-dir (File. project-dir dirstring)]
+      (.mkdirs the-dir)
+      [(File. the-dir (str name ".clj")) namespace])))
+      
+(defn create-file [doc project-dir default-namespace]
+   (let [[file namespace] (specify-source project-dir
+                                          "Create a source file"
+                                          default-namespace)
+         tree (:docs-tree doc)]
+     (println namespace)
+     (spit file (str "(ns " namespace ")\n"))
+     (update-project-tree tree)
+     (println "creating file" (.getAbsolutePath file))
+     (set-tree-selection tree (.getAbsolutePath file))))
 
 (defn new-project-clj [doc project-dir]
   (let [project-name (.getName project-dir)
@@ -353,13 +380,18 @@
 (defn new-project [doc]
   (try
     (when-let [dir (choose-file (doc :frame) "Create a project directory" "" false)]
-      (.mkdirs (File. dir "src"))
-      (new-project-clj doc dir)
-      (add-project doc (.getAbsolutePath dir)))
-    (catch Exception e (JOptionPane/showMessageDialog nil
-                         "Unable to create project."
-                         "Oops" JOptionPane/ERROR_MESSAGE))))
-  
+      (awt-event
+        (let [path (.getAbsolutePath dir)]
+          (.mkdirs (File. dir "src"))
+          (new-project-clj doc dir)
+          (add-project doc path)
+          (set-tree-selection (doc :docs-tree) path)
+          (create-file doc dir (str (.getName dir) ".core")))))
+      (catch Exception e (do (JOptionPane/showMessageDialog nil
+                               "Unable to create project."
+                               "Oops" JOptionPane/ERROR_MESSAGE)
+                           (.printStackTrace e)))))
+    
 (defn choose-new-or-open [doc]
   (let [dialog (JDialog. (JFrame.) "Get started" true)]
     (doto dialog
@@ -374,25 +406,6 @@
       (.setLocationRelativeTo nil)
       .show)))
   
-(defn specify-source [doc title]
-  (when-let [namespace (JOptionPane/showInputDialog nil
-                         "Please enter a fully-qualified namespace"
-                         title
-                         JOptionPane/QUESTION_MESSAGE)]
-    (let [tokens (.split namespace "\\.")
-          dirs (cons "src" (butlast tokens))
-          dirstring (apply str (interpose File/separator dirs))
-          name (last tokens)
-          project-dir (first (get-selected-projects doc))
-          the-dir (File. project-dir dirstring)]
-      (.mkdirs the-dir)
-      [(File. the-dir (str name ".clj")) namespace])))
-      
- (defn create-file [doc]
-   (let [[file namespace] (specify-source doc "Create a source file")]
-     (spit file (str "(ns " namespace ")\n")))
-    (update-project-tree (:docs-tree doc)))
-
 (defn rename-file [doc]
   (let [[file namespace] (specify-source doc "Rename a source file")]
     (when file
@@ -432,7 +445,7 @@
   (let [menu-bar (JMenuBar.)]
     (. (doc :frame) setJMenuBar menu-bar)
     (add-menu menu-bar "File"
-      ["New" "cmd N" #(create-file doc)]
+      ["New" "cmd N" #(create-file doc (first (get-selected-projects doc)) "")]
       ["Save" "cmd S" #(save-file doc)]
       ["Move/Rename" nil #(rename-file doc)]
       ["Revert" nil #(revert-file doc)]
