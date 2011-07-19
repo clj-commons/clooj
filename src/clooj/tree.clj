@@ -106,11 +106,10 @@
     (filter #(.endsWith (.getName %) suffix)
             (file-seq dir))))
 
-(defn path-to-namespace [file-path]
+(defn path-to-namespace [src-dir file-path]
   (let [drop-suffix #(clojure.contrib.string/butlast 4 %)]
     (-> file-path
-        (.split (str "src" (.replace File/separator "\\" "\\\\")))
-        second
+        (.replace (str src-dir File/separator) "")
         drop-suffix
         (.replace File/separator "."))))
 
@@ -130,27 +129,31 @@
     (.add parent node)
     node))
 
-(defn add-code-file-to-src-node [src-node code-file]
+(defn add-code-file-to-src-node [src-node src-dir code-file]
   (let [f (.getAbsolutePath code-file)
-        namespace (path-to-namespace f)]
+        namespace (path-to-namespace src-dir f)]
         (add-node src-node namespace f)))
 
 (defn add-srcs-to-src-node [src-node src-dir]
-  (doall (map #(add-code-file-to-src-node src-node %)
+  (doall (map #(add-code-file-to-src-node src-node src-dir %)
               (get-code-files src-dir ".clj"))))
 
 (defn project-set-to-tree-model []
    (let [model (DefaultTreeModel. (DefaultMutableTreeNode. "projects"))]
      (doseq [project (sort-by #(.getName (File. %)) @project-set)]
        (let [src-path (str project File/separator "src")
+             test-path (str project File/separator "test")
              src-file (File. src-path)
+             test-file (File. test-path)
              project-clj-path (str project File/separator "project.clj")
              root (.getRoot model)
              project (add-node root (.getName (File. project)) project)]
            (when (.exists (File. project-clj-path))
              (add-node project "project.clj" project-clj-path))
            (when (and (.exists src-file) (not (empty? (.listFiles src-file))))
-             (add-srcs-to-src-node (add-node project "src" src-path) src-path))))
+             (add-srcs-to-src-node (add-node project "src" src-path) src-path))
+           (when (and (.exists test-file) (not (empty? (.listFiles test-file))))
+             (add-srcs-to-src-node (add-node project "test" test-path) test-path))))
      model))
 
 (defn update-project-tree [tree]
