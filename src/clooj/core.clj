@@ -31,7 +31,7 @@
                            get-selected-file-path
                            remove-selected-project update-project-tree
                            rename-project set-tree-selection
-                           get-code-files)]
+                           get-code-files get-selected-namespace)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
                             is-mac count-while get-coords add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
@@ -417,10 +417,16 @@
                            (.printStackTrace e)))))
   
 (defn rename-file [doc]
-  (let [[file namespace] (specify-source doc "Rename a source file")]
-    (when file
-      (.renameTo @(doc :file) file)
-      (update-project-tree (:docs-tree doc)))))
+  (when-let [old-file @(doc :file)]
+    (let [tree (doc :docs-tree)
+          [file namespace] (specify-source
+                             (first (get-selected-projects doc))
+                             "Rename a source file"
+                             (get-selected-namespace tree))]
+      (when file
+        (.renameTo @(doc :file) file)
+        (update-project-tree (:docs-tree doc))
+        (awt-event (set-tree-selection tree (.getAbsolutePath file)))))))
 
 (defn delete-file [doc]
   (let [path (get-selected-file-path doc)]
