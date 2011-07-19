@@ -28,7 +28,9 @@ The upper part of clooj's REPL display column shows the REPL history (inputs and
 
 ### more work needed
 clooj is a work in progress. Please post any suggestions or criticisms to the clooj Google group:
+
 http://groups.google.com/group/clooj
+
 All feedback is much appreciated. github pull requests are also very welcome!
 
 -- Arthur Edelstein
