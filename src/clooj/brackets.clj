@@ -28,7 +28,7 @@
         \( j \[ j \{ j
         \) p \] p \} p
         s))))
-
+  
 (defn find-enclosing-brackets [text pos]
   (let [process #(process-bracket-stack %1 %2 nil)
         reckon-dist (fn [stacks]

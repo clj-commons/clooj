@@ -228,10 +228,17 @@
 
 (def no-project-txt
     "Welcome to clooj, a lightweight IDE for clojure\n
-     To start coding, you can:
-       1. create a new project (select the Project > New... menu)
-       2. open an existing project (select the Project > Open...)")
-
+     To start coding, you can either\n
+       a. create a new project
+            (select the Project > New... menu), or
+       b. open an existing project
+            (select the Project > Open... menu)\n
+     and then either\n
+       a. create a new file
+            (select the File > New menu), or
+       b. open an existing file
+            (click on it in the tree at left).")
+       
 (def no-file-txt
     "To edit source code you need to either: <br>
      &nbsp;1. create a new file 
@@ -317,7 +324,7 @@
           temp-file (get-temp-file file)
           file-to-open (if (and temp-file (.exists temp-file)) temp-file file)]
       (.. text-area getHighlighter removeAllHighlights)
-      (if file-to-open
+      (if (and file-to-open (.exists file-to-open))
         (do (.read text-area (FileReader. file-to-open) nil)
             (.setTitle frame (str "clooj  \u2014  " (.getPath file)))
             (.setEditable text-area true))
