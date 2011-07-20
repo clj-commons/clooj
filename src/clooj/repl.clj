@@ -42,9 +42,10 @@
         (into-array URL urls)
         (.getClassLoader clojure.lang.RT)))))
     
-(defn create-clojure-repl [result-writer project-path]
+(defn create-clojure-repl
   "This function creates an instance of clojure repl, with output going to output-writer
   Returns an input writer."
+  [result-writer project-path]
   (let [classloader (create-class-loader project-path)
         first-prompt (atom true)
         input-writer (PipedWriter.)

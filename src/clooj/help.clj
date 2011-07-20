@@ -26,10 +26,15 @@
 
 (defn var-help [ns v]
   (when-let [m (meta v)]
-     (cond (:doc m) (with-out-str (print-doc v))
-           (:clooj/src m) (:clooj/src m)
-            :else (var-source ns v))))
-
+    (let [d (:doc m)
+          s  (or (:clooj/src m)
+                 (var-source ns v))]
+       (str (:name m) "\n"
+            (:arglists m) "\n"
+            d "\n\n"
+            (when (and d s)
+              (.replace s d "...docs..."))))))
+  
 (defn current-form-string [text-area]
   (let [[left right] (find-enclosing-brackets
                        (.getText text-area)
