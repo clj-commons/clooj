@@ -174,11 +174,9 @@
   (.append (doc :repl-out-text-area)
            (str "\n=== RESTARTING " project-path " REPL ===\n"))
   (let [input (-> doc :repl deref :input-writer)]
-    (.write input "EXIT-REPL")
+    (.write input "EXIT-REPL\n")
     (.flush input))
-  (Thread/sleep 100)
   (let [thread (-> doc :repl deref :thread)]
-    (println (.isAlive thread))
     (doseq [_ (range 50) :while (.isAlive thread)]
       (Thread/sleep 100))
     (.stop thread))
