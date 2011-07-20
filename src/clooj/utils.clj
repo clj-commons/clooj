@@ -372,4 +372,15 @@
               (write-value-to-prefs prefs name shape))
             shape))))))
 
+(defn recording-source-reader [rdr]
+  (let [text (StringBuilder.)]
+    (proxy [clojure.lang.LineNumberingPushbackReader] [rdr]
+      (read [] (let [i (proxy-super read)]
+                 (.append text (char i))
+                 i))
+      (unread [c] (proxy-super unread c)
+                  (.setLength text (dec (.length text))))
+      (toString [] (let [s (.trim (str text))]
+                     (.setLength text 0)
+                     s)))))
 

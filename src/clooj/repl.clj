@@ -7,7 +7,7 @@
            (java.awt Rectangle)
            (java.net URL URLClassLoader))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
-                            awt-event)]
+                            awt-event recording-source-reader)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]))
@@ -48,7 +48,9 @@
   (let [classloader (create-class-loader project-path)
         first-prompt (atom true)
         input-writer (PipedWriter.)
-        piped-in (clojure.lang.LineNumberingPushbackReader. (PipedReader. input-writer))
+        piped-in (-> input-writer
+                   PipedReader.
+                   recording-source-reader)
         out (PrintWriter. result-writer true)
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
                                   *in* piped-in
@@ -63,7 +65,8 @@
                            (let [form (read)]
                              (if (= form 'EXIT-REPL)
                                exit
-                               form)))
+                               (with-meta form
+                                 {:clooj/src (.toString piped-in)}))))
                    :caught (fn [e]
                              (when (is-eof-ex? e)
                                (throw e))
@@ -75,6 +78,11 @@
                              (clojure.main/repl-prompt)
                              (println))
                    :need-prompt (constantly true)
+                   :eval (fn [form]
+                           (let [val (eval form)]
+                             (when (var? val)
+                               (alter-meta! val merge (meta form)))
+                             val))
                    )
                  (catch clojure.lang.LispReader$ReaderException ex
                    (prn (.getCause ex))

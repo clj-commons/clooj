@@ -27,6 +27,7 @@
 (defn var-help [ns v]
   (when-let [m (meta v)]
      (cond (:doc m) (with-out-str (print-doc v))
+           (:clooj/src m) (:clooj/src m)
             :else (var-source ns v))))
 
 (defn current-form-string [text-area]
