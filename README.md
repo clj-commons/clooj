@@ -27,9 +27,7 @@ Each clojure project corresponds to a project directory somewhere in the file sy
 The upper part of clooj's REPL display column shows the REPL history (inputs and outputs) and the lower part is a text area for inputting forms into REPL. Each project gets its own REPL environment: when a project is first selected, a new clojure REPL is created behind the scenes and becomes the REPL in use. By choosing "Restart REPL" you cause a new REPL to be created for the currently selected project and the old one to be discarded, if possible. If the project directory contains directories named "lib" and/or "jars" and there are any jar files inside, these jars will be included in the classpath whenever the project REPL is launched. You can subsequently add further jar files to the classpath by placing them in the "lib" or "jars" directory and restarting the REPL.
 
 ### more work needed
-clooj is a work in progress. Please post any suggestions or criticisms to the clooj Google group:
-
-http://groups.google.com/group/clooj
+clooj is a work in progress. Please post any suggestions or criticisms to the [clooj Google group](http://groups.google.com/group/clooj) or to the [github issues list](https://github.com/arthuredelstein/clooj/issues).
 
 All feedback is much appreciated. github pull requests are also very welcome!
 
