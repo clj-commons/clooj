@@ -1,7 +1,8 @@
 (ns clooj.help
   (:import (java.io LineNumberReader InputStreamReader PushbackReader)
            (clojure.lang RT Reflector))
-  (:use [clooj.brackets :only (find-enclosing-brackets)]))
+  (:use [clooj.brackets :only (find-enclosing-brackets)])
+  (:require [clojure.contrib.string :as string]))
 
 (defmacro with-ns
   "Evaluates body in another namespace.  ns is either a namespace
@@ -37,18 +38,38 @@
               (if d
                 (.replace s d "...docs...")
                 d))))))
-  
+
 (defn find-form-string [text pos]
   (let [[left right] (find-enclosing-brackets text pos)
-        length (if (and right left) (inc (- right left)))]
+        length (if (and right left) (- right left))]
     (when (and length (pos? length) (pos? left))
-      (.substring text left (inc right)))))
+      (.substring text (inc left)))))
 
-(defn head-symbol [form-string]
-  (->> form-string read-string first))
+(defn head-token [form-string]
+  (when form-string
+    (second
+      (re-find #"(.*?)[\s|\)|$]"
+               (str (.trim form-string) " ")))))
+
+(defn string-to-var [ns string]
+  (when (and ns string)
+    (try
+      (ns-resolve ns (symbol string))
+      (catch Exception e))))
 
 (defn form-help [ns form-string]
-  (var-help (ns-resolve ns (head-symbol form-string))))
+  (var-help (ns-resolve ns (head-token form-string))))
 
-(defn var-arglist-text [var]
-  (->> var meta :arglists (str (name var) ": ")))
+(defn arglist-from-var [v]
+  (if-let [m (meta v)]
+    (str (:name m) ": " (:arglists m))
+    ""))
+  
+(defn var-from-caret-pos [ns text pos]
+  (->> (find-form-string text pos)
+       head-token
+       (string-to-var ns)))
+
+(defn arglist-from-caret-pos [ns text pos]
+  (arglist-from-var (var-from-caret-pos ns text pos)))
+

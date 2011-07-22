@@ -27,25 +27,14 @@
 (defn remove-highlights [text-comp highlights]
     (dorun (map #(remove-highlight text-comp %) highlights)))
 
-(def highlight-agent (agent nil))
-
 (def highlights (atom {}))
 
-(defn highlight-brackets [text-comp]
-  (send-off highlight-agent
-    (fn [old-pos]
-      (let [pos (.getCaretPosition text-comp)]
-        (when-not (= pos old-pos)
-          (let [enclosing-brackets (find-enclosing-brackets (.getText text-comp) pos)
-                bad-brackets (find-bad-brackets (.getText text-comp))
-                good-enclosures (clojure.set/difference
-                                  (set enclosing-brackets) (set bad-brackets))]
-            (awt-event
-              (remove-highlights text-comp (get @highlights text-comp))
-              (swap! highlights assoc text-comp
-                (doall (concat
-                         (map #(highlight text-comp % Color/LIGHT_GRAY) good-enclosures)
-                         (map #(highlight text-comp % Color/PINK) bad-brackets)))))))
-        pos))))
+(defn highlight-brackets [text-comp good-enclosures bad-brackets]
+  (awt-event
+    (remove-highlights text-comp (get @highlights text-comp))
+    (swap! highlights assoc text-comp
+      (doall (concat
+               (map #(highlight text-comp % Color/LIGHT_GRAY) good-enclosures)
+               (map #(highlight text-comp % Color/PINK) bad-brackets))))))
 
             

@@ -23,6 +23,7 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
+        [clooj.help :only (arglist-from-caret-pos)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
@@ -61,24 +62,43 @@
 (defn make-text-area []
   (doto (JTextArea.)
     (.setFont mono-font)))  
-      
-  
 
 ;; caret finding
+
+(def caret-agent (agent nil))
 
 (defn display-caret-position [doc]
   (let [{:keys [row col]} (get-caret-coords (:doc-text-area doc))]
     (.setText (:pos-label doc) (str " " (inc row) "|" (inc col)))))
 
+(defn handle-caret-move [doc text-comp]
+  (send-off caret-agent
+    (fn [old-pos]
+      (let [pos (.getCaretPosition text-comp)
+            text (.getText text-comp)]
+        (when-not (= pos old-pos)
+          (let [enclosing-brackets (find-enclosing-brackets text pos)
+                bad-brackets (find-bad-brackets text)
+                good-enclosures (clojure.set/difference
+                                  (set enclosing-brackets) (set bad-brackets))]
+            (highlight-brackets text-comp good-enclosures bad-brackets))
+          (.setText (:arglist-label doc)
+                    (arglist-from-caret-pos (get-current-namespace text-comp) text pos))
+          )))))
+
 ;; highlighting
 
-(defn activate-caret-highlighter [text-comp]
-  (add-caret-listener text-comp #(highlight-brackets text-comp)))
+(defn activate-caret-highlighter [doc]
+  (when (doc :doc-text-area)
+    (add-caret-listener (doc :doc-text-area) #(handle-caret-move doc (doc :doc-text-area))))
+  (when (doc :repl-in-text-area)
+    (add-caret-listener (doc :repl-in-text-area) #(handle-caret-move doc (doc :repl-in-text-area)))))
 
-(defn activate-error-highlighter [text-comp]
-  (add-text-change-listener
-    text-comp 
-    #(highlight-brackets text-comp)))
+(defn activate-error-highlighter [doc]
+  (when (doc :doc-text-area)
+    (add-text-change-listener (doc :doc-text-area) #(handle-caret-move doc (doc :doc-text-area))))
+  (when (doc :repl-in-text-area)
+    (add-text-change-listener (doc :repl-in-text-area) #(handle-caret-move doc (doc :repl-in-text-area)))))
 
 ;; temp files
 
@@ -219,6 +239,11 @@
                             ["shift ENTER" #(highlight-step doc true)]
                             ["ESCAPE" #(escape-find doc)])))
 
+(defn create-arglist-label []
+  (doto (JLabel.)
+    (.setVisible true)
+    (.setFont mono-font)))
+
 (defn exit-if-closed [^java.awt.Window f]
   (when-not @embedded
     (.addWindowListener f
@@ -252,6 +277,7 @@
         repl-out-writer (make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area)
         search-text-area (JTextField.)
+        arglist-label (create-arglist-label)
         pos-label (JLabel.)
         f (JFrame.)
         cp (.getContentPane f)
@@ -276,7 +302,8 @@
              :doc-split-pane doc-split-pane
              :repl-split-pane repl-split-pane
              :split-pane split-pane
-             :changed false}
+             :changed false
+             :arglist-label arglist-label}
         doc-scroll-pane (make-scroll-pane doc-text-area)]
     (doto f
       (.setBounds 25 50 950 700)
@@ -286,7 +313,8 @@
       (.setLayout (SpringLayout.))
       (.add doc-scroll-pane)
       (.add pos-label)
-      (.add search-text-area))
+      (.add search-text-area)
+      (.add arglist-label))
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
     (.setModel docs-tree (DefaultTreeModel. nil))
@@ -294,16 +322,17 @@
     (constrain-to-parent doc-scroll-pane :n 0 :w 0 :s -16 :e 0)
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 100 :s -1 :w 300)
+    (constrain-to-parent arglist-label :s -16 :w 100 :s -1 :e -10)
+    (.setText arglist-label "arglist")
     (.layoutContainer layout f)
     (exit-if-closed f)
     (setup-search-text-area doc)
     (add-caret-listener doc-text-area #(display-caret-position doc))
-    (activate-caret-highlighter doc-text-area)
-    (activate-caret-highlighter repl-in-text-area)
+    (activate-caret-highlighter doc)
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
-    (activate-error-highlighter repl-in-text-area)
+    (activate-error-highlighter doc)
     (setup-tree doc)
     (when-not @(doc :file)
       (restart-doc doc nil))
@@ -334,12 +363,12 @@
             (.setEditable text-area false)))
       (make-undoable text-area)
       (setup-autoindent text-area)
-      (activate-error-highlighter text-area)
+      (activate-error-highlighter doc)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
       (switch-repl doc (first (get-selected-projects doc)))
       (apply-namespace-to-repl doc)
-      (highlight-brackets text-area))
+      (handle-caret-move doc (doc :doc-text-area)))
     doc))
 
 (defn new-file [doc]

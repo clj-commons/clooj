@@ -75,9 +75,8 @@
                                (.printStackTrace e *out*)
                                (prn (clojure.main/repl-exception e))))
                    :prompt (fn []
-                             (println)
-                             (clojure.main/repl-prompt)
-                             (println))
+                             (printf "\n%s=>"
+                               (ns-name *ns*)))
                    :need-prompt (constantly true)
                    :eval (fn [form]
                            (let [val (eval form)]
@@ -110,7 +109,7 @@
 
 (defn send-to-repl [doc cmd]
   (awt-event
-    (let [cmd-ln (str (.trim cmd) \newline)
+    (let [cmd-ln (str \newline (.trim cmd) \newline)
            cmd (.trim cmd-ln)]
       (.append (doc :repl-out-text-area) cmd-ln)
       (.write (:input-writer @(doc :repl)) cmd-ln)
@@ -173,12 +172,15 @@
          #(Math/max 0 (dec %)))
   (update-repl-in doc))
 
-(defn apply-namespace-to-repl [doc]
+(defn get-current-namespace [text-comp]
   (try
-    (when-let [sexpr (read-string (. (doc :doc-text-area) getText))]
+    (when-let [sexpr (read-string (. text-comp getText))]
       (when (= 'ns (first sexpr))
-        (send-to-repl doc (str "(ns " (second sexpr) ")"))))
+        (find-ns (symbol (second sexpr)))))
     (catch Exception e)))
+
+(defn apply-namespace-to-repl [doc]
+  (send-to-repl doc (str "(ns " (get-current-namespace (doc :doc-text-area)) ")")))
 
 (defn restart-repl [doc project-path]
   (.append (doc :repl-out-text-area)
@@ -196,7 +198,7 @@
 (defn switch-repl [doc project-path]
   (when (not= project-path (-> doc :repl deref :project-path))
     (.append (doc :repl-out-text-area)
-             (str "\n=== Switching to " project-path " REPL ===\n"))
+             (str "\n\n=== Switching to " project-path " REPL ===\n"))
     (let [repl (or (get @repls project-path)
                    (create-clojure-repl (doc :repl-out-writer) project-path))]
       (reset! (:repl doc) repl))))
