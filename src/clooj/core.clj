@@ -23,7 +23,7 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
-        [clooj.help :only (arglist-from-caret-pos)]
+        [clooj.help :only (arglist-from-caret-pos var-help-from-caret-pos)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
@@ -82,9 +82,9 @@
                 good-enclosures (clojure.set/difference
                                   (set enclosing-brackets) (set bad-brackets))]
             (highlight-brackets text-comp good-enclosures bad-brackets))
-          (.setText (:arglist-label doc)
-                    (arglist-from-caret-pos (get-current-namespace text-comp) text pos))
-          )))))
+          (let [arglist-text
+                 (arglist-from-caret-pos (get-current-namespace text-comp) text pos)]
+            (.setText (:arglist-label doc) arglist-text)))))))
 
 ;; highlighting
 

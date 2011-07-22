@@ -72,3 +72,8 @@
 (defn arglist-from-caret-pos [ns text pos]
   (arglist-from-var (var-from-caret-pos ns text pos)))
 
+(defn var-help-from-caret-pos [ns text pos]
+  (or
+    (when (and ns text pos)
+      (var-help (var-from-caret-pos ns text pos)))
+    ""))
