@@ -40,9 +40,8 @@
                 d))))))
 
 (defn find-form-string [text pos]
-  (let [[left right] (find-enclosing-brackets text pos)
-        length (if (and right left) (- right left))]
-    (when (and length (pos? length) (pos? left))
+  (let [[left right] (find-enclosing-brackets text pos)]
+    (when (> (.length text) left)
       (.substring text (inc left)))))
 
 (defn head-token [form-string]
