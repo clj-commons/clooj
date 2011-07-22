@@ -325,7 +325,8 @@
           file-to-open (if (and temp-file (.exists temp-file)) temp-file file)]
       (.. text-area getHighlighter removeAllHighlights)
       (if (and file-to-open (.exists file-to-open))
-        (do (.read text-area (FileReader. file-to-open) nil)
+        (do (with-open [rdr (FileReader. file-to-open)]
+              (.read text-area rdr nil))
             (.setTitle frame (str "clooj  \u2014  " (.getPath file)))
             (.setEditable text-area true))
         (do (.setText text-area no-project-txt)
@@ -348,14 +349,15 @@
   (try
     (let [f @(doc :file)
           ft (File. (str (.getAbsolutePath f) "~"))]
-      (.write (doc :doc-text-area) (FileWriter. f))
+      (with-open [writer (FileWriter. f)]
+        (.write (doc :doc-text-area) writer))
       (send-off temp-file-manager (fn [_] 0))
       (.delete ft)
       (.updateUI (doc :docs-tree)))
     (catch Exception e (JOptionPane/showMessageDialog
                          nil "Unable to save file."
                          "Oops" JOptionPane/ERROR_MESSAGE))))
-  
+
 (defn open-project [doc]
   (let [dir (choose-directory (doc :f) "Choose a project directory")
         project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]

@@ -82,7 +82,8 @@
                    :eval (fn [form]
                            (let [val (eval form)]
                              (when (var? val)
-                               (alter-meta! val merge (meta form)))
+                               (alter-meta! val
+                                 (fn [v] (merge (meta form) v))))
                              val))
                    )
                  (catch clojure.lang.LispReader$ReaderException ex

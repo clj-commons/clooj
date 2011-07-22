@@ -11,7 +11,7 @@
   `(binding [*ns* (the-ns ~ns)]
      ~@(map (fn [form] `(eval '~form)) body)))
 
-(defn var-source [ns v]
+(defn var-source [v]
   (when-let [filepath (:file (meta v))]
     (when-let [strm (.getResourceAsStream (RT/baseLoader) filepath)]
       (with-open [rdr (LineNumberReader. (InputStreamReader. strm))]
@@ -24,27 +24,31 @@
           (read (PushbackReader. pbr))
           (str text))))))
 
-(defn var-help [ns v]
+(defn var-help [v]
   (when-let [m (meta v)]
     (let [d (:doc m)
           s  (or (:clooj/src m)
-                 (var-source ns v))]
-       (str (:name m) "\n"
+                 (var-source v))]
+       (str (:name m)
+            (if (:ns m) (str " [" (:ns m) "]") "") "\n"
             (:arglists m) "\n"
-            d "\n\n"
-            (when (and d s)
-              (.replace s d "...docs..."))))))
+            (when d (str d "\n\n"))
+            (when s
+              (if d
+                (.replace s d "...docs...")
+                d))))))
   
-(defn current-form-string [text-area]
-  (let [[left right] (find-enclosing-brackets
-                       (.getText text-area)
-                       (.getCaretPosition text-area))
+(defn find-form-string [text pos]
+  (let [[left right] (find-enclosing-brackets text pos)
         length (if (and right left) (inc (- right left)))]
     (when (and length (pos? length) (pos? left))
-      (.getText text-area left (inc (- right left))))))
+      (.substring text left (inc right)))))
 
-(defn head-var [ns form-string]
-  (->> form-string read-string first (ns-resolve ns)))
+(defn head-symbol [form-string]
+  (->> form-string read-string first))
 
 (defn form-help [ns form-string]
-   (var-help ns (head-var ns form-string)))
+  (var-help (ns-resolve ns (head-symbol form-string))))
+
+(defn var-arglist-text [var]
+  (->> var meta :arglists (str (name var) ": ")))
