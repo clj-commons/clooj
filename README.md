@@ -3,7 +3,7 @@ clooj, a lightweight IDE for clojure
 ---
 
 ### the application
-clooj is a small, simple IDE (integrated development environment) for the clojure programming language. clooj is written entirely in clojure and uses a swing-based GUI. It is cross-platform (assuming Java 1.6 has been installed on your operating system), and runs as a standalone application or as a clojure editor embedded in another java or clojure application. The standalone version (containing the clojure core) is a single jar file that can be launched by double-clicking its file icon or by running
+clooj is a small, simple IDE (integrated development environment) for the clojure programming language, [available for free download](https://github.com/arthuredelstein/clooj/downloads). clooj is written entirely in clojure and uses a swing-based GUI. It is cross-platform (assuming Java 1.6 has been installed on your operating system), and runs as a standalone application or as a clojure editor embedded in another java or clojure application. The standalone version (containing the clojure core) is a single jar file that can be launched by double-clicking its file icon or by running
 java -jar clooj-XXX-STANDALONE.jar from the command line. To embed in java, call clooj.core.show().
 
 ### the layout
@@ -27,11 +27,9 @@ Each clojure project corresponds to a project directory somewhere in the file sy
 The upper part of clooj's REPL display column shows the REPL history (inputs and outputs) and the lower part is a text area for inputting forms into REPL. Each project gets its own REPL environment: when a project is first selected, a new clojure REPL is created behind the scenes and becomes the REPL in use. By choosing "Restart REPL" you cause a new REPL to be created for the currently selected project and the old one to be discarded, if possible. If the project directory contains directories named "lib" and/or "jars" and there are any jar files inside, these jars will be included in the classpath whenever the project REPL is launched. You can subsequently add further jar files to the classpath by placing them in the "lib" or "jars" directory and restarting the REPL.
 
 ### more work needed
-clooj is a work in progress. Please post any suggestions or criticisms to the clooj Google group:
+clooj is a work in progress. Please post any suggestions or criticisms to the [clooj Google group](http://groups.google.com/group/clooj) or to the [github issues list](https://github.com/arthuredelstein/clooj/issues).
 
-http://groups.google.com/group/clooj
-
-All feedback is much appreciated. github pull requests are also very welcome!
+All feedback is much appreciated. Code contributions in the form of github pull requests are also very welcome!
 
 -- Arthur Edelstein
 
