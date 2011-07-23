@@ -91,9 +91,3 @@
   (let [token (token-from-caret-pos ns text pos)]
     (or (special-forms token)
         (arglist-from-var (string-to-var ns token)))))
-
-(defn var-help-from-caret-pos [ns text pos]
-  (or
-    (when (and ns text pos)
-      (var-help (var-from-caret-pos ns text pos)))
-    ""))

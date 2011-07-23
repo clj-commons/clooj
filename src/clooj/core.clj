@@ -23,7 +23,7 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
-        [clooj.help :only (arglist-from-caret-pos var-help-from-caret-pos)]
+        [clooj.help :only (arglist-from-caret-pos)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
