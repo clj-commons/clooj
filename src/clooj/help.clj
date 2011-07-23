@@ -68,11 +68,15 @@
       (re-find #"(.*?)[\s|\)|$]"
                (str (.trim form-string) " ")))))
 
+(defn safe-resolve [ns string]
+  (try
+    (ns-resolve ns (symbol string))
+    (catch Exception e)))
+
 (defn string-to-var [ns string]
-  (when (and ns string)
-    (try
-      (ns-resolve ns (symbol string))
-      (catch Exception e))))
+  (let [sym (symbol string)]
+    (safe-resolve ns sym)
+    (safe-resolve (find-ns 'clojure.core) sym)))
 
 (defn form-help [ns form-string]
   (var-help (ns-resolve ns (head-token form-string))))
