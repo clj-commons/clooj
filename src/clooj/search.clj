@@ -53,7 +53,9 @@
           (.setBackground sta (if (pos? length) Color/PINK Color/WHITE))))))
 
 (defn start-find [doc]
-  (let [sta (doc :search-text-area)]
+  (let [sta (doc :search-text-area)
+        arg (doc :arglist-label)]
+    (.setVisible arg false)
     (doto sta
       (.setVisible true)
       (.requestFocus)
@@ -61,7 +63,9 @@
 
 (defn stop-find [doc]
   (let [sta (doc :search-text-area)
-        dta (doc :doc-text-area)]
+        dta (doc :doc-text-area)
+        arg (doc :arglist-label)]
+    (.setVisible arg true)
     (.setVisible sta false)
     (remove-highlights dta @search-highlights)
     (reset! search-highlights nil)))
