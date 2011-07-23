@@ -4,6 +4,24 @@
   (:use [clooj.brackets :only (find-enclosing-brackets)])
   (:require [clojure.contrib.string :as string]))
 
+; from http://clojure.org/special_forms
+(def special-forms
+  {"def" "(def symbol init?)"
+   "if"  "(if test then else?)"
+   "do"  "(do exprs*)"
+   "let" "(let [bindings* ] exprs*)"
+   "quote" "(quote form)"
+   "var" "(var symbol)"
+   "fn"  "(fn name? [params* ] exprs*)"
+   "loop" "(loop [bindings* ] exprs*)"
+   "recur" "(recur exprs*)"
+   "throw" "(throw expr)"
+   "try"   "(try expr* catch-clause* finally-clause?)"
+   "catch" "(catch classname name expr*)"
+   "monitor-enter" "Avoid!"
+   "monitor-exit"  "Avoid!"})
+ 
+
 (defmacro with-ns
   "Evaluates body in another namespace.  ns is either a namespace
   object or a symbol.  This makes it possible to define functions in
@@ -60,17 +78,19 @@
   (var-help (ns-resolve ns (head-token form-string))))
 
 (defn arglist-from-var [v]
-  (if-let [m (meta v)]
-    (str (:name m) ": " (:arglists m))
+  (or
+    (when-let [m (meta v)]
+      (when-let [args (:arglists m)]
+        (str (:name m) ": " args)))
     ""))
-  
-(defn var-from-caret-pos [ns text pos]
-  (->> (find-form-string text pos)
-       head-token
-       (string-to-var ns)))
+
+(defn token-from-caret-pos [ns text pos]
+  (head-token (find-form-string text pos)))
 
 (defn arglist-from-caret-pos [ns text pos]
-  (arglist-from-var (var-from-caret-pos ns text pos)))
+  (let [token (token-from-caret-pos ns text pos)]
+    (or (special-forms token)
+        (arglist-from-var (string-to-var ns token)))))
 
 (defn var-help-from-caret-pos [ns text pos]
   (or
