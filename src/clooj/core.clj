@@ -65,14 +65,16 @@
 
 ;; caret finding
 
-(def caret-agent (agent nil))
+(def highlight-agent (agent nil))
+
+(def arglist-agent (agent nil))
 
 (defn display-caret-position [doc]
   (let [{:keys [row col]} (get-caret-coords (:doc-text-area doc))]
     (.setText (:pos-label doc) (str " " (inc row) "|" (inc col)))))
 
 (defn handle-caret-move [doc text-comp]
-  (send-off caret-agent
+  (send-off highlight-agent
     (fn [old-pos]
       (let [pos (.getCaretPosition text-comp)
             text (.getText text-comp)]
@@ -81,7 +83,12 @@
                 bad-brackets (find-bad-brackets text)
                 good-enclosures (clojure.set/difference
                                   (set enclosing-brackets) (set bad-brackets))]
-            (highlight-brackets text-comp good-enclosures bad-brackets))
+            (highlight-brackets text-comp good-enclosures bad-brackets))))))
+  (send-off arglist-agent 
+    (fn [old-pos]
+      (let [pos (.getCaretPosition text-comp)
+            text (.getText text-comp)]
+        (when-not (= pos old-pos)
           (let [arglist-text
                  (arglist-from-caret-pos (get-current-namespace text-comp) text pos)]
             (.setText (:arglist-label doc) arglist-text)))))))
@@ -321,8 +328,8 @@
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
     (constrain-to-parent doc-scroll-pane :n 0 :w 0 :s -16 :e 0)
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
-    (constrain-to-parent search-text-area :s -16 :w 50 :s -1 :w 300)
-    (constrain-to-parent arglist-label :s -16 :w 50 :s -1 :e -10)
+    (constrain-to-parent search-text-area :s -16 :w 80 :s -1 :w 300)
+    (constrain-to-parent arglist-label :s -16 :w 80 :s -1 :e -10)
     (.setText arglist-label "arglist")
     (.layoutContainer layout f)
     (exit-if-closed f)
