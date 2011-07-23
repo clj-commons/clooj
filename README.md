@@ -12,7 +12,7 @@ The clooj window contains three columns. The left-most column is a tree showing 
 ### the source editor
 The source code editor offers a few simple things to make writing clojure code easier:
 
- *  A non-traditional bracket-matching feature highlights in gray those brackets that contain the innermost form you are currently editing.
+ *  A non-traditional bracket-matching feature highlights in gray those brackets that contain the innermost form you are currently editing, and the argument list for the function or macro at the head of the form is displayed.
  *  Mismatched or unmatched brackets are highlighted in pink.
  *  TAB indents, and shift+TAB unindents.
  *  Automatically comment-out (and un-comment-out) multiple lines.
