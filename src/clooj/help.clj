@@ -74,9 +74,10 @@
     (catch Exception e)))
 
 (defn string-to-var [ns string]
-  (let [sym (symbol string)]
-    (safe-resolve ns sym)
-    (safe-resolve (find-ns 'clojure.core) sym)))
+  (when-not (empty? string)
+    (let [sym (symbol string)]
+      (or (safe-resolve ns sym)
+          (safe-resolve (find-ns 'clojure.core) sym)))))
 
 (defn form-help [ns form-string]
   (var-help (ns-resolve ns (head-token form-string))))

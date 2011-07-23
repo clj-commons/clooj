@@ -24,6 +24,10 @@
     (.startsWith (.getMessage throwable) "java.lang.Exception: EOF while reading")
     (.startsWith (.getMessage throwable) "java.io.IOException: Write end dead"))))
 
+(defn get-repl-ns [doc]
+  (let [repl-map @repls]
+    (-> doc :repl deref :project-path repl-map :ns)))
+
 (defn repl-print [x]
   (if (var? x)
     (print x)
@@ -181,7 +185,10 @@
 
 (defn apply-namespace-to-repl [doc]
   (when-let [current-ns (get-current-namespace (doc :doc-text-area))]
-    (send-to-repl doc (str "(ns " current-ns ")"))))
+    (send-to-repl doc (str "(ns " current-ns ")"))
+    (swap! repls assoc-in
+           [(-> doc :repl deref :project-path) :ns]
+           current-ns)))
 
 (defn restart-repl [doc project-path]
   (.append (doc :repl-out-text-area)

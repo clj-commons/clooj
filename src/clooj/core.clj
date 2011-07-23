@@ -73,7 +73,7 @@
   (let [{:keys [row col]} (get-caret-coords (:doc-text-area doc))]
     (.setText (:pos-label doc) (str " " (inc row) "|" (inc col)))))
 
-(defn handle-caret-move [doc text-comp]
+(defn handle-caret-move [doc text-comp ns]
   (send-off highlight-agent
     (fn [old-pos]
       (let [pos (.getCaretPosition text-comp)
@@ -90,22 +90,21 @@
             text (.getText text-comp)]
         (when-not (= pos old-pos)
           (let [arglist-text
-                 (arglist-from-caret-pos (get-current-namespace text-comp) text pos)]
+                 (arglist-from-caret-pos ns text pos)]
             (.setText (:arglist-label doc) arglist-text)))))))
 
 ;; highlighting
 
 (defn activate-caret-highlighter [doc]
-  (when (doc :doc-text-area)
-    (add-caret-listener (doc :doc-text-area) #(handle-caret-move doc (doc :doc-text-area))))
-  (when (doc :repl-in-text-area)
-    (add-caret-listener (doc :repl-in-text-area) #(handle-caret-move doc (doc :repl-in-text-area)))))
-
-(defn activate-error-highlighter [doc]
-  (when (doc :doc-text-area)
-    (add-text-change-listener (doc :doc-text-area) #(handle-caret-move doc (doc :doc-text-area))))
-  (when (doc :repl-in-text-area)
-    (add-text-change-listener (doc :repl-in-text-area) #(handle-caret-move doc (doc :repl-in-text-area)))))
+  (when-let [text-comp (doc :doc-text-area)]
+    (let [ns (get-current-namespace text-comp)
+          f #(handle-caret-move doc text-comp ns)]
+      (add-caret-listener text-comp f)
+      (add-text-change-listener text-comp f)))
+  (when-let [text-comp (doc :repl-in-text-area)]
+    (let [f  #(handle-caret-move doc text-comp (get-repl-ns doc))]
+      (add-caret-listener text-comp f)
+      (add-text-change-listener text-comp f))))
 
 ;; temp files
 
@@ -339,7 +338,6 @@
     (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
-    (activate-error-highlighter doc)
     (setup-tree doc)
     (when-not @(doc :file)
       (restart-doc doc nil))
@@ -370,12 +368,11 @@
             (.setEditable text-area false)))
       (make-undoable text-area)
       (setup-autoindent text-area)
-      (activate-error-highlighter doc)
+      (activate-caret-highlighter doc)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
       (switch-repl doc (first (get-selected-projects doc)))
-      (apply-namespace-to-repl doc)
-      (handle-caret-move doc (doc :doc-text-area)))
+      (apply-namespace-to-repl doc))
     doc))
 
 (defn new-file [doc]
