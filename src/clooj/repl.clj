@@ -180,7 +180,8 @@
     (catch Exception e)))
 
 (defn apply-namespace-to-repl [doc]
-  (send-to-repl doc (str "(ns " (get-current-namespace (doc :doc-text-area)) ")")))
+  (when-let [current-ns (get-current-namespace (doc :doc-text-area))]
+    (send-to-repl doc (str "(ns " current-ns ")"))))
 
 (defn restart-repl [doc project-path]
   (.append (doc :repl-out-text-area)
