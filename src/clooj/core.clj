@@ -97,8 +97,7 @@
 
 (defn activate-caret-highlighter [doc]
   (when-let [text-comp (doc :doc-text-area)]
-    (let [ns (get-current-namespace text-comp)
-          f #(handle-caret-move doc text-comp ns)]
+    (let [f #(handle-caret-move doc text-comp (get-current-namespace text-comp))]
       (add-caret-listener text-comp f)
       (add-text-change-listener text-comp f)))
   (when-let [text-comp (doc :repl-in-text-area)]
@@ -368,7 +367,6 @@
             (.setEditable text-area false)))
       (make-undoable text-area)
       (setup-autoindent text-area)
-      (activate-caret-highlighter doc)
       (reset! (doc :file) file)
       (setup-temp-writer doc)
       (switch-repl doc (first (get-selected-projects doc)))
