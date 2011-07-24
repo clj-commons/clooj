@@ -7,7 +7,9 @@
            (java.awt Rectangle)
            (java.net URL URLClassLoader))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
-                            awt-event recording-source-reader)]
+                            awt-event recording-source-reader
+                            get-line-of-offset get-line-start-offset
+                            append-text)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]))
@@ -115,7 +117,7 @@
   (awt-event
     (let [cmd-ln (str \newline (.trim cmd) \newline)
            cmd (.trim cmd-ln)]
-      (.append (doc :repl-out-text-area) cmd-ln)
+      (append-text (doc :repl-out-text-area) cmd-ln)
       (.write (:input-writer @(doc :repl)) cmd-ln)
       (.flush (:input-writer @(doc :repl)))
       (when (not= cmd (second @(:items repl-history)))
@@ -154,7 +156,7 @@
       (flush []
         (when ta-out
           (awt-event
-            (do (.append ta-out (.toString buf))
+            (do (append-text ta-out (.toString buf))
                 (scroll-to-last ta-out)
                 (.setLength buf 0)))))
       (close [] nil))))
@@ -191,7 +193,7 @@
            current-ns)))
 
 (defn restart-repl [doc project-path]
-  (.append (doc :repl-out-text-area)
+  (append-text (doc :repl-out-text-area)
            (str "\n=== RESTARTING " project-path " REPL ===\n"))
   (let [input (-> doc :repl deref :input-writer)]
     (.write input "EXIT-REPL\n")
@@ -205,7 +207,7 @@
 
 (defn switch-repl [doc project-path]
   (when (not= project-path (-> doc :repl deref :project-path))
-    (.append (doc :repl-out-text-area)
+    (append-text (doc :repl-out-text-area)
              (str "\n\n=== Switching to " project-path " REPL ===\n"))
     (let [repl (or (get @repls project-path)
                    (create-clojure-repl (doc :repl-out-writer) project-path))]
@@ -226,9 +228,9 @@
                                   caret-pos)))))
         submit #(do (send-to-repl doc (.getText ta-in))
                     (.setText ta-in ""))
-        at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
-        at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
-                      (.getLineOfOffset ta-in (.. ta-in getText length)))
+        at-top #(zero? (get-line-of-offset ta-in (get-caret-pos)))
+        at-bottom #(= (get-line-of-offset ta-in (get-caret-pos))
+                      (get-line-of-offset ta-in (.. ta-in getText length)))
         prev-hist #(show-previous-repl-entry doc)
         next-hist #(show-next-repl-entry doc)]
     (attach-child-action-keys ta-in ["UP" at-top prev-hist]

@@ -6,7 +6,7 @@
   (:import (javax.swing AbstractListModel BorderFactory JDialog
                         JFrame JLabel JList JMenuBar JOptionPane
                         JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree SpringLayout
+                        JTextField JTree SpringLayout JTextPane
                         UIManager)
            (javax.swing.event TreeSelectionListener
                               TreeExpansionListener)
@@ -59,8 +59,15 @@
     (Font. "Monaco" Font/PLAIN 11)
     (Font. "Courier New" Font/PLAIN 12)))
 
-(defn make-text-area []
-  (doto (JTextArea.)
+(defn make-text-area [wrap]
+  (doto (proxy [JTextPane] []
+          (getScrollableTracksViewportWidth []
+            (if-not wrap
+              (if-let [parent (.getParent this)]
+                (<= (. this getWidth)
+                    (. parent getWidth))
+                false)
+              true)))
     (.setFont mono-font)))  
 
 ;; caret finding
@@ -148,12 +155,13 @@
       (.addTreeSelectionListener
         (reify TreeSelectionListener
           (valueChanged [this e]
-            (save-tree-selection tree (.getNewLeadSelectionPath e))
-            (let [f (.. e getPath getLastPathComponent
-                          getUserObject)]
-              (when (.. f getName (endsWith ".clj"))
-                (awt-event (restart-doc doc f))))))))))
-
+            (awt-event
+              (save-tree-selection tree (.getNewLeadSelectionPath e))
+              (let [f (.. e getPath getLastPathComponent
+                            getUserObject)]
+                (when (.. f getName (endsWith ".clj"))
+                  (restart-doc doc f))))))))))
+  
 ;; build gui
 
 (defn make-scroll-pane [text-area]
@@ -257,7 +265,7 @@
           (System/exit 0))))))
 
 (def no-project-txt
-    "Welcome to clooj, a lightweight IDE for clojure\n
+    "\n Welcome to clooj, a lightweight IDE for clojure\n
      To start coding, you can either\n
        a. create a new project
             (select the Project > New... menu), or
@@ -276,11 +284,11 @@
      &nbsp;2. edit an existing file by selecting one at left.</html>")
 
 (defn create-doc []
-  (let [doc-text-area (make-text-area)
+  (let [doc-text-area (make-text-area false)
         doc-text-panel (JPanel.)
-        repl-out-text-area (make-text-area)
+        repl-out-text-area (make-text-area true)
         repl-out-writer (make-repl-writer repl-out-text-area)
-        repl-in-text-area (make-text-area)
+        repl-in-text-area (make-text-area false)
         search-text-area (JTextField.)
         arglist-label (create-arglist-label)
         pos-label (JLabel.)
@@ -328,18 +336,15 @@
     (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -16 :w 80 :s -1 :w 300)
     (constrain-to-parent arglist-label :s -16 :w 80 :s -1 :e -10)
-    (.setText arglist-label "arglist")
     (.layoutContainer layout f)
     (exit-if-closed f)
     (setup-search-text-area doc)
     (add-caret-listener doc-text-area #(display-caret-position doc))
     (activate-caret-highlighter doc)
-    (doto repl-out-text-area (.setLineWrap true) (.setEditable false))
+    (doto repl-out-text-area (.setEditable false))
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tree doc)
-    (when-not @(doc :file)
-      (restart-doc doc nil))
     doc))
 
 ;; clooj docs
@@ -398,7 +403,6 @@
                             (get-code-files ".clj")
                             first
                             .getAbsolutePath)]
-      (println "clj-file:" clj-file)
       (awt-event (set-tree-selection (doc :docs-tree) clj-file)))))
 
 (def project-clj-text (.trim
@@ -430,10 +434,8 @@
                                           "Create a source file"
                                           default-namespace)
          tree (:docs-tree doc)]
-     (println namespace)
      (spit file (str "(ns " namespace ")\n"))
      (update-project-tree tree)
-     (println "creating file" (.getAbsolutePath file))
      (set-tree-selection tree (.getAbsolutePath file))))
 
 (defn new-project-clj [doc project-dir]
@@ -545,7 +547,11 @@
      (setup-temp-writer doc)
      (let [tree (doc :docs-tree)]
        (load-expanded-paths tree)
-       (load-tree-selection tree))))
+       (load-tree-selection tree))
+     (awt-event
+       (let [path (get-selected-file-path doc)
+              file (when path (File. path))]
+         (restart-doc doc file)))))
 
 (defn -show []
   (reset! embedded true)

@@ -74,7 +74,6 @@
     (catch Exception e)))
 
 (defn string-to-var [ns string]
-  (println ns string)
   (when-not (empty? string)
     (let [sym (symbol string)]
       (or (safe-resolve ns sym)

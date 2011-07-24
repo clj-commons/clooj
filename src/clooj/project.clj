@@ -175,9 +175,8 @@
   (.. node getUserObject getAbsolutePath))
 
 (defn get-selected-file-path [doc]
-  (-> doc
-    :docs-tree .getSelectionPaths first
-    .getLastPathComponent .getUserObject .getAbsolutePath))
+  (when-let [tree-path (-> doc :docs-tree .getSelectionPaths first)]
+    (-> tree-path .getLastPathComponent .getUserObject .getAbsolutePath)))
 
 (defn get-selected-namespace [tree]
   (->> tree .getSelectionPaths first
