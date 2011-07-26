@@ -25,7 +25,7 @@
       (setDocumentFilter
         (proxy [DocumentFilter] []
           (replace [fb offset len text attrs]
-            (println fb offset len text attrs)
+          ;  (println fb offset len text attrs)
             (.replace
               fb offset len
               (condp = text

@@ -491,7 +491,9 @@
       ["Remove" nil #(remove-project doc)])
     (add-menu menu-bar "Source"
       ["Comment-out" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
-      ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))])
+      ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))]
+      ["Indent" "TAB" #(indent (:doc-text-area doc))]
+      ["Unindent" "shift TAB" #(unindent (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
       ["Evaluate here" "cmd ENTER" #(send-selected-to-repl doc)]
       ["Evaluate entire file" "cmd E" #(send-doc-to-repl doc)]

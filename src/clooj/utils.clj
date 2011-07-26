@@ -190,13 +190,14 @@
 
 (defn uncomment-out [text-comp]
   (remove-from-selected-row-headers text-comp ";"))
-
+    
 (defn indent [text-comp]
-  (insert-in-selected-row-headers text-comp "  "))
+  (when (.isFocusOwner text-comp)
+    (insert-in-selected-row-headers text-comp "  ")))
 
 (defn unindent [text-comp]
-  (remove-from-selected-row-headers text-comp "  "))
-                     
+  (when (.isFocusOwner text-comp)
+    (remove-from-selected-row-headers text-comp "  ")))
 
 ;; keys
 
