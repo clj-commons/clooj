@@ -34,14 +34,15 @@
                               rename-project set-tree-selection
                               get-code-files get-selected-namespace)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
-                            is-mac count-while get-coords add-text-change-listener
+                            is-mac count-while add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
                             attach-child-action-keys attach-action-keys
                             get-caret-coords add-menu make-undoable
                             choose-file choose-directory
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
-                            confirmed? create-button)])
+                            confirmed? create-button)]
+        [clooj.index :only setup-autoindex])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class
@@ -206,31 +207,6 @@
       (.setHorizontalAlignment JLabel/RIGHT)
       (.setVerticalAlignment JLabel/BOTTOM))
     (.setRowHeaderView sp jl)))
-
-(defn auto-indent-str [text-comp offset]
-  (let [bracket-pos (first (find-enclosing-brackets
-                             (.getText text-comp) offset))]
-    (if (<= 0 bracket-pos)
-      (let [bracket (.. text-comp getText (charAt bracket-pos))
-            col (:col (get-coords text-comp bracket-pos))
-            indent-size (if (= bracket \() 2 1)] ;\) avoids highlighting problems
-        (apply str "\n" (repeat (+ col indent-size) " ")))
-      "\n")))
-     
-(defn setup-autoindent [text-comp]
-  (attach-action-keys text-comp
-    ["TAB" #(indent text-comp)]
-    ["shift TAB" #(unindent text-comp)])
-  (.. text-comp getDocument
-      (setDocumentFilter
-        (proxy [DocumentFilter] []
-          (replace [fb offset len text attrs]
-            (.replace
-              fb offset len
-              (condp = text
-                "\n" (auto-indent-str text-comp offset)
-                text)
-                attrs))))))
 
 (defn make-split-pane [comp1 comp2 horizontal resize-weight]
   (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT 
