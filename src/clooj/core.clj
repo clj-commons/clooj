@@ -42,7 +42,7 @@
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
                             confirmed? create-button)]
-        [clooj.index :only setup-autoindex])
+        [clooj.indent :only (setup-autoindent)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class
@@ -309,9 +309,9 @@
     (.setModel docs-tree (DefaultTreeModel. nil))
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
     (constrain-to-parent doc-scroll-pane :n 0 :w 0 :s -16 :e 0)
-    (constrain-to-parent pos-label :s -16 :w 0 :s 0 :w 100)
-    (constrain-to-parent search-text-area :s -16 :w 80 :s -1 :w 300)
-    (constrain-to-parent arglist-label :s -16 :w 80 :s -1 :e -10)
+    (constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
+    (constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
+    (constrain-to-parent arglist-label :s -14 :w 80 :s -1 :e -10)
     (.layoutContainer layout f)
     (exit-if-closed f)
     (setup-search-text-area doc)

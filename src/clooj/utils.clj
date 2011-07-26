@@ -127,6 +127,9 @@
 (defn get-line-start-offset [text-pane line]
   (.. text-pane getDocument getDefaultRootElement (getElement line) getStartOffset))
 
+(defn get-line-end-offset [text-pane line]
+  (.. text-pane getDocument getDefaultRootElement (getElement line) getEndOffset))
+
 (defn append-text [text-pane text]
   (when-let [doc (.getDocument text-pane)]
     (.insertString doc (.getLength doc) text nil)))
@@ -170,15 +173,17 @@
 
 (defn insert-in-selected-row-headers [text-comp txt]
   (awt-event
-    (let [starts (get-selected-line-starts text-comp)]
-      (dorun (map #(.insert text-comp txt %) starts)))))
+    (let [starts (get-selected-line-starts text-comp)
+          document (.getDocument text-comp)]
+      (dorun (map #(.insertString document % txt nil) starts)))))
 
 (defn remove-from-selected-row-headers [text-comp txt]
   (awt-event
-    (let [len (count txt)]
+    (let [len (count txt)
+          document (.getDocument text-comp)]
       (doseq [start (get-selected-line-starts text-comp)]
         (when (= (.getText text-comp start len) txt)
-          (.replaceRange text-comp "" start (+ start len)))))))
+          (.remove document start len))))))
   
 (defn comment-out [text-comp]
   (insert-in-selected-row-headers text-comp ";"))
