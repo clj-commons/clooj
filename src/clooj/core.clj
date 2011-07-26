@@ -348,7 +348,7 @@
           file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
           clooj-name (str "clooj " (get-clooj-version))]
       (.. text-area getHighlighter removeAllHighlights)
-      (if (and file-to-open (.exists file-to-open))
+      (if (and file-to-open (.exists file-to-open) (.isFile file-to-open))
         (do (with-open [rdr (FileReader. file-to-open)]
               (.read text-area rdr nil))
             (.setTitle frame (str clooj-name " \u2014  " (.getPath file)))
