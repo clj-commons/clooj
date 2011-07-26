@@ -381,15 +381,15 @@
                          "Oops" JOptionPane/ERROR_MESSAGE))))
 
 (defn open-project [doc]
-  (let [dir (choose-directory (doc :f) "Choose a project directory")
-        project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
-    (add-project doc (.getAbsolutePath project-dir))
-    (when-let [clj-file (-> (File. project-dir "src")
-                            .getAbsolutePath
-                            (get-code-files ".clj")
-                            first
-                            .getAbsolutePath)]
-      (awt-event (set-tree-selection (doc :docs-tree) clj-file)))))
+  (when-let [dir (choose-directory (doc :f) "Choose a project directory")]
+    (let [project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
+      (add-project doc (.getAbsolutePath project-dir))
+      (when-let [clj-file (-> (File. project-dir "src")
+                              .getAbsolutePath
+                              (get-code-files ".clj")
+                              first
+                              .getAbsolutePath)]
+        (awt-event (set-tree-selection (doc :docs-tree) clj-file))))))
 
 (def project-clj-text (.trim
 "
