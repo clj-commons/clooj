@@ -16,6 +16,7 @@
            (java.awt Insets Point Rectangle Window)
            (java.awt.event FocusAdapter WindowAdapter)
            (java.awt Color Font GridLayout)
+           (java.net URL)
            (java.io File FileReader FileWriter))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
@@ -71,6 +72,14 @@
               true)))
     (.setFont mono-font)))  
 
+(def get-clooj-version
+  (memoize
+    (fn []
+      (-> (Thread/currentThread) .getContextClassLoader
+          (.getResource "clooj/core.class") .toString
+          (.replace "clooj/core.class" "project.clj")
+          URL. slurp read-string (nth 2)))))
+    
 ;; caret finding
 
 (def highlight-agent (agent nil))
@@ -336,15 +345,16 @@
   (let [frame (doc :frame)]
     (let [text-area (doc :doc-text-area)
           temp-file (get-temp-file file)
-          file-to-open (if (and temp-file (.exists temp-file)) temp-file file)]
+          file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
+          clooj-name (str "clooj " (get-clooj-version))]
       (.. text-area getHighlighter removeAllHighlights)
       (if (and file-to-open (.exists file-to-open))
         (do (with-open [rdr (FileReader. file-to-open)]
               (.read text-area rdr nil))
-            (.setTitle frame (str "clooj  \u2014  " (.getPath file)))
+            (.setTitle frame (str clooj-name " \u2014  " (.getPath file)))
             (.setEditable text-area true))
         (do (.setText text-area no-project-txt)
-            (.setTitle frame (str "clooj \u2014 (No file selected)"))
+            (.setTitle frame (str clooj-name " \u2014 (No file selected)"))
             (.setEditable text-area false)))
       (make-undoable text-area)
       (setup-autoindent text-area)
