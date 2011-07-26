@@ -416,13 +416,13 @@
       [(File. the-dir (str name ".clj")) namespace])))
       
 (defn create-file [doc project-dir default-namespace]
-   (let [[file namespace] (specify-source project-dir
+   (when-let [[file namespace] (specify-source project-dir
                                           "Create a source file"
-                                          default-namespace)
-         tree (:docs-tree doc)]
-     (spit file (str "(ns " namespace ")\n"))
-     (update-project-tree tree)
-     (set-tree-selection tree (.getAbsolutePath file))))
+                                          default-namespace)]
+     (let [tree (:docs-tree doc)]
+       (spit file (str "(ns " namespace ")\n"))
+       (update-project-tree (:docs-tree doc))
+       (set-tree-selection tree (.getAbsolutePath file)))))
 
 (defn new-project-clj [doc project-dir]
   (let [project-name (.getName project-dir)
