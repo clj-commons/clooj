@@ -268,6 +268,18 @@
      (select menu <b>File > New...</b>)<br>
      &nbsp;2. edit an existing file by selecting one at left.</html>")
 
+
+(defn open-project [doc]
+  (when-let [dir (choose-directory (doc :f) "Choose a project directory")]
+    (let [project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
+      (add-project doc (.getAbsolutePath project-dir))
+      (when-let [clj-file (-> (File. project-dir "src")
+                              .getAbsolutePath
+                              (get-code-files ".clj")
+                              first
+                              .getAbsolutePath)]
+        (awt-event (set-tree-selection (doc :docs-tree) clj-file))))))
+
 (defn create-doc []
   (let [doc-text-area (make-text-area false)
         doc-text-panel (JPanel.)
@@ -330,6 +342,8 @@
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tree doc)
+    (attach-action-keys doc-text-area
+      ["cmd shift O" #(open-project doc)])
     doc))
 
 ;; clooj docs
@@ -379,17 +393,6 @@
     (catch Exception e (JOptionPane/showMessageDialog
                          nil "Unable to save file."
                          "Oops" JOptionPane/ERROR_MESSAGE))))
-
-(defn open-project [doc]
-  (when-let [dir (choose-directory (doc :f) "Choose a project directory")]
-    (let [project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
-      (add-project doc (.getAbsolutePath project-dir))
-      (when-let [clj-file (-> (File. project-dir "src")
-                              .getAbsolutePath
-                              (get-code-files ".clj")
-                              first
-                              .getAbsolutePath)]
-        (awt-event (set-tree-selection (doc :docs-tree) clj-file))))))
 
 (def project-clj-text (.trim
 "

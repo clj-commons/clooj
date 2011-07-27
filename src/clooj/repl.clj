@@ -139,7 +139,10 @@
                 (when (and a b (< a b))
                   (.. ta getDocument
                     (getText a (- b a))))))]
-      (when txt (send-to-repl doc txt))))
+      (when (and txt
+                 (try (read-string txt)
+                   (catch Exception e nil)))
+         (send-to-repl doc txt))))
 
 (defn send-doc-to-repl [doc]
   (->> doc :doc-text-area .getText (send-to-repl doc)))
