@@ -42,7 +42,7 @@
                             choose-file choose-directory
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
-                            confirmed? create-button)]
+                            confirmed? create-button is-win)]
         [clooj.indent :only (setup-autoindent)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
@@ -53,13 +53,11 @@
 (def gap 5)
 
 (def embedded (atom false))
-
-(def docs (atom {}))
   
 (def mono-font
-  (if (is-mac)
-    (Font. "Monaco" Font/PLAIN 11)
-    (Font. "Courier New" Font/PLAIN 12)))
+  (cond (is-mac) (Font. "Monaco" Font/PLAIN 11)
+        (is-win) (Font. "Courier" Font/PLAIN 12)
+        :else    (Font. "Monospaced" Font/PLAIN 12)))
 
 (defn make-text-area [wrap]
   (doto (proxy [JTextPane] []
@@ -557,4 +555,11 @@
 ;; testing
 
 (defn get-text []
-  (.getText (current-doc :doc-text-area)))
+  (.getText (@current-doc :doc-text-area)))
+
+; not working yet:
+;(defn restart
+;   "Restart the application"
+;   []
+;  (.setVisible (@current-doc :frame) false)
+;  (startup))
