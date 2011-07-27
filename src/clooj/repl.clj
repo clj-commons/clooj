@@ -3,7 +3,8 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.repl
-  (:import (java.io File PipedReader PipedWriter PrintWriter Writer)
+  (:import (java.io File PipedReader PipedWriter PrintWriter Writer
+                    StringReader PushbackReader)
            (java.awt Rectangle)
            (java.net URL URLClassLoader))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
@@ -113,6 +114,12 @@
   (swap! (:items repl-history) replace-first
          (.getText (doc :repl-in-text-area))))
 
+(defn correct-expression? [cmd]
+   (let [rdr (-> cmd StringReader. PushbackReader.)]
+        (try (while (read rdr nil nil))
+          true
+          (catch Exception e false))))
+
 (defn send-to-repl [doc cmd]
   (awt-event
     (let [cmd-ln (str \newline (.trim cmd) \newline)
@@ -138,11 +145,10 @@
               (let [[a b] (find-line-group ta)]
                 (when (and a b (< a b))
                   (.. ta getDocument
-                    (getText a (- b a))))))]
-      (when (and txt
-                 (try (read-string txt)
-                   (catch Exception e nil)))
-         (send-to-repl doc txt))))
+                    (getText a (- b a))))))]      
+    (if-not (and txt (correct-expression? txt))
+      (.setText (doc :arglist-label) "Malformed expression")
+      (send-to-repl doc txt))))
 
 (defn send-doc-to-repl [doc]
   (->> doc :doc-text-area .getText (send-to-repl doc)))
@@ -229,8 +235,11 @@
                    (= -1 (first (find-enclosing-brackets
                                   txt
                                   caret-pos)))))
-        submit #(do (send-to-repl doc (.getText ta-in))
-                    (.setText ta-in ""))
+        submit #(when-let [txt (.getText ta-in)]
+                  (if (correct-expression? txt)
+                    (do (send-to-repl doc txt)
+                        (.setText ta-in ""))
+                    (.setText (doc :arglist-label) "Malformed expression")))
         at-top #(zero? (get-line-of-offset ta-in (get-caret-pos)))
         at-bottom #(= (get-line-of-offset ta-in (get-caret-pos))
                       (get-line-of-offset ta-in (.. ta-in getText length)))
