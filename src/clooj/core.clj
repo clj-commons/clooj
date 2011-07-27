@@ -107,7 +107,7 @@
             text (.getText text-comp)]
         (when-not (= pos old-pos)
           (let [arglist-text
-                 (arglist-from-caret-pos ns text pos)]
+                 (arglist-from-caret-pos (find-ns (symbol ns)) text pos)]
             (.setText (:arglist-label doc) arglist-text)))))))
 
 ;; highlighting

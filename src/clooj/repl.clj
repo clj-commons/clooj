@@ -191,7 +191,7 @@
   (try
     (when-let [sexpr (read-string (. text-comp getText))]
       (when (= 'ns (first sexpr))
-        (find-ns (symbol (second sexpr)))))
+        (str (second sexpr))))
     (catch Exception e)))
 
 (defn apply-namespace-to-repl [doc]
