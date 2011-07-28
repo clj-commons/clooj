@@ -183,10 +183,11 @@
   (update-repl-in doc))
 
 (defn show-next-repl-entry [doc]
-  (swap! (:pos repl-history)
-         #(Math/max 0 (dec %)))
-  (update-repl-in doc))
-
+  (when (pos? @(:pos repl-history))
+    (swap! (:pos repl-history)
+           #(Math/max 0 (dec %)))
+    (update-repl-in doc)))
+  
 (defn get-current-namespace [text-comp]
   (try
     (when-let [sexpr (read-string (. text-comp getText))]
