@@ -56,7 +56,7 @@
   
 (def mono-font
   (cond (is-mac) (Font. "Monaco" Font/PLAIN 11)
-        (is-win) (Font. "Courier" Font/PLAIN 12)
+        (is-win) (Font. "Courier New" Font/PLAIN 12)
         :else    (Font. "Monospaced" Font/PLAIN 12)))
 
 (defn make-text-area [wrap]
