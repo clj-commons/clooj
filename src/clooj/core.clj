@@ -84,32 +84,39 @@
 
 (def arglist-agent (agent nil))
 
+(def caret-position (atom nil))
+
+(defn update-caret-position [text-comp]
+  (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
+
 (defn display-caret-position [doc]
   (let [{:keys [row col]} (get-caret-coords (:doc-text-area doc))]
     (.setText (:pos-label doc) (str " " (inc row) "|" (inc col)))))
 
 (defn handle-caret-move [doc text-comp ns]
+  (update-caret-position text-comp)
   (send-off highlight-agent
     (fn [old-pos]
       (try
-        (let [pos (.getCaretPosition text-comp)
+        (let [pos (@caret-position text-comp)
               text (.getText text-comp)]
           (when-not (= pos old-pos)
             (let [enclosing-brackets (find-enclosing-brackets text pos)
                   bad-brackets (find-bad-brackets text)
                   good-enclosures (clojure.set/difference
                                     (set enclosing-brackets) (set bad-brackets))]
-              (highlight-brackets text-comp good-enclosures bad-brackets))))
+              (awt-event
+                (highlight-brackets text-comp good-enclosures bad-brackets)))))
         (catch Throwable t (.printStackTrace t)))))
   (send-off arglist-agent 
     (fn [old-pos]
       (try
-        (let [pos (.getCaretPosition text-comp)
+        (let [pos (@caret-position text-comp)
               text (.getText text-comp)]
           (when-not (= pos old-pos)
             (let [arglist-text
                    (arglist-from-caret-pos (find-ns (symbol ns)) text pos)]
-              (.setText (:arglist-label doc) arglist-text))))
+              (awt-event (.setText (:arglist-label doc) arglist-text)))))
         (catch Throwable t (.printStackTrace t))))))
   
 ;; highlighting
@@ -144,14 +151,17 @@
     (send-off temp-file-manager
       (fn [old-pos]
         (try
-          (let [pos (.getCaretPosition text-comp)]
+          (let [pos (@caret-position text-comp)]
             (when-not (== old-pos pos)
               (dump-temp-doc doc f txt))
             pos)
           (catch Throwable t (.printStackTrace t)))))))
   
 (defn setup-temp-writer [doc]
-  (add-text-change-listener (:doc-text-area doc) #(update-temp doc)))
+  (let [text-comp (:doc-text-area doc)]
+    (add-text-change-listener text-comp
+      #(do (update-caret-position text-comp)
+           (update-temp doc)))))
 
 (declare restart-doc)
 
