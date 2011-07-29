@@ -6,7 +6,7 @@
   (:import (javax.swing AbstractListModel BorderFactory JDialog
                         JFrame JLabel JList JMenuBar JOptionPane
                         JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree SpringLayout JTextPane
+                        JTextField JTree KeyStroke SpringLayout JTextPane
                         UIManager)
            (javax.swing.event TreeSelectionListener
                               TreeExpansionListener)
@@ -14,8 +14,9 @@
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (java.awt Insets Point Rectangle Window)
-           (java.awt.event FocusAdapter WindowAdapter KeyAdapter)
-           (java.awt Color Font GridLayout)
+           (java.awt.event AWTEventListener FocusAdapter
+                           WindowAdapter KeyAdapter)
+           (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
            (java.io File FileReader FileWriter))
   (:use [clojure.contrib.duck-streams :only (writer)]
@@ -42,7 +43,8 @@
                             choose-file choose-directory
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
-                            confirmed? create-button is-win)]
+                            confirmed? create-button is-win
+                            get-keystroke)]
         [clooj.indent :only (setup-autoindent)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
@@ -299,7 +301,9 @@
   (attach-action-keys text-comp
     ["special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
     ["special E" #(.requestFocusInWindow (:doc-text-area doc))]
-    ["special P" #(.requestFocusInWindow (:docs-tree doc))]))
+    ["special P" #(.requestFocusInWindow (:docs-tree doc))]
+    ["special F" #(.toFront (:frame doc))]
+    ["special B" #(.toBack (:frame doc))]))
   
 (defn create-doc []
   (let [doc-text-area (make-text-area false)
@@ -544,9 +548,22 @@
       ["Find next" "cmd G" #(highlight-step doc false)]
       ["Find prev" "cmd shift G" #(highlight-step doc true)])
     (add-menu menu-bar "Window"
-      ["Move to REPL" "special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
-      ["Move to Editor" "special E" #(.requestFocusInWindow (:doc-text-area doc))]
-      ["Move to Project Tree" "special P" #(.requestFocusInWindow (:docs-tree doc))])))
+      ["Go to REPL input" "special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
+      ["Go to Editor" "special E" #(.requestFocusInWindow (:doc-text-area doc))]
+      ["Go to Project Tree" "special P" #(.requestFocusInWindow (:docs-tree doc))]
+      ["Send clooj window to back" "special B" #(.toBack (:frame doc))]
+      ["Bring clooj window to front" "special F" #(.toFront (:frame doc))])))
+
+(defn add-visibility-shortcut [doc]
+  (let [shortcut (get-keystroke "special F")]
+    (.. Toolkit getDefaultToolkit
+      (addAWTEventListener
+        (proxy [AWTEventListener] []
+          (eventDispatched [e]
+            (when (= (KeyStroke/getKeyStrokeForEvent e)
+                     shortcut)
+              (.toFront (:frame doc)))))
+        AWTEvent/KEY_EVENT_MASK))))
 
 ;; startup
 
@@ -557,6 +574,7 @@
   (let [doc (create-doc)]
      (reset! current-doc doc)
      (make-menus doc)
+     (add-visibility-shortcut doc)
      (let [ta-in (doc :repl-in-text-area)
            ta-out (doc :repl-out-text-area)]
        (add-repl-input-handler doc))
