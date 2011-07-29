@@ -531,7 +531,11 @@
     (add-menu menu-bar "Search"
       ["Find" "cmd F" #(start-find doc)]
       ["Find next" "cmd G" #(highlight-step doc false)]
-      ["Find prev" "cmd shift G" #(highlight-step doc true)])))
+      ["Find prev" "cmd shift G" #(highlight-step doc true)])
+    (add-menu menu-bar "Window"
+      ["Move to REPL" "alt R" #(.requestFocusInWindow (:repl-in-text-area doc))]
+      ["Move to Editor" "alt E" #(.requestFocusInWindow (:doc-text-area doc))]
+      ["Move to Project Tree" "alt P" #(.requestFocusInWindow (:docs-tree doc))])))
 
 ;; startup
 
