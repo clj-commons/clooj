@@ -203,8 +203,9 @@
 
 (defn get-keystroke [key-shortcut]
   (KeyStroke/getKeyStroke
-    (.replace key-shortcut "cmd"
-      (if (is-mac) "meta" "ctrl"))))
+    (-> key-shortcut
+      (.replace "cmd" (if (is-mac) "meta" "ctrl"))
+      (.replace "special" (if (is-mac) "ctrl" "alt")))))
 
 ;; actions
 

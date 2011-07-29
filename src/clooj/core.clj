@@ -14,7 +14,7 @@
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (java.awt Insets Point Rectangle Window)
-           (java.awt.event FocusAdapter WindowAdapter)
+           (java.awt.event FocusAdapter WindowAdapter KeyAdapter)
            (java.awt Color Font GridLayout)
            (java.net URL)
            (java.io File FileReader FileWriter))
@@ -108,17 +108,18 @@
               (awt-event
                 (highlight-brackets text-comp good-enclosures bad-brackets)))))
         (catch Throwable t (.printStackTrace t)))))
-  (send-off arglist-agent 
-    (fn [old-pos]
-      (try
-        (let [pos (@caret-position text-comp)
-              text (.getText text-comp)]
-          (when-not (= pos old-pos)
-            (let [arglist-text
-                   (arglist-from-caret-pos (find-ns (symbol ns)) text pos)]
-              (awt-event (.setText (:arglist-label doc) arglist-text)))))
-        (catch Throwable t (.printStackTrace t))))))
-  
+  (when ns
+    (send-off arglist-agent 
+      (fn [old-pos]
+        (try
+          (let [pos (@caret-position text-comp)
+                text (.getText text-comp)]
+            (when-not (= pos old-pos)
+              (let [arglist-text
+                     (arglist-from-caret-pos (find-ns (symbol ns)) text pos)]
+                (awt-event (.setText (:arglist-label doc) arglist-text)))))
+          (catch Throwable t (.printStackTrace t)))))))
+    
 ;; highlighting
 
 (defn activate-caret-highlighter [doc]
@@ -294,6 +295,12 @@
                               .getAbsolutePath)]
         (awt-event (set-tree-selection (doc :docs-tree) clj-file))))))
 
+(defn attach-global-action-keys [text-comp doc]
+  (attach-action-keys text-comp
+    ["special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
+    ["special E" #(.requestFocusInWindow (:doc-text-area doc))]
+    ["special P" #(.requestFocusInWindow (:docs-tree doc))]))
+  
 (defn create-doc []
   (let [doc-text-area (make-text-area false)
         doc-text-panel (JPanel.)
@@ -358,9 +365,13 @@
     (setup-tree doc)
     (attach-action-keys doc-text-area
       ["cmd shift O" #(open-project doc)])
+    (dorun (map #(attach-global-action-keys % doc)
+                [doc-text-area repl-in-text-area repl-out-text-area]))
     doc))
 
 ;; clooj docs
+
+
 
 (defn restart-doc [doc ^File file] 
   (send-off temp-file-manager
@@ -533,9 +544,9 @@
       ["Find next" "cmd G" #(highlight-step doc false)]
       ["Find prev" "cmd shift G" #(highlight-step doc true)])
     (add-menu menu-bar "Window"
-      ["Move to REPL" "alt R" #(.requestFocusInWindow (:repl-in-text-area doc))]
-      ["Move to Editor" "alt E" #(.requestFocusInWindow (:doc-text-area doc))]
-      ["Move to Project Tree" "alt P" #(.requestFocusInWindow (:docs-tree doc))])))
+      ["Move to REPL" "special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
+      ["Move to Editor" "special E" #(.requestFocusInWindow (:doc-text-area doc))]
+      ["Move to Project Tree" "special P" #(.requestFocusInWindow (:docs-tree doc))])))
 
 ;; startup
 
