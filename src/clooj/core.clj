@@ -586,6 +586,8 @@
      (let [tree (doc :docs-tree)]
        (load-expanded-paths tree)
        (load-tree-selection tree))
+     (dorun (map #(alter-var-root % (fn [_] (doc :repl-out-writer)))
+                 [(var *out*)])) ;(var *err*)
      (awt-event
        (let [path (get-selected-file-path doc)
               file (when path (File. path))]

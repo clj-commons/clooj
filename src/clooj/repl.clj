@@ -59,10 +59,9 @@
         piped-in (-> input-writer
                    PipedReader.
                    recording-source-reader)
-        out (PrintWriter. result-writer true)
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
                                   *in* piped-in
-                                  *out* out
+                                  *out* result-writer
                                   *err* *out*]
                (try
                  (clojure.main/repl
@@ -156,22 +155,24 @@
   (->> doc :doc-text-area .getText (send-to-repl doc)))
 
 (defn make-repl-writer [ta-out]
-  (let [buf (StringBuffer.)]
-    (proxy [Writer] []
-      (write
-        ([char-array offset length]
-          (awt-event (.append buf char-array offset length)))
-        ([t]
-          (when (= Integer (type t))
-            (awt-event (.append buf (char t))))))
-      (flush []
-        (when ta-out
-          (awt-event
-            (do (append-text ta-out (.toString buf))
-                (scroll-to-last ta-out)
-                (.setLength buf 0)))))
-      (close [] nil))))
-
+  (->
+    (let [buf (StringBuffer.)]
+      (proxy [Writer] []
+        (write
+          ([char-array offset length]
+            (awt-event (.append buf char-array offset length)))
+          ([^int t]          
+            (when (= Integer (type t))
+              (awt-event (.append buf (char t))))))
+        (flush []
+          (when ta-out
+            (awt-event
+              (do (append-text ta-out (.toString buf))
+                  (scroll-to-last ta-out)
+                  (.setLength buf 0)))))
+        (close [] nil)))
+    (PrintWriter. true)))
+  
 (defn update-repl-in [doc]
   (when (pos? (count @(:items repl-history)))
     (.setText (:repl-in-text-area doc)
