@@ -103,8 +103,8 @@
 
 (defn get-code-files [dir suffix]
   (let [dir (File. dir)]
-    (filter #(.endsWith (.getName %) suffix)
-            (file-seq dir))))
+    (sort (filter #(.endsWith (.getName %) suffix)
+                  (file-seq dir)))))
 
 (defn path-to-namespace [src-dir file-path]
   (let [drop-suffix #(clojure.contrib.string/butlast 4 %)]
