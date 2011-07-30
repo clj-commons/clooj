@@ -211,10 +211,10 @@
   (let [input (-> doc :repl deref :input-writer)]
     (.write input "EXIT-REPL\n")
     (.flush input))
+  (Thread/sleep 100)
   (let [thread (-> doc :repl deref :thread)]
-    (doseq [_ (range 50) :while (.isAlive thread)]
-      (Thread/sleep 100))
-    (.stop thread))
+    (when (.isAlive thread)
+      (.stop thread)))
   (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project-path))
   (apply-namespace-to-repl doc))
 
