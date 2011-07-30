@@ -73,8 +73,10 @@
                            (let [form (read)]
                              (if (= form 'EXIT-REPL)
                                exit
-                               (with-meta form
-                                 {:clooj/src (.toString piped-in)}))))
+                               (if (isa? (type form) clojure.lang.IObj)
+                                 (with-meta form
+                                   {:clooj/src (.toString piped-in)})
+                                 form))))
                    :caught (fn [e]
                              (when (is-eof-ex? e)
                                (throw e))
