@@ -213,11 +213,8 @@
     (.flush input))
   (Thread/sleep 100)
   (let [thread (-> doc :repl deref :thread)]
-    (println "repl thread: " thread)
     (while (.isAlive thread)
-      (.stop thread)
-     )
-      (def killed-thread thread))
+      (.stop thread)))
   (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project-path))
   (apply-namespace-to-repl doc))
 
