@@ -389,9 +389,10 @@
               (write-value-to-prefs prefs name shape))
             shape))))))
 
-(defn recording-source-reader [rdr]
+(defn recording-source-reader [rdr line-offset-ref]
   (let [text (StringBuilder.)]
     (proxy [clojure.lang.LineNumberingPushbackReader] [rdr]
+      (getLineNumber [] (+ (proxy-super getLineNumber) @line-offset-ref))
       (read [] (let [i (proxy-super read)]
                  (.append text (char i))
                  i))

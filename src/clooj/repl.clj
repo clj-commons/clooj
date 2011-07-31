@@ -21,6 +21,8 @@
 
 (def *printStackTrace-on-error* false)
 
+(def *line-offset*)
+
 (defn is-eof-ex? [throwable]
   (and (instance? clojure.lang.LispReader$ReaderException throwable)
   (or
@@ -58,11 +60,13 @@
         input-writer (PipedWriter.)
         piped-in (-> input-writer
                    PipedReader.
-                   recording-source-reader)
+                   (recording-source-reader (var *line-offset*)))
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
                                   *in* piped-in
                                   *out* result-writer
-                                  *err* *out*]
+                                  *err* *out*
+                                  *file* "NO_SOURCE_PATH"
+                                  *line-offset* 0]
                (try
                  (clojure.main/repl
                    :init (fn [] (in-ns 'user))
@@ -122,18 +126,23 @@
           true
           (catch Exception e false))))
 
-(defn send-to-repl [doc cmd]
-  (awt-event
-    (let [cmd-ln (str \newline (.trim cmd) \newline)
-           cmd (.trim cmd-ln)]
-      (append-text (doc :repl-out-text-area) cmd-ln)
-      (.write (:input-writer @(doc :repl)) cmd-ln)
-      (.flush (:input-writer @(doc :repl)))
-      (when (not= cmd (second @(:items repl-history)))
-        (swap! (:items repl-history)
-               replace-first cmd)
-        (swap! (:items repl-history) conj ""))
-       (reset! (:pos repl-history) 0))))
+(defn send-to-repl
+  ([doc cmd] (send-to-repl doc cmd "NO_SOURCE_PATH" 0))
+  ([doc cmd file line]
+     (awt-event
+      (let [cmd-ln (str \newline (.trim cmd) \newline)
+            cmd (.trim cmd-ln)]
+        (append-text (doc :repl-out-text-area) cmd-ln)
+        (binding [*out* (:input-writer @(doc :repl))]
+          (pr `(set! *file* ~file))
+          (pr `(set! *line-offset* (- ~line (.getLineNumber *in*))))
+          (.write *out* cmd-ln)
+          (flush))
+        (when (not= cmd (second @(:items repl-history)))
+          (swap! (:items repl-history)
+                 replace-first cmd)
+          (swap! (:items repl-history) conj ""))
+        (reset! (:pos repl-history) 0)))))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
