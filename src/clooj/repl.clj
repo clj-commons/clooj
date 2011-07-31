@@ -127,7 +127,7 @@
           (catch Exception e false))))
 
 (defn send-to-repl
-  ([doc cmd] (send-to-repl doc cmd "NO_SOURCE_PATH" 0))
+  ([doc cmd] (send-to-repl doc cmd "NO_SOURCE_PATH" 1))
   ([doc cmd file line]
      (awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
@@ -136,7 +136,7 @@
         (binding [*out* (:input-writer @(doc :repl))]
           (pr `(set! *file* ~file))
           (pr `(set! *line-offset* (- ~line (.getLineNumber *in*))))
-          (.write *out* cmd-ln)
+          (.write *out* cmd)
           (flush))
         (when (not= cmd (second @(:items repl-history)))
           (swap! (:items repl-history)
