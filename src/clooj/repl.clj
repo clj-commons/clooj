@@ -74,7 +74,8 @@
                                exit
                                (if (isa? (type form) clojure.lang.IObj)
                                  (with-meta form
-                                   {:clooj/src (.toString piped-in)})
+                                   (assoc (meta form)
+                                     :clooj/src (.toString piped-in)))
                                  form))))
                    :caught (fn [e]
                              (when (is-eof-ex? e)
