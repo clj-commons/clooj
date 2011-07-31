@@ -9,7 +9,8 @@
            (java.util.prefs Preferences)
            (java.io ByteArrayInputStream ByteArrayOutputStream
                     File FilenameFilter
-                    ObjectInputStream ObjectOutputStream)
+                    ObjectInputStream ObjectOutputStream
+                    OutputStream Writer PrintStream)
            (javax.swing AbstractAction JButton JFileChooser JMenu JMenuBar JMenuItem
                         JOptionPane JSplitPane KeyStroke SpringLayout SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
@@ -400,4 +401,22 @@
       (toString [] (let [s (.trim (str text))]
                      (.setLength text 0)
                      s)))))
+
+
+;; streams and writers
+ 
+(defn printstream-to-writer [writer]
+  (->
+    (proxy [OutputStream] []
+      (write
+        ([^bytes bs offset length]
+          (.write writer
+                  (.toCharArray (String. ^bytes bs "utf-8"))
+                  offset length))
+        ([^int b]
+          (.write writer b)))
+      (flush [] (.flush writer))
+      (close [] (.close writer)))
+    (PrintStream. true)))
+ 
 
