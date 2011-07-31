@@ -161,8 +161,13 @@
       (.setText (doc :arglist-label) "Malformed expression")
       (send-to-repl doc txt))))
 
+(defn relative-file [doc]
+  (let [prefix (str (-> doc :repl deref :project-path) File/separator)]
+    (.replace (str (doc :file)) prefix "")))
+
 (defn send-doc-to-repl [doc]
-  (->> doc :doc-text-area .getText (send-to-repl doc)))
+  (let [text (->> doc :doc-text-area .getText)]
+    (send-to-repl doc text (relative-file doc) 1)))
 
 (defn make-repl-writer [ta-out]
   (->
