@@ -149,22 +149,29 @@
   (.scrollRectToVisible text-area
     (Rectangle. 0 (.getHeight text-area) 1 1)))
 
-
-(defn send-selected-to-repl [doc]
-  (let [ta (doc :doc-text-area)
-        txt (or
-              (.getSelectedText ta)
-              (let [[a b] (find-line-group ta)]
-                (when (and a b (< a b))
-                  (.. ta getDocument
-                    (getText a (- b a))))))]      
-    (if-not (and txt (correct-expression? txt))
-      (.setText (doc :arglist-label) "Malformed expression")
-      (send-to-repl doc txt))))
-
 (defn relative-file [doc]
   (let [prefix (str (-> doc :repl deref :project-path) File/separator)]
     (.replace (str (doc :file)) prefix "")))
+
+(defn selected-region [ta]
+  (if-let [text (.getSelectedText ta)]
+    {:text text
+     :start (.getSelectionStart ta)
+     :end   (.getSelectionEnd ta)}
+    (let [[a b] (find-line-group ta)]
+      (when (and a b (< a b))
+        {:text (.. ta getDocument (getText a (- b a)))
+         :start a
+         :end b}))))
+
+(defn send-selected-to-repl [doc]
+  (let [ta (doc :doc-text-area)
+        region (selected-region ta)
+        txt (:text region)]
+    (if-not (and txt (correct-expression? txt))
+      (.setText (doc :arglist-label) "Malformed expression")
+      (let [line (get-line-of-offset ta (:start region))]
+       (send-to-repl doc txt (relative-file doc) (inc line))))))
 
 (defn send-doc-to-repl [doc]
   (let [text (->> doc :doc-text-area .getText)]
