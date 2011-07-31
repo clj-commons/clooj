@@ -572,7 +572,7 @@
 (defn redirect-stdout-and-stderr [writer]
   (dorun (map #(alter-var-root % (fn [_] writer))
                  [(var *out*) (var *err*)]))
-  (let [stream (printstream-to-writer)]
+  (let [stream (printstream-to-writer writer)]
     (System/setOut stream)
     (System/setErr stream)))
 
