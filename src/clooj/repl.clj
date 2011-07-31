@@ -157,8 +157,9 @@
     (Rectangle. 0 (.getHeight text-area) 1 1)))
 
 (defn relative-file [doc]
-  (let [prefix (str (-> doc :repl deref :project-path) File/separator)]
-    (.replace (str (doc :file)) prefix "")))
+  (let [prefix (str (-> doc :repl deref :project-path) File/separator
+                    "src"  File/separator)]
+    (subs (.getAbsolutePath @(doc :file)) (count prefix))))
 
 (defn selected-region [ta]
   (if-let [text (.getSelectedText ta)]
