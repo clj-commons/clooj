@@ -135,7 +135,8 @@
         (append-text (doc :repl-out-text-area) cmd-ln)
         (binding [*out* (:input-writer @(doc :repl))]
           (pr `(set! *file* ~file))
-          (pr `(set! *line-offset* (- ~line (.getLineNumber *in*))))
+          (pr `(set! *line-offset* (+ *line-offset*
+                                      (- ~line (.getLineNumber *in*)))))
           (.write *out* cmd)
           (flush))
         (when (not= cmd (second @(:items repl-history)))
