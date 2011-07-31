@@ -74,13 +74,19 @@
                             (dorun (map repl-print args)))
                    :read (fn [prompt exit]
                            (let [form (read)]
-                             (if (= form 'EXIT-REPL)
-                               exit
-                               (if (isa? (type form) clojure.lang.IObj)
-                                 (with-meta form
-                                   (assoc (meta form)
-                                     :clooj/src (.toString piped-in)))
-                                 form))))
+                             (cond
+                              (= form 'EXIT-REPL)
+                                exit
+                              (= form 'SILENT-EVAL)
+                                (do (eval (read))
+                                    (.toString piped-in)
+                                    (recur prompt exit))
+                              (isa? (type form) clojure.lang.IObj)
+                                (with-meta form
+                                  (assoc (meta form)
+                                    :clooj/src (.toString piped-in)))
+                              :else
+                                form)))
                    :caught (fn [e]
                              (when (is-eof-ex? e)
                                (throw e))
@@ -134,10 +140,11 @@
             cmd (.trim cmd-ln)]
         (append-text (doc :repl-out-text-area) cmd-ln)
         (binding [*out* (:input-writer @(doc :repl))]
-          (pr `(set! *file* ~file))
-          (pr `(set! *line-offset* (+ *line-offset*
-                                      (- ~line (.getLineNumber *in*)))))
-          (.write *out* cmd)
+          (pr 'SILENT-EVAL `(set! *file* ~file)
+              'SILENT-EVAL `(set! *line-offset*
+                                  (+ *line-offset*
+                                     (- ~line (.getLineNumber *in*)))))
+          (println cmd)
           (flush))
         (when (not= cmd (second @(:items repl-history)))
           (swap! (:items repl-history)
