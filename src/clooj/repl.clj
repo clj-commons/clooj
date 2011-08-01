@@ -160,10 +160,10 @@
       (proxy [Writer] []
         (write
           ([char-array offset length]
-            (awt-event (.append buf char-array offset length)))
+            (.append buf char-array offset length))
           ([^int t]          
             (when (= Integer (type t))
-              (awt-event (.append buf (char t))))))
+              (.append buf (char t)))))
         (flush []
           (when ta-out
             (awt-event
