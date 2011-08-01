@@ -6,12 +6,14 @@
   (:import (java.io File PipedReader PipedWriter PrintWriter Writer
                     StringReader PushbackReader)
            (java.awt Rectangle)
+           (java.util.concurrent LinkedBlockingQueue)
            (java.net URL URLClassLoader))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event recording-source-reader
                             get-line-of-offset get-line-start-offset
                             append-text)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
+        [clooj.project :only (get-selected-file-path)]
         [clojure.pprint :only (pprint)])
   (:require [clojure.contrib.string :as string]))
 
@@ -49,18 +51,27 @@
         (into-array URL urls)
         (.getClassLoader clojure.lang.RT)))))
     
+(defn repl-read [form-queue prompt exit]
+  (let [form (.take form-queue)]
+    (if (= form 'EXIT-REPL)
+      exit
+      form))) 
+
+(defn repl-eval [form]
+  (let [val (eval form)]
+    (when (var? val)
+      (alter-meta! val merge
+        (:clooj/source (meta form))))
+    val))
+
 (defn create-clojure-repl
   "This function creates an instance of clojure repl, with output going to output-writer
   Returns an input writer."
   [result-writer project-path]
   (let [classloader (create-class-loader project-path)
         first-prompt (atom true)
-        input-writer (PipedWriter.)
-        piped-in (-> input-writer
-                   PipedReader.
-                   recording-source-reader)
+        form-queue (LinkedBlockingQueue.)
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
-                                  *in* piped-in
                                   *out* result-writer
                                   *err* *out*]
                (try
@@ -69,13 +80,7 @@
                    :print (fn [& args]
                             (dorun (map repl-print args)))
                    :read (fn [prompt exit]
-                           (let [form (read)]
-                             (if (= form 'EXIT-REPL)
-                               exit
-                               (if (isa? (type form) clojure.lang.IObj)
-                                 (with-meta form
-                                   {:clooj/src (.toString piped-in)})
-                                 form))))
+                           (repl-read form-queue prompt exit))
                    :caught (fn [e]
                              (when (is-eof-ex? e)
                                (throw e))
@@ -86,12 +91,7 @@
                              (printf "\n%s=>"
                                (ns-name *ns*)))
                    :need-prompt (constantly true)
-                   :eval (fn [form]
-                           (let [val (eval form)]
-                             (when (var? val)
-                               (alter-meta! val
-                                 (fn [v] (merge (meta form) v))))
-                             val))
+                   :eval (fn [form] (repl-eval form))
                    )
                  (catch clojure.lang.LispReader$ReaderException ex
                    (prn (.getCause ex))
@@ -103,7 +103,7 @@
       (.setContextClassLoader thread classloader))
     (.start thread)
     (let [repl {:thread thread
-                :input-writer input-writer
+                :form-queue form-queue
                 :project-path project-path}]
       (swap! repls assoc project-path repl)
       repl)))
@@ -121,13 +121,17 @@
           true
           (catch Exception e false))))
 
-(defn send-to-repl [doc cmd]
+(defn send-to-repl [doc cmd-str meta-map]
   (awt-event
-    (let [cmd-ln (str \newline (.trim cmd) \newline)
-           cmd (.trim cmd-ln)]
+    (let [cmd (.trim cmd-str)
+          cmd-ln (str \newline cmd \newline)]
       (append-text (doc :repl-out-text-area) cmd-ln)
-      (.write (:input-writer @(doc :repl)) cmd-ln)
-      (.flush (:input-writer @(doc :repl)))
+      (let [bare-form (read-string cmd)
+            form (if (isa? (type bare-form) clojure.lang.IObj)
+                   (with-meta bare-form meta-map)
+                   bare-form)]
+       ; (println meta-map "|" bare-form "|" form "|" (meta form))
+        (.put (:form-queue @(doc :repl)) form))
       (when (not= cmd (second @(:items repl-history)))
         (swap! (:items repl-history)
                replace-first cmd)
@@ -141,18 +145,22 @@
 
 (defn send-selected-to-repl [doc]
   (let [ta (doc :doc-text-area)
+        [a b] (find-line-group ta)
         txt (or
               (.getSelectedText ta)
-              (let [[a b] (find-line-group ta)]
                 (when (and a b (< a b))
                   (.. ta getDocument
-                    (getText a (- b a))))))]      
+                    (getText a (- b a)))))]     
     (if-not (and txt (correct-expression? txt))
       (.setText (doc :arglist-label) "Malformed expression")
-      (send-to-repl doc txt))))
+      (send-to-repl doc txt
+                    {:clooj/source
+                       {:line (inc (get-line-of-offset ta a))
+                        :file (get-selected-file-path doc)}}))))
 
 (defn send-doc-to-repl [doc]
-  (->> doc :doc-text-area .getText (send-to-repl doc)))
+  (let [txt (->> doc :doc-text-area .getText)]
+    (send-to-repl doc txt nil)))
 
 (defn make-repl-writer [ta-out]
   (->
@@ -200,7 +208,7 @@
 
 (defn apply-namespace-to-repl [doc]
   (when-let [current-ns (get-current-namespace (doc :doc-text-area))]
-    (send-to-repl doc (str "(ns " current-ns ")"))
+    (send-to-repl doc (str "(ns " current-ns ")") nil)
     (swap! repls assoc-in
            [(-> doc :repl deref :project-path) :ns]
            current-ns)))
@@ -208,9 +216,8 @@
 (defn restart-repl [doc project-path]
   (append-text (doc :repl-out-text-area)
            (str "\n=== RESTARTING " project-path " REPL ===\n"))
-  (let [input (-> doc :repl deref :input-writer)]
-    (.write input "EXIT-REPL\n")
-    (.flush input))
+  (let [input (-> doc :repl deref :form-queue)]
+    (.put input ['EXIT-REPL nil]))
   (Thread/sleep 100)
   (let [thread (-> doc :repl deref :thread)]
     (while (.isAlive thread)
@@ -241,7 +248,7 @@
                                   caret-pos)))))
         submit #(when-let [txt (.getText ta-in)]
                   (if (correct-expression? txt)
-                    (do (send-to-repl doc txt)
+                    (do (send-to-repl doc txt nil)
                         (.setText ta-in ""))
                     (.setText (doc :arglist-label) "Malformed expression")))
         at-top #(zero? (get-line-of-offset ta-in (get-caret-pos)))

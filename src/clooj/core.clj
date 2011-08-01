@@ -19,8 +19,7 @@
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
            (java.io File FileReader FileWriter))
-  (:use [clojure.contrib.duck-streams :only (writer)]
-        [clojure.pprint :only (pprint)]
+  (:use [clojure.pprint :only (pprint)]
         [clooj.brackets]
         [clooj.highlighting]
         [clooj.repl]
@@ -297,13 +296,19 @@
                               .getAbsolutePath)]
         (awt-event (set-tree-selection (doc :docs-tree) clj-file))))))
 
+(defn toggle-window-position [doc]
+  (let [f (:frame doc)]
+    (println (.isShowing f))
+    (if (and (.isFocused f) (.isActive f))
+      (.toBack f)
+      (.toFront f))))
+
 (defn attach-global-action-keys [text-comp doc]
   (attach-action-keys text-comp
     ["special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
     ["special E" #(.requestFocusInWindow (:doc-text-area doc))]
     ["special P" #(.requestFocusInWindow (:docs-tree doc))]
-    ["special F" #(.toFront (:frame doc))]
-    ["special B" #(.toBack (:frame doc))]))
+    ["special W" #(toggle-window-position doc)]))
   
 (defn create-doc []
   (let [doc-text-area (make-text-area false)
@@ -551,8 +556,7 @@
       ["Go to REPL input" "special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
       ["Go to Editor" "special E" #(.requestFocusInWindow (:doc-text-area doc))]
       ["Go to Project Tree" "special P" #(.requestFocusInWindow (:docs-tree doc))]
-      ["Send clooj window to back" "special B" #(.toBack (:frame doc))]
-      ["Bring clooj window to front" "special F" #(.toFront (:frame doc))])))
+      ["Toggle clooj window front/back" "special W" #(toggle-window-position doc)])))
 
 (defn add-visibility-shortcut [doc]
   (let [shortcut (get-keystroke "special F")]
