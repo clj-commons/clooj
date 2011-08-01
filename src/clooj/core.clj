@@ -44,7 +44,7 @@
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
                             confirmed? create-button is-win
-                            get-keystroke)]
+                            get-keystroke printstream-to-writer)]
         [clooj.indent :only (setup-autoindent)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
@@ -569,6 +569,13 @@
 
 (defonce current-doc (atom nil))
 
+(defn redirect-stdout-and-stderr [writer]
+  (dorun (map #(alter-var-root % (fn [_] writer))
+                 [(var *out*) (var *err*)]))
+  (let [stream (printstream-to-writer writer)]
+    (System/setOut stream)
+    (System/setErr stream)))
+
 (defn startup []
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [doc (create-doc)]
@@ -586,8 +593,7 @@
      (let [tree (doc :docs-tree)]
        (load-expanded-paths tree)
        (load-tree-selection tree))
-     (dorun (map #(alter-var-root % (fn [_] (doc :repl-out-writer)))
-                 [(var *out*)])) ;(var *err*)
+     (redirect-stdout-and-stderr (doc :repl-out-writer))
      (awt-event
        (let [path (get-selected-file-path doc)
               file (when path (File. path))]
