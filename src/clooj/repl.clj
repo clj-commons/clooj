@@ -128,7 +128,7 @@
       (append-text (doc :repl-out-text-area) cmd-ln)
       (let [bare-form (read-string cmd)
             form (if (isa? (type bare-form) clojure.lang.IObj)
-                   (with-meta bare-form meta-map)
+                   (with-meta bare-form (merge meta-map) (meta bare-form))
                    bare-form)]
        ; (println meta-map "|" bare-form "|" form "|" (meta form))
         (.put (:form-queue @(doc :repl)) form))
