@@ -10,7 +10,6 @@
                         UIManager)
            (javax.swing.event TreeSelectionListener
                               TreeExpansionListener)
-           (javax.swing.text DocumentFilter)
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (java.awt Insets Point Rectangle Window)

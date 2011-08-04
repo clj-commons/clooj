@@ -13,7 +13,15 @@
     (if (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))
-            indent-size (if (= bracket \() 2 1)] ;\) avoids highlighting problems
+            indent-size
+              (condp = bracket
+                \( 2
+                \; 0
+                \\ 0
+                \[ 1
+                \{ 1
+                \" 1
+                :else 1)]
         (apply str "\n" (repeat (+ col indent-size) " ")))
       "\n")))
 
