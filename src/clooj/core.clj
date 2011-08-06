@@ -127,7 +127,7 @@
   (when-let [text-comp (doc :doc-text-area)]
     (let [f #(handle-caret-move doc text-comp (get-current-namespace text-comp))]
       (add-caret-listener text-comp f)
-       (add-text-change-listener text-comp f)))
+      (add-text-change-listener text-comp f)))
   (when-let [text-comp (doc :repl-in-text-area)]
     (let [f  #(handle-caret-move doc text-comp (get-repl-ns doc))]
       (add-caret-listener text-comp f)
@@ -142,7 +142,7 @@
             f (.getAbsolutePath (get-temp-file orig-f))]
         (spit f txt)
         (awt-event (.updateUI (doc :docs-tree)))))
-    (catch Exception e nil)))
+       (catch Exception e nil)))
 
 (def temp-file-manager (agent 0))
 
@@ -151,13 +151,13 @@
         txt (.getText text-comp)
         f @(doc :file)]
     (send-off temp-file-manager
-      (fn [old-pos]
-        (try
-          (let [pos (@caret-position text-comp)]
-            (when-not (== old-pos pos)
-              (dump-temp-doc doc f txt))
-            pos)
-          (catch Throwable t (.printStackTrace t)))))))
+              (fn [old-pos]
+                (try
+                  (let [pos (@caret-position text-comp)]
+                    (when-not (== old-pos pos)
+                      (dump-temp-doc doc f txt))
+                    pos)
+                     (catch Throwable t (.printStackTrace t)))))))
   
 (defn setup-temp-writer [doc]
   (let [text-comp (:doc-text-area doc)]
