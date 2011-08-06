@@ -13,7 +13,7 @@
 
 (def special-tokens 
   ["def" "defn" "defmacro" "let" "for" "loop" "doseq" "if" "when"
-   "binding" "case" "definline" "defmacro" "cond" "condp" "when-let" "if-let" "fn"
+   "binding" "case" "definline" "defmacro" "condp" "when-let" "if-let" "fn"
    "proxy" "reify" "when-first" "defmethod" "defmulti" "defn-" "defprotocol"
    "defrecord" "defstruct" "deftype" "dotimes" "doto" "extend" "extend-protocol"
    "extend-type" "if-not" "letfn" "ns" "update-proxy" "with-in-str"
@@ -56,7 +56,7 @@
         (when-let [new-indent-size (compute-indent-size text-comp start)]       
           (let [delta (- new-indent-size old-indent-size)]
             (if (pos? delta)
-              (.insertString document start (apply str (repeat delta " ")) nil)
+              (.insertString document start (appßly str (repeat delta " ")) nil)
               (.remove document start (- delta)))))))))
 
 
