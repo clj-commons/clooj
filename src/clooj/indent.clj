@@ -45,8 +45,8 @@
 (defn setup-autoindent [text-comp]
   (attach-action-keys text-comp
     ["TAB" #(fix-indent-selected-lines text-comp)]
-    ["cmd SPACE" #(indent text-comp)]
-    ["cmd shift SPACE" #(unindent text-comp)])
+    ["cmd CLOSE_BRACKET" #(indent text-comp)]
+    ["cmd OPEN_BRACKET" #(unindent text-comp)])
   (.. text-comp getDocument
     (setDocumentFilter
       (proxy [DocumentFilter] []

@@ -203,11 +203,11 @@
     
 (defn indent [text-comp]
   (when (.isFocusOwner text-comp)
-    (insert-in-selected-row-headers text-comp "  ")))
+    (insert-in-selected-row-headers text-comp " ")))
 
 (defn unindent [text-comp]
   (when (.isFocusOwner text-comp)
-    (remove-from-selected-row-headers text-comp "  ")))
+    (remove-from-selected-row-headers text-comp " ")))
 
 ;; keys
 
