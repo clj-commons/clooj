@@ -6,8 +6,31 @@
                             awt-event
                             get-selected-lines)]
         [clooj.brackets :only (find-enclosing-brackets)]
-        [clojure.contrib.string :only (ltrim)])
+        [clojure.contrib.string :only (ltrim rtrim)])
   (:import  (javax.swing.text DocumentFilter)))
+
+;(defn t [] (@clooj.core/current-doc :doc-text-area))
+
+(def special-tokens 
+  ["def" "defn" "defmacro" "let" "for" "loop" "doseq" "if" "when"
+   "binding" "case" "definline" "defmacro" "cond" "condp" "when-let" "if-let" "fn"
+   "proxy" "reify" "when-first" "defmethod" "defmulti" "defn-" "defprotocol"
+   "defrecord" "defstruct" "deftype" "dotimes" "doto" "extend" "extend-protocol"
+   "extend-type" "if-not" "letfn" "ns" "update-proxy" "with-in-str"
+   "with-local-vars" "with-out-str"
+   "when-let" "when-not" "while" "with-bindings" "with-bindings*"])
+
+(defn first-token [txt]
+  (second (re-find #"\((.+?)\s" txt)))
+          
+(defn second-token-pos [txt]
+  (when-let [x (re-find #".+?\s" (rtrim txt))]
+    (.length x)))
+
+(defn left-paren-indent-size [txt]
+  (or (when-not (some #{(first-token txt)} special-tokens)
+        (second-token-pos txt))
+      2))
 
 (defn compute-indent-size [text-comp offset]
   (let [bracket-pos (first (find-enclosing-brackets
@@ -16,10 +39,13 @@
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))]
         (+ col
-          (condp = bracket
-            \( 2  \; 0  \\ 0  \[ 1  \{ 1  \" 1
-            :else 1))))))
-        
+           (condp = bracket
+             \( (left-paren-indent-size (.getText text-comp
+                                                  bracket-pos
+                                                  (- offset bracket-pos)))
+             \; 0  \\ 0  \[ 1  \{ 1  \" 1
+             :else 1))))))
+
 (defn fix-indent [text-comp line]
   (let [start (get-line-start-offset text-comp line)
         end (get-line-end-offset text-comp line)
@@ -32,6 +58,8 @@
             (if (pos? delta)
               (.insertString document start (apply str (repeat delta " ")) nil)
               (.remove document start (- delta)))))))))
+
+
 
 (defn fix-indent-selected-lines [text-comp]
   (awt-event 
