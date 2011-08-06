@@ -535,7 +535,7 @@
       ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))]
       ["Fix indentation" "TAB" #(fix-indent-selected-lines (:doc-text-area doc))]
       ["Indent lines" "cmd CLOSE_BRACKET" #(indent (:doc-text-area doc))]
-      ["De-indent lines" "cmd OPEN_BRACKET" #(indent (:doc-text-area doc))])
+      ["Unindent lines" "cmd OPEN_BRACKET" #(indent (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
       ["Evaluate here" "cmd ENTER" #(send-selected-to-repl doc)]
       ["Evaluate entire file" "cmd E" #(send-doc-to-repl doc)]

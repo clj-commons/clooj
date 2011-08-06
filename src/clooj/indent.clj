@@ -4,7 +4,6 @@
                             get-line-start-offset
                             get-line-end-offset
                             awt-event
-                           ;
                             get-selected-lines)]
         [clooj.brackets :only (find-enclosing-brackets)]
         [clojure.contrib.string :only (ltrim)])
@@ -26,7 +25,7 @@
         end (get-line-end-offset text-comp line)
         document (.getDocument text-comp)
         line-text (.getText document start (- end start))]
-    (when-let [old-indent  (re-find #"\ +" line-text)]
+    (when-let [old-indent (re-find #"\ +" line-text)]
       (let [old-indent-size (.length old-indent)]
         (when-let [new-indent-size (compute-indent-size text-comp start)]       
           (let [delta (- new-indent-size old-indent-size)]
@@ -45,8 +44,8 @@
 (defn setup-autoindent [text-comp]
   (attach-action-keys text-comp
     ["TAB" #(fix-indent-selected-lines text-comp)]
-    ["cmd CLOSE_BRACKET" #(indent text-comp)]
-    ["cmd OPEN_BRACKET" #(unindent text-comp)])
+    ["cmd CLOSE_BRACKET" #(indent text-comp)]   ; "cmd ]"
+    ["cmd OPEN_BRACKET" #(unindent text-comp)]) ; "cmd ["
   (.. text-comp getDocument
     (setDocumentFilter
       (proxy [DocumentFilter] []
