@@ -2,60 +2,62 @@
   (:use [clooj.utils :only (attach-action-keys indent unindent
                             get-coords get-line-of-offset
                             get-line-start-offset
-                            get-line-end-offset)]
-        [clooj.brackets :only (find-enclosing-brackets)])
+                            get-line-end-offset
+                            awt-event
+                           ;
+                            get-selected-lines)]
+        [clooj.brackets :only (find-enclosing-brackets)]
+        [clojure.contrib.string :only (ltrim)])
   (:import  (javax.swing.text DocumentFilter)))
 
-
-(defn auto-indent-str [text-comp offset]
+(defn compute-indent-size [text-comp offset]
   (let [bracket-pos (first (find-enclosing-brackets
                              (.getText text-comp) offset))]
-    (if (<= 0 bracket-pos)
+    (when (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
-            col (:col (get-coords text-comp bracket-pos))
-            indent-size
-              (condp = bracket
-                \( 2
-                \; 0
-                \\ 0
-                \[ 1
-                \{ 1
-                \" 1
-                :else 1)]
-        (apply str "\n" (repeat (+ col indent-size) " ")))
-      "\n")))
+            col (:col (get-coords text-comp bracket-pos))]
+        (+ col
+          (condp = bracket
+            \( 2  \; 0  \\ 0  \[ 1  \{ 1  \" 1
+            :else 1))))))
+        
+(defn fix-indent [text-comp line]
+  (let [start (get-line-start-offset text-comp line)
+        end (get-line-end-offset text-comp line)
+        document (.getDocument text-comp)
+        line-text (.getText document start (- end start))]
+    (when-let [old-indent  (re-find #"\ +" line-text)]
+      (let [old-indent-size (.length old-indent)]
+        (when-let [new-indent-size (compute-indent-size text-comp start)]       
+          (let [delta (- new-indent-size old-indent-size)]
+            (if (pos? delta)
+              (.insertString document start (apply str (repeat delta " ")) nil)
+              (.remove document start (- delta)))))))))
 
+(defn fix-indent-selected-lines [text-comp]
+  (awt-event 
+    (dorun (map #(fix-indent text-comp %)
+             (get-selected-lines text-comp)))))
+
+(defn auto-indent-str [text-comp offset]
+  (apply str "\n" (repeat (compute-indent-size text-comp offset) " ")))
+    
 (defn setup-autoindent [text-comp]
   (attach-action-keys text-comp
-    ["TAB" #(indent text-comp)]
-    ["shift TAB" #(unindent text-comp)])
+    ["TAB" #(fix-indent-selected-lines text-comp)]
+    ["cmd SPACE" #(indent text-comp)]
+    ["cmd shift SPACE" #(unindent text-comp)])
   (.. text-comp getDocument
-      (setDocumentFilter
-        (proxy [DocumentFilter] []
-          (replace [fb offset len text attrs]
-          ;  (println fb offset len text attrs)
-            (.replace
-              fb offset len
-              (condp = text
-                "\n" (auto-indent-str text-comp offset)
-                text)
-              attrs))))))
-
-(defn find-affected-lines [text-comp offset]
-  (let [first-row (get-line-of-offset text-comp offset)
-        first-row-end (get-line-end-offset text-comp first-row)
-        first-row-start (get-line-start-offset text-comp first-row)
-        x (do (println first-row first-row-end first-row-start))
-        last-bracket
-          (loop [o first-row-end prev-r nil]
-            (let [[l r] (find-enclosing-brackets
-                          (.getText text-comp) o)]
-              (println l r (get-line-of-offset text-comp l))
-              (if (> l offset)
-                (recur l r)
-                prev-r)))]
-    (when last-bracket
-      (println last-bracket)
-      (range (inc first-row)
-             (inc (get-line-of-offset text-comp last-bracket))))))
-  
+    (setDocumentFilter
+      (proxy [DocumentFilter] []
+        (replace [fb offset len text attrs]
+          (.replace
+            fb offset len  
+            (condp = text
+              "\n" (auto-indent-str text-comp offset) 
+              text)
+            attrs))
+        (remove [fb offset len]
+          (.remove fb offset len))
+        (insertString [fb offset string attr]
+          (.insertString fb offset string attr))))))

@@ -44,7 +44,7 @@
                             indent unindent awt-event persist-window-shape
                             confirmed? create-button is-win
                             get-keystroke printstream-to-writer)]
-        [clooj.indent :only (setup-autoindent)])
+        [clooj.indent :only (setup-autoindent fix-indent-selected-lines)])
   (:require [clojure.contrib.string :as string]
             [clojure.main :only (repl repl-prompt)])
   (:gen-class
@@ -127,7 +127,7 @@
   (when-let [text-comp (doc :doc-text-area)]
     (let [f #(handle-caret-move doc text-comp (get-current-namespace text-comp))]
       (add-caret-listener text-comp f)
-      (add-text-change-listener text-comp f)))
+       (add-text-change-listener text-comp f)))
   (when-let [text-comp (doc :repl-in-text-area)]
     (let [f  #(handle-caret-move doc text-comp (get-repl-ns doc))]
       (add-caret-listener text-comp f)
@@ -140,8 +140,8 @@
     (when orig-f
       (let [orig (.getAbsolutePath orig-f)
             f (.getAbsolutePath (get-temp-file orig-f))]
-         (spit f txt)
-         (awt-event (.updateUI (doc :docs-tree)))))
+        (spit f txt)
+        (awt-event (.updateUI (doc :docs-tree)))))
     (catch Exception e nil)))
 
 (def temp-file-manager (agent 0))
@@ -533,8 +533,7 @@
     (add-menu menu-bar "Source"
       ["Comment-out" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
       ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))]
-      ["Indent" "TAB" #(indent (:doc-text-area doc))]
-      ["Unindent" "shift TAB" #(unindent (:doc-text-area doc))])
+      ["Fix indentation" "TAB" #(fix-indent-selected-lines (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
       ["Evaluate here" "cmd ENTER" #(send-selected-to-repl doc)]
       ["Evaluate entire file" "cmd E" #(send-doc-to-repl doc)]
@@ -578,25 +577,25 @@
 (defn startup []
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [doc (create-doc)]
-     (reset! current-doc doc)
-     (make-menus doc)
-     (add-visibility-shortcut doc)
-     (let [ta-in (doc :repl-in-text-area)
-           ta-out (doc :repl-out-text-area)]
-       (add-repl-input-handler doc))
-     (doall (map #(add-project doc %) (load-project-set)))
-     (persist-window-shape clooj-prefs "main-window" (doc :frame)) 
-     (.setVisible (doc :frame) true)
-     (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
-     (setup-temp-writer doc)
-     (let [tree (doc :docs-tree)]
-       (load-expanded-paths tree)
-       (load-tree-selection tree))
-     (redirect-stdout-and-stderr (doc :repl-out-writer))
-     (awt-event
-       (let [path (get-selected-file-path doc)
-              file (when path (File. path))]
-         (restart-doc doc file)))))
+    (reset! current-doc doc)
+    (make-menus doc)
+    (add-visibility-shortcut doc)
+    (let [ta-in (doc :repl-in-text-area)
+          ta-out (doc :repl-out-text-area)]
+      (add-repl-input-handler doc))
+    (doall (map #(add-project doc %) (load-project-set)))
+    (persist-window-shape clooj-prefs "main-window" (doc :frame)) 
+    (.setVisible (doc :frame) true)
+    (add-line-numbers (doc :doc-text-area) Short/MAX_VALUE)
+    (setup-temp-writer doc)
+    (let [tree (doc :docs-tree)]
+      (load-expanded-paths tree)
+      (load-tree-selection tree))
+    (redirect-stdout-and-stderr (doc :repl-out-writer))
+    (awt-event
+      (let [path (get-selected-file-path doc)
+            file (when path (File. path))]
+        (restart-doc doc file)))))
 
 (defn -show []
   (reset! embedded true)

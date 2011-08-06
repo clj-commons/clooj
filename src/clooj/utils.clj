@@ -131,6 +131,11 @@
 (defn get-line-end-offset [text-pane line]
   (.. text-pane getDocument getDefaultRootElement (getElement line) getEndOffset))
 
+(defn get-line-text [text-pane line]
+  (let [start (get-line-start-offset text-pane line)
+        length (- (get-line-end-offset text-pane line) start)]
+    (.. text-pane getDocument (getText start length))))
+
 (defn append-text [text-pane text]
   (when-let [doc (.getDocument text-pane)]
     (.insertString doc (.getLength doc) text nil)))
@@ -167,10 +172,14 @@
     (.setViewPosition v
        (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
 
-(defn get-selected-line-starts [text-comp]
+(defn get-selected-lines [text-comp]
   (let [row1 (get-line-of-offset text-comp (.getSelectionStart text-comp))
         row2 (inc (get-line-of-offset text-comp (.getSelectionEnd text-comp)))]
-    (map #(get-line-start-offset text-comp %) (reverse (range row1 row2)))))
+    (doall (range row1 row2))))
+
+(defn get-selected-line-starts [text-comp]
+  (map #(get-line-start-offset text-comp %)
+       (reverse (get-selected-lines text-comp))))
 
 (defn insert-in-selected-row-headers [text-comp txt]
   (awt-event
@@ -278,6 +287,7 @@
 
 (defn make-undoable [text-area]
   (let [undoMgr (UndoManager.)]
+    (.setLimit undoMgr 1000)
     (.. text-area getDocument (addUndoableEditListener
         (reify UndoableEditListener
           (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))

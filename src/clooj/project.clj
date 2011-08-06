@@ -28,8 +28,8 @@
 (defn tree-nodes [tree]
   (when-let [root (.. tree getModel getRoot)]
     (tree-seq (complement #(.isLeaf %))
-              #(for [i (range (.getChildCount %))] (.getChildAt % i))
-              root)))
+      #(for [i (range (.getChildCount %))] (.getChildAt % i))
+      root)))
 
 (defn get-root-path [tree]
   (TreePath. (.. tree getModel getRoot)))
