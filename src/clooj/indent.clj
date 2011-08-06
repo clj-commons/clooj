@@ -56,7 +56,7 @@
         (when-let [new-indent-size (compute-indent-size text-comp start)]       
           (let [delta (- new-indent-size old-indent-size)]
             (if (pos? delta)
-              (.insertString document start (appßly str (repeat delta " ")) nil)
+              (.insertString document start (apply str (repeat delta " ")) nil)
               (.remove document start (- delta)))))))))
 
 
