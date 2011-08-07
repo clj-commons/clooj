@@ -297,9 +297,9 @@
 
 (defn attach-global-action-keys [text-comp doc]
   (attach-action-keys text-comp
-    ["special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
-    ["special E" #(.requestFocusInWindow (:doc-text-area doc))]
-    ["special P" #(.requestFocusInWindow (:docs-tree doc))]
+    ["special R" #(focus-in-text-component (:repl-in-text-area doc))]
+    ["special E" #(focus-in-text-component (:doc-text-area doc))]
+    ["special P" #(focus-in-text-component (:docs-tree doc))]
     ["special F" #(.toFront (:frame doc))]
     ["special B" #(.toBack (:frame doc))]))
   
