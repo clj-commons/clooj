@@ -45,8 +45,7 @@
                             confirmed? create-button is-win
                             get-keystroke printstream-to-writer)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)])
-  (:require [clojure.contrib.string :as string]
-            [clojure.main :only (repl repl-prompt)])
+  (:require [clojure.main :only (repl repl-prompt)])
   (:gen-class
    :methods [^{:static true} [show [] void]]))
 

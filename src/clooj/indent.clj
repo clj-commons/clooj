@@ -24,13 +24,15 @@
   (second (re-find #"\((.+?)\s" txt)))
           
 (defn second-token-pos [txt]
-  (when-let [x (re-find #".+?\s" (rtrim txt))]
+  (when-let [x (re-find #".+?\s" (rtrim (first (.split #"\r?\n" txt))))]
     (.length x)))
 
 (defn left-paren-indent-size [txt]
-  (or (when-not (some #{(first-token txt)} special-tokens)
-        (second-token-pos txt))
-      2))
+  (let [token1 (first-token txt)]
+    (or (when-not (or (some #{token1} special-tokens)
+                      (.startsWith (ltrim token1) "["))
+          (second-token-pos txt))
+        2)))
 
 (defn compute-indent-size [text-comp offset]
   (let [bracket-pos (first (find-enclosing-brackets

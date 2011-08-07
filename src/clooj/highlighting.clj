@@ -22,10 +22,10 @@
   ([text-comp highlight-object]
     (when highlight-object
       (.removeHighlight (.getHighlighter text-comp)
-                      highlight-object))))
+                        highlight-object))))
 
 (defn remove-highlights [text-comp highlights]
-    (dorun (map #(remove-highlight text-comp %) highlights)))
+  (dorun (map #(remove-highlight text-comp %) highlights)))
 
 (def highlights (atom {}))
 
@@ -33,8 +33,8 @@
   (awt-event
     (remove-highlights text-comp (get @highlights text-comp))
     (swap! highlights assoc text-comp
-      (doall (concat
-               (map #(highlight text-comp % Color/LIGHT_GRAY) good-enclosures)
-               (map #(highlight text-comp % Color/PINK) bad-brackets))))))
+           (doall (concat
+                    (map #(highlight text-comp % Color/LIGHT_GRAY) good-enclosures)
+                    (map #(highlight text-comp % Color/PINK) bad-brackets))))))
 
             
