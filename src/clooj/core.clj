@@ -300,7 +300,7 @@
   (attach-action-keys text-comp
     ["special R" #(focus-in-text-component (:repl-in-text-area doc))]
     ["special E" #(focus-in-text-component (:doc-text-area doc))]
-    ["special P" #(focus-in-text-component (:docs-tree doc))]
+    ["special P" #(.requestFocusInWindow (:docs-tree doc))]
     ["special F" #(.toFront (:frame doc))]
     ["special B" #(.toBack (:frame doc))]))
   
