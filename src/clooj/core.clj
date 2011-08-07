@@ -43,7 +43,8 @@
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
                             confirmed? create-button is-win
-                            get-keystroke printstream-to-writer)]
+                            get-keystroke printstream-to-writer
+                            focus-in-text-component)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)])
   (:require [clojure.main :only (repl repl-prompt)])
   (:gen-class
