@@ -22,7 +22,7 @@
 (defmacro do-when [f & args]
   (let [args_ args]
     `(when (and ~@args_)
-      (~f ~@args_))))
+       (~f ~@args_))))
 
 (defn count-while [pred coll]
   (count (take-while pred coll)))
@@ -37,7 +37,7 @@
   
 ;; define a UUID for clooj preferences
 (def clooj-prefs (.. Preferences userRoot
-      (node "clooj") (node "c6833c87-9631-44af-af83-f417028ea7aa")))
+                     (node "clooj") (node "c6833c87-9631-44af-af83-f417028ea7aa")))
 
 (defn partition-str [n s]
   (loop [rem s acc []]
@@ -55,15 +55,15 @@
         node (. prefs node key)]
     (.clear node)
     (doseq [i (range (count chunks))]
-       (. node put (str i) (nth chunks i)))))
+      (. node put (str i) (nth chunks i)))))
 
 (defn read-value-from-prefs
   "Reads a pure clojure data structure from Preferences object."
   [prefs key]
   (let [node (. prefs node key)]
     (let [s (apply str
-              (for [i (range (count (. node keys)))]
-                (.get node (str i) nil)))]
+                   (for [i (range (count (. node keys)))]
+                     (.get node (str i) nil)))]
       (when (and s (pos? (.length s))) (read-string s)))))
 
 (defn write-obj-to-prefs
@@ -81,7 +81,7 @@
   (let [node (. prefs node key)
         bis (ByteArrayInputStream. (. node getByteArray "0" nil))
         os (ObjectInputStream. bis)]
-      (.readObject os)))
+    (.readObject os)))
 
 ;; identify OS
 
@@ -96,7 +96,7 @@
 
 (def is-unix
   (memoize #(not (and (neg? (.indexOf (get-os) "nix"))
-                     (neg? (.indexOf (get-os) "nux"))))))
+                      (neg? (.indexOf (get-os) "nux"))))))
 
 ;; swing layout
 
@@ -105,9 +105,9 @@
                :w SpringLayout/WEST
                :s SpringLayout/SOUTH
                :e SpringLayout/EAST}]
-  (.. comp1 getParent getLayout
-            (putConstraint (edges edge1) comp1 
-                           dist (edges edge2) comp2))))
+    (.. comp1 getParent getLayout
+        (putConstraint (edges edge1) comp1 
+                       dist (edges edge2) comp2))))
 
 (defn put-constraints [comp & args]
   (let [args (partition 3 args)
@@ -159,7 +159,7 @@
 
 (defn add-caret-listener [text-comp f]
   (.addCaretListener text-comp
-    (reify CaretListener (caretUpdate [this evt] (f)))))
+                     (reify CaretListener (caretUpdate [this evt] (f)))))
 
 (defn set-selection [text-comp start end]
   (doto text-comp (.setSelectionStart start) (.setSelectionEnd end)))
@@ -170,7 +170,7 @@
         l (.. v getViewSize height)
         h (.. v getViewRect height)]
     (.setViewPosition v
-       (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
+                      (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
 
 (defn get-selected-lines [text-comp]
   (let [row1 (get-line-of-offset text-comp (.getSelectionStart text-comp))
@@ -366,10 +366,10 @@
         (when shape
           (condp = (first shape)
             :window
-              (let [{:keys [x y w h]} (second shape)]
-                (.setBounds comp x y w h))
+            (let [{:keys [x y w h]} (second shape)]
+              (.setBounds comp x y w h))
             :split-pane
-                (.setDividerLocation comp (:location (second shape)))
+            (.setDividerLocation comp (:location (second shape)))
             nil))
         (catch Exception e nil)))
     (when (next comps)
@@ -385,20 +385,20 @@
     
 (defn confirmed? [question title]
   (= JOptionPane/YES_OPTION
-    (JOptionPane/showConfirmDialog
-      nil question title  JOptionPane/YES_NO_OPTION)))
+     (JOptionPane/showConfirmDialog
+       nil question title  JOptionPane/YES_NO_OPTION)))
 
 (defn persist-window-shape [prefs name ^java.awt.Window window]
   (let [components (widget-seq window)
         shape-persister (agent nil)]
     (restore-shape prefs name components)
     (watch-shape components
-      #(send-off shape-persister
-        (fn [old-shape]
-          (let [shape (get-shape components)]
-            (when (not= old-shape shape)
-              (write-value-to-prefs prefs name shape))
-            shape))))))
+                 #(send-off shape-persister
+                            (fn [old-shape]
+                              (let [shape (get-shape components)]
+                                (when (not= old-shape shape)
+                                  (write-value-to-prefs prefs name shape))
+                                shape))))))
 
 (defn recording-source-reader [rdr line-offset-ref]
   (let [text (StringBuilder.)]
