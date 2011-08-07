@@ -86,7 +86,7 @@
   (or
     (when-let [m (meta v)]
       (when-let [args (:arglists m)]
-        (str (:name m) ": " args)))
+        (str (-> m :ns ns-name) "/" (:name m) ": " args)))
     ""))
 
 (defn token-from-caret-pos [ns text pos]

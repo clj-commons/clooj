@@ -23,7 +23,7 @@
     
 (defn load-project-set []
   (reset! project-set (into (sorted-set)
-                        (read-value-from-prefs clooj-prefs "project-set"))))
+                            (read-value-from-prefs clooj-prefs "project-set"))))
 
 (defn tree-nodes [tree]
   (when-let [root (.. tree getModel getRoot)]
@@ -37,7 +37,7 @@
 (defn tree-path-to-file [^TreePath tree-path]
   (when tree-path
     (try (.. tree-path getLastPathComponent getUserObject getAbsolutePath)
-      (catch Exception e nil))))
+         (catch Exception e nil))))
 
 (defn get-row-path [tree row]
   (tree-path-to-file (. tree getPathForRow row)))
@@ -180,14 +180,14 @@
 
 (defn get-selected-namespace [tree]
   (->> tree .getSelectionPaths first
-    .getLastPathComponent .getUserObject .toString))
+       .getLastPathComponent .getUserObject .toString))
 
 (defn get-selected-projects [doc]
   (let [tree (doc :docs-tree)
         selections (.getSelectionPaths tree)]
     (for [selection selections]
       (->> selection .getLastPathComponent (get-project-node tree)
-                     .getUserObject .getAbsolutePath))))
+           .getUserObject .getAbsolutePath))))
 
 (defn add-project [doc project-path]
   (swap! project-set conj project-path)

@@ -21,11 +21,13 @@
 
 (def *printStackTrace-on-error* false)
 
+(def *line-offset*)
+
 (defn is-eof-ex? [throwable]
   (and (instance? clojure.lang.LispReader$ReaderException throwable)
-  (or
-    (.startsWith (.getMessage throwable) "java.lang.Exception: EOF while reading")
-    (.startsWith (.getMessage throwable) "java.io.IOException: Write end dead"))))
+       (or
+         (.startsWith (.getMessage throwable) "java.lang.Exception: EOF while reading")
+         (.startsWith (.getMessage throwable) "java.io.IOException: Write end dead"))))
 
 (defn get-repl-ns [doc]
   (let [repl-map @repls]
@@ -51,53 +53,62 @@
     
 (defn create-clojure-repl
   "This function creates an instance of clojure repl, with output going to output-writer
-  Returns an input writer."
+   Returns an input writer."
   [result-writer project-path]
   (let [classloader (create-class-loader project-path)
         first-prompt (atom true)
         input-writer (PipedWriter.)
         piped-in (-> input-writer
-                   PipedReader.
-                   recording-source-reader)
+                     PipedReader.
+                     (recording-source-reader (var *line-offset*)))
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
                                   *in* piped-in
                                   *out* result-writer
-                                  *err* *out*]
-               (try
-                 (clojure.main/repl
-                   :init (fn [] (in-ns 'user))
-                   :print (fn [& args]
-                            (dorun (map repl-print args)))
-                   :read (fn [prompt exit]
-                           (let [form (read)]
-                             (if (= form 'EXIT-REPL)
-                               exit
-                               (if (isa? (type form) clojure.lang.IObj)
-                                 (with-meta form
-                                   {:clooj/src (.toString piped-in)})
-                                 form))))
-                   :caught (fn [e]
-                             (when (is-eof-ex? e)
-                               (throw e))
-                             (if *printStackTrace-on-error*
-                               (.printStackTrace e *out*)
-                               (prn (clojure.main/repl-exception e))))
-                   :prompt (fn []
-                             (printf "\n%s=>"
-                               (ns-name *ns*)))
-                   :need-prompt (constantly true)
-                   :eval (fn [form]
-                           (let [val (eval form)]
-                             (when (var? val)
-                               (alter-meta! val
-                                 (fn [v] (merge (meta form) v))))
-                             val))
-                   )
-                 (catch clojure.lang.LispReader$ReaderException ex
-                   (prn (.getCause ex))
-                   (prn "REPL closing"))
-                 (catch java.lang.InterruptedException ex)
-                 (catch java.nio.channels.ClosedByInterruptException ex)))
+                                  *err* *out*
+                                  *file* "NO_SOURCE_PATH"
+                                  *line-offset* 0]
+                          (try
+                            (clojure.main/repl
+                              :init (fn [] (in-ns 'user))
+                              :print (fn [& args]
+                                       (dorun (map repl-print args)))
+                              :read (fn [prompt exit]
+                                      (let [form (read)]
+                                        (cond
+                                          (= form 'EXIT-REPL)
+                                          exit
+                                          (= form 'SILENT-EVAL)
+                                          (do (eval (read))
+                                              (.toString piped-in)
+                                              (recur prompt exit))
+                                          (isa? (type form) clojure.lang.IObj)
+                                          (with-meta form
+                                                     (assoc (meta form)
+                                                            :clooj/src (.toString piped-in)))
+                                          :else
+                                          form)))
+                              :caught (fn [e]
+                                        (when (is-eof-ex? e)
+                                          (throw e))
+                                        (if *printStackTrace-on-error*
+                                          (.printStackTrace e *out*)
+                                          (prn (clojure.main/repl-exception e))))
+                              :prompt (fn []
+                                        (printf "\n%s=>"
+                                                (ns-name *ns*)))
+                              :need-prompt (constantly true)
+                              :eval (fn [form]
+                                      (let [val (eval form)]
+                                        (when (var? val)
+                                          (alter-meta! val
+                                                       (fn [v] (merge (meta form) v))))
+                                        val))
+                              )
+                            (catch clojure.lang.LispReader$ReaderException ex
+                                   (prn (.getCause ex))
+                                   (prn "REPL closing"))
+                            (catch java.lang.InterruptedException ex)
+                            (catch java.nio.channels.ClosedByInterruptException ex)))
         thread (Thread. repl-thread-fn)]
     (when classloader
       (.setContextClassLoader thread classloader))
@@ -116,43 +127,63 @@
          (.getText (doc :repl-in-text-area))))
 
 (defn correct-expression? [cmd]
-   (let [rdr (-> cmd StringReader. PushbackReader.)]
-        (try (while (read rdr nil nil))
-          true
-          (catch Exception e false))))
+  (let [rdr (-> cmd StringReader. PushbackReader.)]
+    (try (while (read rdr nil nil))
+         true
+         (catch Exception e false))))
 
-(defn send-to-repl [doc cmd]
-  (awt-event
-    (let [cmd-ln (str \newline (.trim cmd) \newline)
-           cmd (.trim cmd-ln)]
-      (append-text (doc :repl-out-text-area) cmd-ln)
-      (.write (:input-writer @(doc :repl)) cmd-ln)
-      (.flush (:input-writer @(doc :repl)))
-      (when (not= cmd (second @(:items repl-history)))
-        (swap! (:items repl-history)
-               replace-first cmd)
-        (swap! (:items repl-history) conj ""))
-       (reset! (:pos repl-history) 0))))
+(defn send-to-repl
+  ([doc cmd] (send-to-repl doc cmd "NO_SOURCE_PATH" 1))
+  ([doc cmd file line]
+    (awt-event
+      (let [cmd-ln (str \newline (.trim cmd) \newline)
+            cmd (.trim cmd-ln)]
+        (append-text (doc :repl-out-text-area) cmd-ln)
+        (binding [*out* (:input-writer @(doc :repl))]
+          (pr 'SILENT-EVAL `(set! *file* ~file)
+              'SILENT-EVAL `(set! *line-offset*
+                                  (+ *line-offset*
+                                     (- ~line (.getLineNumber *in*)))))
+          (println cmd)
+          (flush))
+        (when (not= cmd (second @(:items repl-history)))
+          (swap! (:items repl-history)
+                 replace-first cmd)
+          (swap! (:items repl-history) conj ""))
+        (reset! (:pos repl-history) 0)))))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
-    (Rectangle. 0 (.getHeight text-area) 1 1)))
+                        (Rectangle. 0 (.getHeight text-area) 1 1)))
 
+(defn relative-file [doc]
+  (let [prefix (str (-> doc :repl deref :project-path) File/separator
+                    "src"  File/separator)]
+    (subs (.getAbsolutePath @(doc :file)) (count prefix))))
+
+(defn selected-region [ta]
+  (if-let [text (.getSelectedText ta)]
+    {:text text
+     :start (.getSelectionStart ta)
+     :end   (.getSelectionEnd ta)}
+    (let [[a b] (find-line-group ta)]
+      (when (and a b (< a b))
+        {:text (.. ta getDocument (getText a (- b a)))
+         :start a
+         :end b}))))
 
 (defn send-selected-to-repl [doc]
   (let [ta (doc :doc-text-area)
-        txt (or
-              (.getSelectedText ta)
-              (let [[a b] (find-line-group ta)]
-                (when (and a b (< a b))
-                  (.. ta getDocument
-                    (getText a (- b a))))))]      
+        region (selected-region ta)
+        txt (:text region)]
     (if-not (and txt (correct-expression? txt))
       (.setText (doc :arglist-label) "Malformed expression")
-      (send-to-repl doc txt))))
+      (let [line (get-line-of-offset ta (:start region))]
+        (send-to-repl doc txt (relative-file doc) (inc line))))))
 
 (defn send-doc-to-repl [doc]
-  (->> doc :doc-text-area .getText (send-to-repl doc)))
+  (let [text (->> doc :doc-text-area .getText)]
+    (send-to-repl doc text (relative-file doc) 1)))
 
 (defn make-repl-writer [ta-out]
   (->
@@ -160,27 +191,27 @@
       (proxy [Writer] []
         (write
           ([char-array offset length]
-            (awt-event (.append buf char-array offset length)))
+            (.append buf char-array offset length))
           ([^int t]          
             (when (= Integer (type t))
-              (awt-event (.append buf (char t))))))
+              (.append buf (char t)))))
         (flush []
-          (when ta-out
-            (awt-event
-              (do (append-text ta-out (.toString buf))
-                  (scroll-to-last ta-out)
-                  (.setLength buf 0)))))
+               (when ta-out
+                 (awt-event
+                   (do (append-text ta-out (.toString buf))
+                       (scroll-to-last ta-out)
+                       (.setLength buf 0)))))
         (close [] nil)))
     (PrintWriter. true)))
   
 (defn update-repl-in [doc]
   (when (pos? (count @(:items repl-history)))
     (.setText (:repl-in-text-area doc)
-      (nth @(:items repl-history) @(:pos repl-history)))))
+              (nth @(:items repl-history) @(:pos repl-history)))))
 
 (defn show-previous-repl-entry [doc]
   (when (zero? @(:pos repl-history))
-        (update-repl-history doc))
+    (update-repl-history doc))
   (swap! (:pos repl-history)
          #(Math/min (dec (count @(:items repl-history))) (inc %)))
   (update-repl-in doc))
@@ -207,7 +238,7 @@
 
 (defn restart-repl [doc project-path]
   (append-text (doc :repl-out-text-area)
-           (str "\n=== RESTARTING " project-path " REPL ===\n"))
+               (str "\n=== RESTARTING " project-path " REPL ===\n"))
   (let [input (-> doc :repl deref :input-writer)]
     (.write input "EXIT-REPL\n")
     (.flush input))
@@ -221,7 +252,7 @@
 (defn switch-repl [doc project-path]
   (when (not= project-path (-> doc :repl deref :project-path))
     (append-text (doc :repl-out-text-area)
-             (str "\n\n=== Switching to " project-path " REPL ===\n"))
+                 (str "\n\n=== Switching to " project-path " REPL ===\n"))
     (let [repl (or (get @repls project-path)
                    (create-clojure-repl (doc :repl-out-writer) project-path))]
       (reset! (:repl doc) repl))))
@@ -235,7 +266,7 @@
                  (and
                    (pos? (.length trim-txt))
                    (<= (.length trim-txt)
-                                caret-pos)
+                       caret-pos)
                    (= -1 (first (find-enclosing-brackets
                                   txt
                                   caret-pos)))))
@@ -250,8 +281,8 @@
         prev-hist #(show-previous-repl-entry doc)
         next-hist #(show-next-repl-entry doc)]
     (attach-child-action-keys ta-in ["UP" at-top prev-hist]
-                                    ["DOWN" at-bottom next-hist]
-                                    ["ENTER" ready submit])
+                              ["DOWN" at-bottom next-hist]
+                              ["ENTER" ready submit])
     (attach-action-keys ta-in ["cmd UP" prev-hist]
-                              ["cmd DOWN" next-hist]
-                              ["cmd ENTER" submit])))
+                        ["cmd DOWN" next-hist]
+                        ["cmd ENTER" submit])))
