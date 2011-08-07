@@ -269,22 +269,26 @@
 
 ;; menus
 
-(defn add-menu-item [menu item-name key-shortcut response-fn]
+(defn add-menu-item [menu item-name key-mnemonic key-accelerator response-fn]
   (let [menu-item (JMenuItem. item-name)]  
-    (when key-shortcut
-      (.setAccelerator menu-item (get-keystroke key-shortcut)))
+    (when key-accelerator
+      (.setAccelerator menu-item (get-keystroke key-accelerator)))
+    (when (and (not (is-mac)) key-mnemonic)
+      (.setMnemonic menu-item (.getKeyCode (get-keystroke key-mnemonic))))
     (.addActionListener menu-item
       (reify ActionListener
         (actionPerformed [this action-event]
           (response-fn))))
     (.add menu menu-item)))
 
-(defn add-menu [^JMenuBar menu-bar title & item-triples]
-  "Each item-triple is a vector containing a
-  menu item's text, shortcut key, and the function
+(defn add-menu [^JMenuBar menu-bar title key-mnemonic & item-tuples]
+  "Each item-tuple is a vector containing a
+  menu item's text, mnemonic key, accelerator key, and the function
   it executes."
   (let [menu (JMenu. title)]
-    (doall (map #(apply add-menu-item menu %) item-triples))
+    (when (and (not (is-mac)) key-mnemonic)
+      (.setMnemonic menu (.getKeyCode (get-keystroke key-mnemonic))))
+    (doall (map #(apply add-menu-item menu %) item-tuples))
     (.add menu-bar menu)
     menu))
 

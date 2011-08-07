@@ -521,42 +521,42 @@
   (let [menu-bar (JMenuBar.)]
     (. (doc :frame) setJMenuBar menu-bar)
     (let [file-menu
-          (add-menu menu-bar "File"
-            ["New" "cmd N" #(create-file doc (first (get-selected-projects doc)) "")]
-            ["Save" "cmd S" #(save-file doc)]
-            ["Move/Rename" nil #(rename-file doc)]
-            ["Revert" nil #(revert-file doc)]
-            ["Delete" nil #(delete-file doc)])]
+          (add-menu menu-bar "File" "F"
+            ["New" "N" "cmd N" #(create-file doc (first (get-selected-projects doc)) "")]
+            ["Save" "S" "cmd S" #(save-file doc)]
+            ["Move/Rename" "M" nil #(rename-file doc)]
+            ["Revert" "R" nil #(revert-file doc)]
+            ["Delete" "D" nil #(delete-file doc)])]
       (when-not (is-mac)
-        (add-menu-item file-menu "Exit" nil #(System/exit 0))))
-    (add-menu menu-bar "Project"
-      ["New..." "cmd shift N" #(new-project doc)]
-      ["Open..." "cmd shift O" #(open-project doc)]
-      ["Move/Rename" nil #(rename-project doc)]
-      ["Remove" nil #(remove-project doc)])
-    (add-menu menu-bar "Source"
-      ["Comment-out" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
-      ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))]
-      ["Fix indentation" "TAB" #(fix-indent-selected-lines (:doc-text-area doc))]
-      ["Indent lines" "cmd CLOSE_BRACKET" #(indent (:doc-text-area doc))]
-      ["Unindent lines" "cmd OPEN_BRACKET" #(indent (:doc-text-area doc))])
-    (add-menu menu-bar "REPL"
-      ["Evaluate here" "cmd ENTER" #(send-selected-to-repl doc)]
-      ["Evaluate entire file" "cmd E" #(send-doc-to-repl doc)]
-      ["Apply file ns" "cmd L" #(apply-namespace-to-repl doc)]
-      ["Clear output" "cmd K" #(.setText (doc :repl-out-text-area) "")]
-      ["Restart" "cmd R" #(restart-repl doc
+        (add-menu-item file-menu "Exit" "X" nil #(System/exit 0))))
+    (add-menu menu-bar "Project" "P"
+      ["New..." "N" "cmd shift N" #(new-project doc)]
+      ["Open..." "O" "cmd shift O" #(open-project doc)]
+      ["Move/Rename" "M" nil #(rename-project doc)]
+      ["Remove" nil "R" #(remove-project doc)])
+    (add-menu menu-bar "Source" "S"
+      ["Comment-out" "C" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
+      ["Uncomment-out" "U" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))]
+      ["Fix indentation" "F" "TAB" #(fix-indent-selected-lines (:doc-text-area doc))]
+      ["Indent lines" "I" "cmd CLOSE_BRACKET" #(indent (:doc-text-area doc))]
+      ["Unindent lines" "D" "cmd OPEN_BRACKET" #(indent (:doc-text-area doc))])
+    (add-menu menu-bar "REPL" "R"
+      ["Evaluate here" "E" "cmd ENTER" #(send-selected-to-repl doc)]
+      ["Evaluate entire file" "F" "cmd E" #(send-doc-to-repl doc)]
+      ["Apply file ns" "A" "cmd L" #(apply-namespace-to-repl doc)]
+      ["Clear output" "C" "cmd K" #(.setText (doc :repl-out-text-area) "")]
+      ["Restart" "R" "cmd R" #(restart-repl doc
                             (first (get-selected-projects doc)))])
-    (add-menu menu-bar "Search"
-      ["Find" "cmd F" #(start-find doc)]
-      ["Find next" "cmd G" #(highlight-step doc false)]
-      ["Find prev" "cmd shift G" #(highlight-step doc true)])
-    (add-menu menu-bar "Window"
-      ["Go to REPL input" "special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
-      ["Go to Editor" "special E" #(.requestFocusInWindow (:doc-text-area doc))]
-      ["Go to Project Tree" "special P" #(.requestFocusInWindow (:docs-tree doc))]
-      ["Send clooj window to back" "special B" #(.toBack (:frame doc))]
-      ["Bring clooj window to front" "special F" #(.toFront (:frame doc))])))
+    (add-menu menu-bar "Search" "S"
+      ["Find" "F" "cmd F" #(start-find doc)]
+      ["Find next" "N" "cmd G" #(highlight-step doc false)]
+      ["Find prev" "P" "cmd shift G" #(highlight-step doc true)])
+    (add-menu menu-bar "Window" "W"
+      ["Go to REPL input" "R" "special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
+      ["Go to Editor" "E" "special E" #(.requestFocusInWindow (:doc-text-area doc))]
+      ["Go to Project Tree" "P" "special P" #(.requestFocusInWindow (:docs-tree doc))]
+      ["Send clooj window to back" "B" "special B" #(.toBack (:frame doc))]
+      ["Bring clooj window to front" "F" "special F" #(.toFront (:frame doc))])))
 
 (defn add-visibility-shortcut [doc]
   (let [shortcut (get-keystroke "special F")]
