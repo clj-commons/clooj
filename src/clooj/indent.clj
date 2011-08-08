@@ -28,11 +28,13 @@
     (.length x)))
 
 (defn left-paren-indent-size [txt]
+  (println (first-token txt))
   (let [token1 (first-token txt)]
-    (if (and token1
-             (not (or (some #{token1} special-tokens)
-                      (.startsWith (ltrim token1) "["))))
-      (second-token-pos txt)
+    (or
+      (when (and token1
+                 (not (or (some #{token1} special-tokens)
+                          (.startsWith (ltrim token1) "["))))
+        (second-token-pos txt))
       2)))
 
 (defn compute-indent-size [text-comp offset]
@@ -41,6 +43,7 @@
     (when (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))]
+        (println "col:" col)
         (+ col
            (condp = bracket
              \( (left-paren-indent-size (.getText text-comp
