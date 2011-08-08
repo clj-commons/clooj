@@ -76,17 +76,17 @@
                                       (let [form (read)]
                                         (cond
                                           (= form 'EXIT-REPL)
-                                          exit
+                                           exit
                                           (= form 'SILENT-EVAL)
-                                          (do (eval (read))
-                                              (.toString piped-in)
-                                              (recur prompt exit))
+                                           (do (eval (read))
+                                               (.toString piped-in)
+                                               (recur prompt exit))
                                           (isa? (type form) clojure.lang.IObj)
-                                          (with-meta form
-                                                     (assoc (meta form)
-                                                            :clooj/src (.toString piped-in)))
+                                           (with-meta form
+                                                      (assoc (meta form)
+                                                             :clooj/src (.toString piped-in)))
                                           :else
-                                          form)))
+                                           form)))
                               :caught (fn [e]
                                         (when (is-eof-ex? e)
                                           (throw e))
@@ -185,22 +185,31 @@
   (let [text (->> doc :doc-text-area .getText)]
     (send-to-repl doc text (relative-file doc) 1)))
 
+(defn repl-writer-write
+  ([buffer char-array offset length]
+    (.append buffer char-array offset length))
+  ([buffer ^int t]
+    (when (= Integer (type t))
+      (.append buffer (char t)))))
+
+(defn repl-writer-flush [buf ta-out]
+  (when ta-out
+    (let [text (.toString buf)]
+      (.setLength buf 0)
+      (awt-event
+        (do (append-text ta-out text)
+            (scroll-to-last ta-out))))))
+
 (defn make-repl-writer [ta-out]
   (->
     (let [buf (StringBuffer.)]
       (proxy [Writer] []
         (write
           ([char-array offset length]
-            (.append buf char-array offset length))
+            (repl-writer-write buf char-array offset length))
           ([^int t]          
-            (when (= Integer (type t))
-              (.append buf (char t)))))
-        (flush []
-               (when ta-out
-                 (awt-event
-                   (do (append-text ta-out (.toString buf))
-                       (scroll-to-last ta-out)
-                       (.setLength buf 0)))))
+            (repl-writer-write buf t)))
+        (flush [] (repl-writer-flush buf ta-out))
         (close [] nil)))
     (PrintWriter. true)))
   
