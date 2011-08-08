@@ -285,7 +285,8 @@
   it executes."
   (let [menu (JMenu. title)]
     (doall (map #(apply add-menu-item menu %) item-triples))
-    (.add menu-bar menu)))
+    (.add menu-bar menu)
+    menu))
 
 ;; undoability
 

@@ -39,6 +39,7 @@
                             set-selection scroll-to-pos add-caret-listener
                             attach-child-action-keys attach-action-keys
                             get-caret-coords add-menu make-undoable
+                            add-menu-item
                             choose-file choose-directory
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
@@ -300,7 +301,7 @@
   (attach-action-keys text-comp
     ["special R" #(focus-in-text-component (:repl-in-text-area doc))]
     ["special E" #(focus-in-text-component (:doc-text-area doc))]
-    ["special P" #(focus-in-text-component (:docs-tree doc))]
+    ["special P" #(.requestFocusInWindow (:docs-tree doc))]
     ["special F" #(.toFront (:frame doc))]
     ["special B" #(.toBack (:frame doc))]))
   
@@ -519,12 +520,15 @@
     (System/setProperty "apple.laf.useScreenMenuBar" "true"))
   (let [menu-bar (JMenuBar.)]
     (. (doc :frame) setJMenuBar menu-bar)
-    (add-menu menu-bar "File"
-      ["New" "cmd N" #(create-file doc (first (get-selected-projects doc)) "")]
-      ["Save" "cmd S" #(save-file doc)]
-      ["Move/Rename" nil #(rename-file doc)]
-      ["Revert" nil #(revert-file doc)]
-      ["Delete" nil #(delete-file doc)])
+    (let [file-menu
+          (add-menu menu-bar "File"
+            ["New" "cmd N" #(create-file doc (first (get-selected-projects doc)) "")]
+            ["Save" "cmd S" #(save-file doc)]
+            ["Move/Rename" nil #(rename-file doc)]
+            ["Revert" nil #(revert-file doc)]
+            ["Delete" nil #(delete-file doc)])]
+      (when-not (is-mac)
+        (add-menu-item file-menu "Exit" nil #(System/exit 0))))
     (add-menu menu-bar "Project"
       ["New..." "cmd shift N" #(new-project doc)]
       ["Open..." "cmd shift O" #(open-project doc)]
