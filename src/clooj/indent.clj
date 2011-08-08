@@ -29,10 +29,11 @@
 
 (defn left-paren-indent-size [txt]
   (let [token1 (first-token txt)]
-    (or (when-not (or (some #{token1} special-tokens)
-                      (.startsWith (ltrim token1) "["))
-          (second-token-pos txt))
-        2)))
+    (if (and token1
+             (not (or (some #{token1} special-tokens)
+                      (.startsWith (ltrim token1) "["))))
+      (second-token-pos txt)
+      2)))
 
 (defn compute-indent-size [text-comp offset]
   (let [bracket-pos (first (find-enclosing-brackets
