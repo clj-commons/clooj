@@ -28,7 +28,6 @@
     (.length x)))
 
 (defn left-paren-indent-size [txt]
-  (println (first-token txt))
   (let [token1 (first-token txt)]
     (or
       (when (and token1
@@ -43,7 +42,6 @@
     (when (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))]
-        (println "col:" col)
         (+ col
            (condp = bracket
              \( (left-paren-indent-size (.getText text-comp
@@ -57,15 +55,12 @@
         end (get-line-end-offset text-comp line)
         document (.getDocument text-comp)
         line-text (.getText document start (- end start))]
-    (when-let [old-indent (re-find #"\ +" line-text)]
-      (let [old-indent-size (.length old-indent)]
+      (let [old-indent-size (count (re-find #"\ +" line-text))]
         (when-let [new-indent-size (compute-indent-size text-comp start)]       
           (let [delta (- new-indent-size old-indent-size)]
             (if (pos? delta)
               (.insertString document start (apply str (repeat delta " ")) nil)
-              (.remove document start (- delta)))))))))
-
-
+              (.remove document start (- delta))))))))
 
 (defn fix-indent-selected-lines [text-comp]
   (awt-event 
