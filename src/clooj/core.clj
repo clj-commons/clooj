@@ -90,25 +90,23 @@
 (def caret-position (atom nil))
 
 (defn save-caret-position [doc]
-  (when-let [pos (@caret-position (doc :doc-text-area))]
-    (let [key-str (str "caret_" (.getAbsolutePath @(:file doc)))]
-      (println key-str)
-      (write-value-to-prefs clooj-prefs key-str pos))))
+  (when-let [text-area (doc :doc-text-area)]
+    (when-let [pos (get @caret-position text-area)]
+      (let [key-str (str "caret_" (.getAbsolutePath @(:file doc)))]
+        (write-value-to-prefs clooj-prefs key-str pos)))))
 
 (defn load-caret-position [doc]
   (let [text-area (doc :doc-text-area)
         key-str (str "caret_" (.getAbsolutePath @(:file doc)))
         pos (read-value-from-prefs clooj-prefs key-str)]
-    (println key-str)
-    (println "pos:" pos)
     (when pos
       (let [length (.. text-area getDocument getLength)
             pos2 (Math/min pos length)]
-        (.setCaretPosition text-area pos)
-        (scroll-to-caret text-area)))))
+        (awt-event (.setCaretPosition text-area pos2)
+                   (scroll-to-caret text-area))))))
 
 (defn update-caret-position [text-comp]
-  (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
+  (awt-event (swap! caret-position assoc text-comp (.getCaretPosition text-comp))))
 
 (defn display-caret-position [doc]
   (let [{:keys [row col]} (get-caret-coords (:doc-text-area doc))]
@@ -117,30 +115,30 @@
 (defn handle-caret-move [doc text-comp ns]
   (update-caret-position text-comp)
   (send-off highlight-agent
-    (fn [old-pos]
-      (try
-        (let [pos (@caret-position text-comp)
-              text (.getText text-comp)]
-          (when-not (= pos old-pos)
-            (let [enclosing-brackets (find-enclosing-brackets text pos)
-                  bad-brackets (find-bad-brackets text)
-                  good-enclosures (clojure.set/difference
-                                    (set enclosing-brackets) (set bad-brackets))]
-              (awt-event
-                (highlight-brackets text-comp good-enclosures bad-brackets)))))
-        (catch Throwable t (.printStackTrace t)))))
+            (fn [old-pos]
+              (try
+                (let [pos (@caret-position text-comp)
+                      text (.getText text-comp)]
+                  (when-not (= pos old-pos)
+                    (let [enclosing-brackets (find-enclosing-brackets text pos)
+                          bad-brackets (find-bad-brackets text)
+                          good-enclosures (clojure.set/difference
+                                            (set enclosing-brackets) (set bad-brackets))]
+                      (awt-event
+                        (highlight-brackets text-comp good-enclosures bad-brackets)))))
+                (catch Throwable t (.printStackTrace t)))))
   (when ns
     (send-off arglist-agent 
-      (fn [old-pos]
-        (try
-          (let [pos (@caret-position text-comp)
-                text (.getText text-comp)]
-            (when-not (= pos old-pos)
-              (let [arglist-text
-                     (arglist-from-caret-pos (find-ns (symbol ns)) text pos)]
-                (awt-event (.setText (:arglist-label doc) arglist-text)))))
-          (catch Throwable t (.printStackTrace t)))))))
-    
+              (fn [old-pos]
+                (try
+                  (let [pos (@caret-position text-comp)
+                        text (.getText text-comp)]
+                    (when-not (= pos old-pos)
+                      (let [arglist-text
+                            (arglist-from-caret-pos (find-ns (symbol ns)) text pos)]
+                        (awt-event (.setText (:arglist-label doc) arglist-text)))))
+                  (catch Throwable t (.printStackTrace t)))))))
+   
 ;; highlighting
 
 (defn activate-caret-highlighter [doc]
@@ -417,6 +415,7 @@
       (do (.setText text-area no-project-txt)
           (.setTitle frame (str clooj-name " \u2014 (No file selected)"))
           (.setEditable text-area false)))
+    (update-caret-position text-area)
     (make-undoable text-area)
     (setup-autoindent text-area)
     (reset! (doc :file) file)
