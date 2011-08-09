@@ -171,8 +171,8 @@
     (send-off temp-file-manager
               (fn [old-pos]
                 (try
-                  (let [pos (@caret-position text-comp)]
-                    (when-not (== old-pos pos)
+                  (when-let [pos (get @caret-position text-comp)]
+                    (when-not (= old-pos pos)
                       (dump-temp-doc doc f txt))
                     pos)
                      (catch Throwable t (.printStackTrace t)))))))
