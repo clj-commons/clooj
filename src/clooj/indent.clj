@@ -55,12 +55,12 @@
         end (get-line-end-offset text-comp line)
         document (.getDocument text-comp)
         line-text (.getText document start (- end start))]
-      (let [old-indent-size (count (re-find #"\ +" line-text))]
-        (when-let [new-indent-size (compute-indent-size text-comp start)]       
-          (let [delta (- new-indent-size old-indent-size)]
-            (if (pos? delta)
-              (.insertString document start (apply str (repeat delta " ")) nil)
-              (.remove document start (- delta))))))))
+    (let [old-indent-size (count (re-find #"\ +" line-text))]
+      (when-let [new-indent-size (compute-indent-size text-comp start)]       
+        (let [delta (- new-indent-size old-indent-size)]
+          (if (pos? delta)
+            (.insertString document start (apply str (repeat delta " ")) nil)
+            (.remove document start (- delta))))))))
 
 (defn fix-indent-selected-lines [text-comp]
   (awt-event 

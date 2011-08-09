@@ -45,7 +45,8 @@
                             indent unindent awt-event persist-window-shape
                             confirmed? create-button is-win
                             get-keystroke printstream-to-writer
-                            focus-in-text-component)]
+                            focus-in-text-component
+                            scroll-to-caret)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)])
   (:require [clojure.main :only (repl repl-prompt)])
   (:gen-class
@@ -87,6 +88,24 @@
 (def arglist-agent (agent nil))
 
 (def caret-position (atom nil))
+
+(defn save-caret-position [doc]
+  (when-let [pos (@caret-position (doc :doc-text-area))]
+    (let [key-str (str "caret_" (.getAbsolutePath @(:file doc)))]
+      (println key-str)
+      (write-value-to-prefs clooj-prefs key-str pos))))
+
+(defn load-caret-position [doc]
+  (let [text-area (doc :doc-text-area)
+        key-str (str "caret_" (.getAbsolutePath @(:file doc)))
+        pos (read-value-from-prefs clooj-prefs key-str)]
+    (println key-str)
+    (println "pos:" pos)
+    (when pos
+      (let [length (.. text-area getDocument getLength)
+            pos2 (Math/min pos length)]
+        (.setCaretPosition text-area pos)
+        (scroll-to-caret text-area)))))
 
 (defn update-caret-position [text-comp]
   (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
@@ -375,37 +394,37 @@
 
 ;; clooj docs
 
-
-
 (defn restart-doc [doc ^File file] 
   (send-off temp-file-manager
-    (let [f @(:file doc)
-          txt (.getText (:doc-text-area doc))]
-      (let [temp-file (get-temp-file f)]
-        (fn [_] (when (and f temp-file (.exists temp-file))
-                  (dump-temp-doc doc f txt))
-                0))))
-  (let [frame (doc :frame)]
-    (let [text-area (doc :doc-text-area)
-          temp-file (get-temp-file file)
-          file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
-          clooj-name (str "clooj " (get-clooj-version))]
-      (.. text-area getHighlighter removeAllHighlights)
-      (if (and file-to-open (.exists file-to-open) (.isFile file-to-open))
-        (do (with-open [rdr (FileReader. file-to-open)]
-              (.read text-area rdr nil))
-            (.setTitle frame (str clooj-name " \u2014  " (.getPath file)))
-            (.setEditable text-area true))
-        (do (.setText text-area no-project-txt)
-            (.setTitle frame (str clooj-name " \u2014 (No file selected)"))
-            (.setEditable text-area false)))
-      (make-undoable text-area)
-      (setup-autoindent text-area)
-      (reset! (doc :file) file)
-      (setup-temp-writer doc)
-      (switch-repl doc (first (get-selected-projects doc)))
-      (apply-namespace-to-repl doc))
-    doc))
+            (let [f @(:file doc)
+                  txt (.getText (:doc-text-area doc))]
+              (let [temp-file (get-temp-file f)]
+                (fn [_] (when (and f temp-file (.exists temp-file))
+                          (dump-temp-doc doc f txt))
+                  0))))
+  (let [frame (doc :frame)
+        text-area (doc :doc-text-area)
+        temp-file (get-temp-file file)
+        file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
+        clooj-name (str "clooj " (get-clooj-version))]
+    (save-caret-position doc)
+    (.. text-area getHighlighter removeAllHighlights)
+    (if (and file-to-open (.exists file-to-open) (.isFile file-to-open))
+      (do (with-open [rdr (FileReader. file-to-open)]
+                     (.read text-area rdr nil))
+          (.setTitle frame (str clooj-name " \u2014  " (.getPath file)))
+          (.setEditable text-area true))
+      (do (.setText text-area no-project-txt)
+          (.setTitle frame (str clooj-name " \u2014 (No file selected)"))
+          (.setEditable text-area false)))
+    (make-undoable text-area)
+    (setup-autoindent text-area)
+    (reset! (doc :file) file)
+    (setup-temp-writer doc)
+    (switch-repl doc (first (get-selected-projects doc)))
+    (apply-namespace-to-repl doc))
+    (load-caret-position doc)
+  doc)
 
 (defn new-file [doc]
   (restart-doc doc nil))

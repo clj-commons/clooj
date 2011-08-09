@@ -172,9 +172,12 @@
     (.setViewPosition v
                       (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
 
+(defn scroll-to-caret [text-comp]
+  (scroll-to-pos text-comp (.getCaretPosition text-comp)))
+
 (defn focus-in-text-component [text-comp]
   (.requestFocusInWindow text-comp)
-  (scroll-to-pos text-comp (.getCaretPosition text-comp)))
+  (scroll-to-caret text-comp))
 
 (defn get-selected-lines [text-comp]
   (let [row1 (get-line-of-offset text-comp (.getSelectionStart text-comp))
