@@ -3,17 +3,24 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.search
-  (:import (java.awt Color))
+  (:import (java.awt Color)
+           (java.util.regex Pattern Matcher))
   (:use [clooj.highlighting :only (highlight remove-highlights)]
         [clooj.utils :only (scroll-to-pos set-selection)]))
 
-(defn find-all-in-string [s t]
+(defn find-all-in-string
+  [s t]
   (when (pos? (.length t))
-    (loop [positions [] p-start 0]
-      (let [p (inc p-start)
-            pnew (.indexOf s t p)]
-        (if (pos? pnew)
-          (recur (conj positions pnew) pnew)
+    (let [p (Pattern/compile t 
+              (reduce bit-or
+                      [Pattern/LITERAL
+                       Pattern/UNICODE_CASE
+                       Pattern/CASE_INSENSITIVE
+                       Pattern/CANON_EQ]))
+          m (re-matcher p s)]
+      (loop [positions []]
+        (if (.find m)
+          (recur (conj positions (.start m)))
           positions)))))
 
 (defn highlight-found [text-comp posns length]
