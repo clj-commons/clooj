@@ -106,7 +106,7 @@
                    (scroll-to-caret text-area))))))
 
 (defn update-caret-position [text-comp]
-  (awt-event (swap! caret-position assoc text-comp (.getCaretPosition text-comp))))
+  (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
 
 (defn display-caret-position [doc]
   (let [{:keys [row col]} (get-caret-coords (:doc-text-area doc))]
