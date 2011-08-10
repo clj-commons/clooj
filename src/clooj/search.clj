@@ -8,15 +8,17 @@
   (:use [clooj.highlighting :only (highlight remove-highlights)]
         [clooj.utils :only (scroll-to-pos set-selection)]))
 
+(def case-insensitive-search
+  (reduce bit-or
+          [Pattern/LITERAL
+           Pattern/UNICODE_CASE
+           Pattern/CASE_INSENSITIVE
+           Pattern/CANON_EQ]))
+
 (defn find-all-in-string
   [s t]
   (when (pos? (.length t))
-    (let [p (Pattern/compile t 
-              (reduce bit-or
-                      [Pattern/LITERAL
-                       Pattern/UNICODE_CASE
-                       Pattern/CASE_INSENSITIVE
-                       Pattern/CANON_EQ]))
+    (let [p (Pattern/compile t case-insensitive-search)
           m (re-matcher p s)]
       (loop [positions []]
         (if (.find m)
