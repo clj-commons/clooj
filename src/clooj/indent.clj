@@ -55,7 +55,7 @@
         end (get-line-end-offset text-comp line)
         document (.getDocument text-comp)
         line-text (.getText document start (- end start))]
-    (let [old-indent-size (count (re-find #"\ +" line-text))]
+    (let [old-indent-size (count (re-find #"\A\ +" line-text))]
       (when-let [new-indent-size (compute-indent-size text-comp start)]       
         (let [delta (- new-indent-size old-indent-size)]
           (if (pos? delta)
@@ -65,15 +65,16 @@
 (defn fix-indent-selected-lines [text-comp]
   (awt-event 
     (dorun (map #(fix-indent text-comp %)
-             (get-selected-lines text-comp)))))
+                (get-selected-lines text-comp)))))
 
 (defn auto-indent-str [text-comp offset]
   (let [indent-size (or (compute-indent-size text-comp offset) 0)]
     (apply str "\n" (repeat indent-size " "))))
-    
+   
 (defn setup-autoindent [text-comp]
   (attach-action-keys text-comp
-    ["TAB" #(fix-indent-selected-lines text-comp)]
+    ["TAB" #(do)]                  
+    ["cmd BACK_SLASH" #(fix-indent-selected-lines text-comp)]
     ["cmd CLOSE_BRACKET" #(indent text-comp)]   ; "cmd ]"
     ["cmd OPEN_BRACKET" #(unindent text-comp)]) ; "cmd ["
   (.. text-comp getDocument

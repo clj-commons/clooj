@@ -555,7 +555,8 @@
     (add-menu menu-bar "Source"
       ["Comment-out" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
       ["Uncomment-out" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))]
-      ["Fix indentation" "TAB" #(fix-indent-selected-lines (:doc-text-area doc))]
+      ["Show docs" "TAB" #(do)]
+      ["Fix indentation" "cmd BACK_SLASH" #(fix-indent-selected-lines (:doc-text-area doc))]
       ["Indent lines" "cmd CLOSE_BRACKET" #(indent (:doc-text-area doc))]
       ["Unindent lines" "cmd OPEN_BRACKET" #(indent (:doc-text-area doc))])
     (add-menu menu-bar "REPL"
