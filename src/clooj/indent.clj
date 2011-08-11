@@ -74,7 +74,7 @@
 (defn setup-autoindent [text-comp]
   (attach-action-keys text-comp
     ["TAB" #(do)]                  
-    ["cmd BACK_SLASH" #(fix-indent-selected-lines text-comp)]
+    ["cmd BACK_SLASH" #(fix-indent-selected-lines text-comp)] ; "cmd \"
     ["cmd CLOSE_BRACKET" #(indent text-comp)]   ; "cmd ]"
     ["cmd OPEN_BRACKET" #(unindent text-comp)]) ; "cmd ["
   (.. text-comp getDocument
