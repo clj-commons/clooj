@@ -314,14 +314,11 @@
                               .getAbsolutePath)]
         (awt-event (set-tree-selection (doc :docs-tree) clj-file))))))
 
-(defn attach-global-action-keys [text-comp doc]
-  (attach-action-keys text-comp
-    ["cmd1 3" #(focus-in-text-component (:repl-in-text-area doc))]
-    ["cmd1 2" #(focus-in-text-component (:doc-text-area doc))]
-    ["cmd1 1" #(.requestFocusInWindow (:docs-tree doc))]
-    ["cmd1 MINUS" #(.toBack (:frame doc))]
-    ["cmd1 PLUS" #(.toFront (:frame doc))]
-    ["cmd1 EQUALS" #(.toFront (:frame doc))]))
+(defn attach-global-action-keys [comp doc]
+  (attach-action-keys comp
+    ["cmd2 MINUS" #(.toBack (:frame doc))]
+    ["cmd2 PLUS" #(.toFront (:frame doc))]
+    ["cmd2 EQUALS" #(.toFront (:frame doc))]))
   
 (defn create-doc []
   (let [doc-text-area (make-text-area false)
@@ -388,7 +385,7 @@
     (attach-action-keys doc-text-area
       ["cmd1 shift O" #(open-project doc)])
     (dorun (map #(attach-global-action-keys % doc)
-                [doc-text-area repl-in-text-area repl-out-text-area]))
+                [docs-tree doc-text-area repl-in-text-area repl-out-text-area]))
     doc))
 
 ;; clooj docs
@@ -575,17 +572,17 @@
       ["Go to REPL input" "R" "cmd1 3" #(.requestFocusInWindow (:repl-in-text-area doc))]
       ["Go to Editor" "E" "cmd1 2" #(.requestFocusInWindow (:doc-text-area doc))]
       ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree doc))]
-      ["Send clooj window to back" "B" "cmd1 MINUS" #(.toBack (:frame doc))]
-      ["Bring clooj window to front" "F" "cmd1 PLUS" #(.toFront (:frame doc))])))
+      ["Send clooj window to back" "B" "cmd2 MINUS" #(.toBack (:frame doc))]
+      ["Bring clooj window to front" "F" "cmd2 PLUS" #(.toFront (:frame doc))])))
 
 (defn add-visibility-shortcut [doc]
-  (let [shortcut (get-keystroke "cmd1 PLUS")]
+  (let [shortcuts [(map get-keystroke ["cmd2 EQUALS" "cmd2 PLUS"])]]
     (.. Toolkit getDefaultToolkit
       (addAWTEventListener
         (proxy [AWTEventListener] []
           (eventDispatched [e]
-            (when (= (KeyStroke/getKeyStrokeForEvent e)
-                     shortcut)
+            (when (some #{(KeyStroke/getKeyStrokeForEvent e)}
+                     shortcuts)
               (.toFront (:frame doc)))))
         AWTEvent/KEY_EVENT_MASK))))
 
