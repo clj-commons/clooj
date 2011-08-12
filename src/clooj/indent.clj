@@ -29,10 +29,12 @@
 
 (defn left-paren-indent-size [txt]
   (let [token1 (first-token txt)]
-    (or (when-not (or (some #{token1} special-tokens)
-                      (.startsWith (ltrim token1) "["))
-          (second-token-pos txt))
-        2)))
+    (or
+      (when (and token1
+                 (not (or (some #{token1} special-tokens)
+                          (.startsWith (ltrim token1) "["))))
+        (second-token-pos txt))
+      2)))
 
 (defn compute-indent-size [text-comp offset]
   (let [bracket-pos (first (find-enclosing-brackets
@@ -53,28 +55,26 @@
         end (get-line-end-offset text-comp line)
         document (.getDocument text-comp)
         line-text (.getText document start (- end start))]
-    (when-let [old-indent (re-find #"\ +" line-text)]
-      (let [old-indent-size (.length old-indent)]
-        (when-let [new-indent-size (compute-indent-size text-comp start)]       
-          (let [delta (- new-indent-size old-indent-size)]
-            (if (pos? delta)
-              (.insertString document start (apply str (repeat delta " ")) nil)
-              (.remove document start (- delta)))))))))
-
-
+    (let [old-indent-size (count (re-find #"\A\ +" line-text))]
+      (when-let [new-indent-size (compute-indent-size text-comp start)]       
+        (let [delta (- new-indent-size old-indent-size)]
+          (if (pos? delta)
+            (.insertString document start (apply str (repeat delta " ")) nil)
+            (.remove document start (- delta))))))))
 
 (defn fix-indent-selected-lines [text-comp]
   (awt-event 
     (dorun (map #(fix-indent text-comp %)
-             (get-selected-lines text-comp)))))
+                (get-selected-lines text-comp)))))
 
 (defn auto-indent-str [text-comp offset]
   (let [indent-size (or (compute-indent-size text-comp offset) 0)]
     (apply str "\n" (repeat indent-size " "))))
-    
+   
 (defn setup-autoindent [text-comp]
   (attach-action-keys text-comp
-    ["TAB" #(fix-indent-selected-lines text-comp)]
+    ["TAB" #(do)]                  
+    ["cmd BACK_SLASH" #(fix-indent-selected-lines text-comp)] ; "cmd \"
     ["cmd CLOSE_BRACKET" #(indent text-comp)]   ; "cmd ]"
     ["cmd OPEN_BRACKET" #(unindent text-comp)]) ; "cmd ["
   (.. text-comp getDocument
