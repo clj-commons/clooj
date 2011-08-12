@@ -552,10 +552,10 @@
       ["Open..." "O" "cmd shift O" #(open-project doc)]
       ["Move/Rename" "M" nil #(rename-project doc)]
       ["Remove" nil "R" #(remove-project doc)])
-    (add-menu menu-bar "Source" "S"
+    (add-menu menu-bar "Source" "E"
       ["Comment-out" "C" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
       ["Uncomment-out" "U" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))]
-      ["Show docs" "TAB" #(do)]
+;      ["Show docs" "S" "TAB" #(do)]
       ["Fix indentation" "F" "cmd BACK_SLASH" #(fix-indent-selected-lines (:doc-text-area doc))]
       ["Indent lines" "I" "cmd CLOSE_BRACKET" #(indent (:doc-text-area doc))]
       ["Unindent lines" "D" "cmd OPEN_BRACKET" #(indent (:doc-text-area doc))])
