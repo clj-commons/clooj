@@ -292,6 +292,6 @@
     (attach-child-action-keys ta-in ["UP" at-top prev-hist]
                               ["DOWN" at-bottom next-hist]
                               ["ENTER" ready submit])
-    (attach-action-keys ta-in ["cmd UP" prev-hist]
-                        ["cmd DOWN" next-hist]
-                        ["cmd ENTER" submit])))
+    (attach-action-keys ta-in ["cmd1 UP" prev-hist]
+                        ["cmd1 DOWN" next-hist]
+                        ["cmd1 ENTER" submit])))

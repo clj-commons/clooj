@@ -221,8 +221,8 @@
 (defn get-keystroke [key-shortcut]
   (KeyStroke/getKeyStroke
     (-> key-shortcut
-      (.replace "cmd" (if (is-mac) "meta" "ctrl"))
-      (.replace "special" (if (is-mac) "ctrl" "alt")))))
+      (.replace "cmd1" (if (is-mac) "meta" "ctrl"))
+      (.replace "cmd2" (if (is-mac) "ctrl" "alt")))))
 
 ;; actions
 
@@ -304,8 +304,8 @@
         (reify UndoableEditListener
           (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))
     (attach-action-keys text-area
-      ["cmd Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
-      ["cmd shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
+      ["cmd1 Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
+      ["cmd1 shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
 
 
 ;; file handling
