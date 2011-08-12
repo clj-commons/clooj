@@ -316,12 +316,12 @@
 
 (defn attach-global-action-keys [text-comp doc]
   (attach-action-keys text-comp
-    ["cmd2 3" #(focus-in-text-component (:repl-in-text-area doc))]
-    ["cmd2 2" #(focus-in-text-component (:doc-text-area doc))]
-    ["cmd2 1" #(.requestFocusInWindow (:docs-tree doc))]
-    ["cmd2 MINUS" #(.toBack (:frame doc))]
-    ["cmd2 PLUS" #(.toFront (:frame doc))]
-    ["cmd2 EQUALS" #(.toFront (:frame doc))]))
+    ["cmd1 3" #(focus-in-text-component (:repl-in-text-area doc))]
+    ["cmd1 2" #(focus-in-text-component (:doc-text-area doc))]
+    ["cmd1 1" #(.requestFocusInWindow (:docs-tree doc))]
+    ["cmd1 MINUS" #(.toBack (:frame doc))]
+    ["cmd1 PLUS" #(.toFront (:frame doc))]
+    ["cmd1 EQUALS" #(.toFront (:frame doc))]))
   
 (defn create-doc []
   (let [doc-text-area (make-text-area false)
@@ -572,14 +572,14 @@
       ["Find next" "N" "cmd1 G" #(highlight-step doc false)]
       ["Find prev" "P" "cmd1 shift G" #(highlight-step doc true)])
     (add-menu menu-bar "Window" "W"
-      ["Go to REPL input" "R" "cmd2 3" #(.requestFocusInWindow (:repl-in-text-area doc))]
-      ["Go to Editor" "E" "cmd2 2" #(.requestFocusInWindow (:doc-text-area doc))]
-      ["Go to Project Tree" "P" "cmd2 1" #(.requestFocusInWindow (:docs-tree doc))]
-      ["Send clooj window to back" "B" "cmd2 MINUS" #(.toBack (:frame doc))]
-      ["Bring clooj window to front" "F" "cmd2 PLUS" #(.toFront (:frame doc))])))
+      ["Go to REPL input" "R" "cmd1 3" #(.requestFocusInWindow (:repl-in-text-area doc))]
+      ["Go to Editor" "E" "cmd1 2" #(.requestFocusInWindow (:doc-text-area doc))]
+      ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree doc))]
+      ["Send clooj window to back" "B" "cmd1 MINUS" #(.toBack (:frame doc))]
+      ["Bring clooj window to front" "F" "cmd1 PLUS" #(.toFront (:frame doc))])))
 
 (defn add-visibility-shortcut [doc]
-  (let [shortcut (get-keystroke "cmd2 F")]
+  (let [shortcut (get-keystroke "cmd1 PLUS")]
     (.. Toolkit getDefaultToolkit
       (addAWTEventListener
         (proxy [AWTEventListener] []
