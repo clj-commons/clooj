@@ -318,9 +318,9 @@
   (attach-action-keys text-comp
     ["special R" #(focus-in-text-component (:repl-in-text-area doc))]
     ["special E" #(focus-in-text-component (:doc-text-area doc))]
-    ["special P" #(.requestFocusInWindow (:docs-tree doc))]
-    ["special F" #(.toFront (:frame doc))]
-    ["special B" #(.toBack (:frame doc))]))
+    ["special W" #(.requestFocusInWindow (:docs-tree doc))]
+    ["special PERIOD" #(.toFront (:frame doc))]
+    ["special COMMA" #(.toBack (:frame doc))]))
   
 (defn create-doc []
   (let [doc-text-area (make-text-area false)
@@ -552,7 +552,7 @@
       ["Open..." "O" "cmd shift O" #(open-project doc)]
       ["Move/Rename" "M" nil #(rename-project doc)]
       ["Remove" nil "R" #(remove-project doc)])
-    (add-menu menu-bar "Source" "E"
+    (add-menu menu-bar "Source" "U"
       ["Comment-out" "C" "cmd SEMICOLON" #(comment-out (:doc-text-area doc))]
       ["Uncomment-out" "U" "cmd shift SEMICOLON" #(uncomment-out (:doc-text-area doc))]
 ;      ["Show docs" "S" "TAB" #(do)]
@@ -573,9 +573,9 @@
     (add-menu menu-bar "Window" "W"
       ["Go to REPL input" "R" "special R" #(.requestFocusInWindow (:repl-in-text-area doc))]
       ["Go to Editor" "E" "special E" #(.requestFocusInWindow (:doc-text-area doc))]
-      ["Go to Project Tree" "P" "special P" #(.requestFocusInWindow (:docs-tree doc))]
-      ["Send clooj window to back" "B" "special B" #(.toBack (:frame doc))]
-      ["Bring clooj window to front" "F" "special F" #(.toFront (:frame doc))])))
+      ["Go to Project Tree" "P" "special W" #(.requestFocusInWindow (:docs-tree doc))]
+      ["Send clooj window to back" "B" "special COMMA" #(.toBack (:frame doc))]
+      ["Bring clooj window to front" "F" "special PERIOD" #(.toFront (:frame doc))])))
 
 (defn add-visibility-shortcut [doc]
   (let [shortcut (get-keystroke "special F")]
