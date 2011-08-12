@@ -37,4 +37,3 @@
                     (map #(highlight text-comp % Color/LIGHT_GRAY) good-enclosures)
                     (map #(highlight text-comp % Color/PINK) bad-brackets))))))
 
-            

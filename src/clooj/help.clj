@@ -92,7 +92,10 @@
 (defn token-from-caret-pos [ns text pos]
   (head-token (find-form-string text pos)))
 
+(defn arglist-from-token [ns token]
+  (or (special-forms token)
+      (arglist-from-var (string-to-var ns token))))
+
 (defn arglist-from-caret-pos [ns text pos]
   (let [token (token-from-caret-pos ns text pos)]
-    (or (special-forms token)
-        (arglist-from-var (string-to-var ns token)))))
+    (arglist-from-token ns token)))
