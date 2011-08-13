@@ -109,9 +109,9 @@
   (Font. name Font/PLAIN size))
 
 (def default-font
-  (cond (is-mac) (font "Monaco" 11)
-        (is-win) (font "Courier New" 12)
-        :else    (font "Monospaced" 12)))
+  (cond (is-mac) ["Monaco" 11]
+        (is-win) ["Courier New" 12]
+        :else    ["Monospaced" 12]))
 
 (defn set-font
   ([app font-name size]
