@@ -38,18 +38,23 @@
     (print x)
     (pprint x)))
 
-(defn get-lib-dirs [project-path]
+(defn setup-classpath [project-path]
   (when project-path
-    (list (File. project-path "lib")
-          (File. project-path "jars"))))
+    (let [project-dir (File. project-path)]
+      (when (and (.exists project-dir) (.isDirectory project-dir))
+        (let [sub-dirs (filter #(and (.isDirectory %)
+                                     (not (.startsWith (.getName %) ".")))
+                               (.listFiles project-dir))]
+          (concat sub-dirs
+                 (filter #(.endsWith (.getName %) ".jar")
+                         (mapcat #(.listFiles %) sub-dirs))))))))
 
 (defn create-class-loader [project-path]
-  (when-let [lib-dirs (get-lib-dirs project-path)]
-    (let [files (conj (apply concat (map #(.listFiles %) lib-dirs)) (File. project-path "src"))
+    (let [files (setup-classpath project-path)
           urls (map #(.toURL %) files)]
       (URLClassLoader.
         (into-array URL urls)
-        (.getClassLoader clojure.lang.RT)))))
+        (.getClassLoader clojure.lang.RT))))
     
 (defn create-clojure-repl
   "This function creates an instance of clojure repl, with output going to output-writer
