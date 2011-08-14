@@ -174,36 +174,36 @@
 (defn get-node-path [node]
   (.. node getUserObject getAbsolutePath))
 
-(defn get-selected-file-path [doc]
-  (when-let [tree-path (-> doc :docs-tree .getSelectionPaths first)]
+(defn get-selected-file-path [app]
+  (when-let [tree-path (-> app :docs-tree .getSelectionPaths first)]
     (-> tree-path .getLastPathComponent .getUserObject .getAbsolutePath)))
 
 (defn get-selected-namespace [tree]
   (->> tree .getSelectionPaths first
        .getLastPathComponent .getUserObject .toString))
 
-(defn get-selected-projects [doc]
-  (let [tree (doc :docs-tree)
+(defn get-selected-projects [app]
+  (let [tree (app :docs-tree)
         selections (.getSelectionPaths tree)]
     (for [selection selections]
       (->> selection .getLastPathComponent (get-project-node tree)
            .getUserObject .getAbsolutePath))))
 
-(defn add-project [doc project-path]
+(defn add-project [app project-path]
   (swap! project-set conj project-path)
-  (update-project-tree (doc :docs-tree)))
+  (update-project-tree (app :docs-tree)))
 
-(defn rename-project [doc]
-  (when-let [dir (choose-file (doc :frame) "Move/rename project directory" "" false)]
-    (let [old-project (first (get-selected-projects doc))]
+(defn rename-project [app]
+  (when-let [dir (choose-file (app :frame) "Move/rename project directory" "" false)]
+    (let [old-project (first (get-selected-projects app))]
       (if (.renameTo (File. old-project) dir)
         (do
           (swap! project-set
                  #(-> % (disj old-project) (conj (.getAbsolutePath dir))))
-          (update-project-tree (:docs-tree doc)))
+          (update-project-tree (:docs-tree app)))
         (JOptionPane/showMessageDialog nil "Unable to move project.")))))
 
-(defn remove-selected-project [doc]
-  (apply swap! project-set disj (get-selected-projects doc))
-  (update-project-tree (doc :docs-tree)))     
+(defn remove-selected-project [app]
+  (apply swap! project-set disj (get-selected-projects app))
+  (update-project-tree (app :docs-tree)))     
       

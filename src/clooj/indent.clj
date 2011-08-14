@@ -9,7 +9,7 @@
         [clojure.contrib.string :only (ltrim rtrim)])
   (:import  (javax.swing.text DocumentFilter)))
 
-;(defn t [] (@clooj.core/current-doc :doc-text-area))
+;(defn t [] (@clooj.core/current-app :doc-text-area))
 
 (def special-tokens 
   ["def" "defn" "defmacro" "let" "for" "loop" "doseq" "if" "when"

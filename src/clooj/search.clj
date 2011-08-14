@@ -39,9 +39,9 @@
 
 (def search-highlights (atom nil))
 
-(defn update-find-highlight [doc back]
-  (let [sta (:search-text-area doc)
-        dta (:doc-text-area doc)
+(defn update-find-highlight [app back]
+  (let [sta (:search-text-area app)
+        dta (:doc-text-area app)
         length (.. sta getText length)
         posns (find-all-in-string (.getText dta) (.getText sta))]
     (remove-highlights dta @search-highlights)
@@ -61,31 +61,31 @@
       (do (.setSelectionEnd dta (.getSelectionStart dta))
           (.setBackground sta (if (pos? length) Color/PINK Color/WHITE))))))
 
-(defn start-find [doc]
-  (let [sta (doc :search-text-area)
-        arg (doc :arglist-label)]
+(defn start-find [app]
+  (let [sta (app :search-text-area)
+        arg (app :arglist-label)]
     (.setVisible arg false)
     (doto sta
       (.setVisible true)
       (.requestFocus)
       (.selectAll))))
 
-(defn stop-find [doc]
-  (let [sta (doc :search-text-area)
-        dta (doc :doc-text-area)
-        arg (doc :arglist-label)]
+(defn stop-find [app]
+  (let [sta (app :search-text-area)
+        dta (app :doc-text-area)
+        arg (app :arglist-label)]
     (.setVisible arg true)
     (.setVisible sta false)
     (remove-highlights dta @search-highlights)
     (reset! search-highlights nil)))
 
-(defn escape-find [doc]
-  (stop-find doc)
-  (.requestFocus (:doc-text-area doc)))
+(defn escape-find [app]
+  (stop-find app)
+  (.requestFocus (:doc-text-area app)))
 
-(defn highlight-step [doc back]
-  (let [dta (:doc-text-area doc)]
-    (start-find doc)
+(defn highlight-step [app back]
+  (let [dta (:doc-text-area app)]
+    (start-find app)
     (if (not back)
         (.setSelectionStart dta (.getSelectionEnd dta)))
-    (update-find-highlight doc back)))
+    (update-find-highlight app back)))

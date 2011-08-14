@@ -29,9 +29,9 @@
          (.startsWith (.getMessage throwable) "java.lang.Exception: EOF while reading")
          (.startsWith (.getMessage throwable) "java.io.IOException: Write end dead"))))
 
-(defn get-repl-ns [doc]
+(defn get-repl-ns [app]
   (let [repl-map @repls]
-    (-> doc :repl deref :project-path repl-map :ns)))
+    (-> app :repl deref :project-path repl-map :ns)))
 
 (defn repl-print [x]
   (if (var? x)
@@ -122,9 +122,9 @@
 (defn replace-first [coll x]
   (cons x (next coll)))
 
-(defn update-repl-history [doc]
+(defn update-repl-history [app]
   (swap! (:items repl-history) replace-first
-         (.getText (doc :repl-in-text-area))))
+         (.getText (app :repl-in-text-area))))
 
 (defn correct-expression? [cmd]
   (let [rdr (-> cmd StringReader. PushbackReader.)]
@@ -133,13 +133,13 @@
          (catch Exception e false))))
 
 (defn send-to-repl
-  ([doc cmd] (send-to-repl doc cmd "NO_SOURCE_PATH" 1))
-  ([doc cmd file line]
+  ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 1))
+  ([app cmd file line]
     (awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
             cmd (.trim cmd-ln)]
-        (append-text (doc :repl-out-text-area) cmd-ln)
-        (binding [*out* (:input-writer @(doc :repl))]
+        (append-text (app :repl-out-text-area) cmd-ln)
+        (binding [*out* (:input-writer @(app :repl))]
           (pr 'SILENT-EVAL `(set! *file* ~file)
               'SILENT-EVAL `(set! *line-offset*
                                   (+ *line-offset*
@@ -156,10 +156,10 @@
   (.scrollRectToVisible text-area
                         (Rectangle. 0 (.getHeight text-area) 1 1)))
 
-(defn relative-file [doc]
-  (let [prefix (str (-> doc :repl deref :project-path) File/separator
+(defn relative-file [app]
+  (let [prefix (str (-> app :repl deref :project-path) File/separator
                     "src"  File/separator)]
-    (subs (.getAbsolutePath @(doc :file)) (count prefix))))
+    (subs (.getAbsolutePath @(app :file)) (count prefix))))
 
 (defn selected-region [ta]
   (if-let [text (.getSelectedText ta)]
@@ -172,18 +172,18 @@
          :start a
          :end b}))))
 
-(defn send-selected-to-repl [doc]
-  (let [ta (doc :doc-text-area)
+(defn send-selected-to-repl [app]
+  (let [ta (app :doc-text-area)
         region (selected-region ta)
         txt (:text region)]
     (if-not (and txt (correct-expression? txt))
-      (.setText (doc :arglist-label) "Malformed expression")
+      (.setText (app :arglist-label) "Malformed expression")
       (let [line (get-line-of-offset ta (:start region))]
-        (send-to-repl doc txt (relative-file doc) (inc line))))))
+        (send-to-repl app txt (relative-file app) (inc line))))))
 
-(defn send-doc-to-repl [doc]
-  (let [text (->> doc :doc-text-area .getText)]
-    (send-to-repl doc text (relative-file doc) 1)))
+(defn send-doc-to-repl [app]
+  (let [text (->> app :doc-text-area .getText)]
+    (send-to-repl app text (relative-file app) 1)))
 
 (defn repl-writer-write
   ([buffer char-array offset length]
@@ -213,23 +213,23 @@
         (close [] nil)))
     (PrintWriter. true)))
   
-(defn update-repl-in [doc]
+(defn update-repl-in [app]
   (when (pos? (count @(:items repl-history)))
-    (.setText (:repl-in-text-area doc)
+    (.setText (:repl-in-text-area app)
               (nth @(:items repl-history) @(:pos repl-history)))))
 
-(defn show-previous-repl-entry [doc]
+(defn show-previous-repl-entry [app]
   (when (zero? @(:pos repl-history))
-    (update-repl-history doc))
+    (update-repl-history app))
   (swap! (:pos repl-history)
          #(Math/min (dec (count @(:items repl-history))) (inc %)))
-  (update-repl-in doc))
+  (update-repl-in app))
 
-(defn show-next-repl-entry [doc]
+(defn show-next-repl-entry [app]
   (when (pos? @(:pos repl-history))
     (swap! (:pos repl-history)
            #(Math/max 0 (dec %)))
-    (update-repl-in doc)))
+    (update-repl-in app)))
   
 (defn get-current-namespace [text-comp]
   (try
@@ -238,36 +238,36 @@
         (str (second sexpr))))
     (catch Exception e)))
 
-(defn apply-namespace-to-repl [doc]
-  (when-let [current-ns (get-current-namespace (doc :doc-text-area))]
-    (send-to-repl doc (str "(ns " current-ns ")"))
+(defn apply-namespace-to-repl [app]
+  (when-let [current-ns (get-current-namespace (app :doc-text-area))]
+    (send-to-repl app (str "(ns " current-ns ")"))
     (swap! repls assoc-in
-           [(-> doc :repl deref :project-path) :ns]
+           [(-> app :repl deref :project-path) :ns]
            current-ns)))
 
-(defn restart-repl [doc project-path]
-  (append-text (doc :repl-out-text-area)
+(defn restart-repl [app project-path]
+  (append-text (app :repl-out-text-area)
                (str "\n=== RESTARTING " project-path " REPL ===\n"))
-  (let [input (-> doc :repl deref :input-writer)]
+  (let [input (-> app :repl deref :input-writer)]
     (.write input "EXIT-REPL\n")
     (.flush input))
   (Thread/sleep 100)
-  (let [thread (-> doc :repl deref :thread)]
+  (let [thread (-> app :repl deref :thread)]
     (while (.isAlive thread)
       (.stop thread)))
-  (reset! (:repl doc) (create-clojure-repl (doc :repl-out-writer) project-path))
-  (apply-namespace-to-repl doc))
+  (reset! (:repl app) (create-clojure-repl (app :repl-out-writer) project-path))
+  (apply-namespace-to-repl app))
 
-(defn switch-repl [doc project-path]
-  (when (not= project-path (-> doc :repl deref :project-path))
-    (append-text (doc :repl-out-text-area)
+(defn switch-repl [app project-path]
+  (when (not= project-path (-> app :repl deref :project-path))
+    (append-text (app :repl-out-text-area)
                  (str "\n\n=== Switching to " project-path " REPL ===\n"))
     (let [repl (or (get @repls project-path)
-                   (create-clojure-repl (doc :repl-out-writer) project-path))]
-      (reset! (:repl doc) repl))))
+                   (create-clojure-repl (app :repl-out-writer) project-path))]
+      (reset! (:repl app) repl))))
 
-(defn add-repl-input-handler [doc]
-  (let [ta-in (doc :repl-in-text-area)
+(defn add-repl-input-handler [app]
+  (let [ta-in (app :repl-in-text-area)
         get-caret-pos #(.getCaretPosition ta-in)
         ready #(let [caret-pos (get-caret-pos)
                      txt (.getText ta-in)
@@ -281,14 +281,14 @@
                                   caret-pos)))))
         submit #(when-let [txt (.getText ta-in)]
                   (if (correct-expression? txt)
-                    (do (send-to-repl doc txt)
+                    (do (send-to-repl app txt)
                         (.setText ta-in ""))
-                    (.setText (doc :arglist-label) "Malformed expression")))
+                    (.setText (app :arglist-label) "Malformed expression")))
         at-top #(zero? (get-line-of-offset ta-in (get-caret-pos)))
         at-bottom #(= (get-line-of-offset ta-in (get-caret-pos))
                       (get-line-of-offset ta-in (.. ta-in getText length)))
-        prev-hist #(show-previous-repl-entry doc)
-        next-hist #(show-next-repl-entry doc)]
+        prev-hist #(show-previous-repl-entry app)
+        next-hist #(show-next-repl-entry app)]
     (attach-child-action-keys ta-in ["UP" at-top prev-hist]
                               ["DOWN" at-bottom next-hist]
                               ["ENTER" ready submit])
