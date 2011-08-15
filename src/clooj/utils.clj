@@ -24,6 +24,16 @@
     `(when (and ~@args_)
        (~f ~@args_))))
 
+(defmacro when-lets [bindings & body]
+  (assert (vector? bindings))
+  (let [n (count bindings)]
+    (assert (zero? (mod n 2)))
+    (assert (<= 2 n))
+  (if (= 2 n)
+    `(when-let ~bindings ~@body)
+    (let [[a b] (map vec (split-at 2 bindings))]     
+      `(when-let ~a (when-lets ~b ~@body))))))
+
 (defn count-while [pred coll]
   (count (take-while pred coll)))
 

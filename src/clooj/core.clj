@@ -46,7 +46,7 @@
                             confirmed? create-button is-win
                             get-keystroke printstream-to-writer
                             focus-in-text-component
-                            scroll-to-caret)]
+                            scroll-to-caret when-lets)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)])
   (:require [clojure.main :only (repl repl-prompt)])
   (:gen-class
@@ -90,22 +90,22 @@
 (def caret-position (atom nil))
 
 (defn save-caret-position [app]
-  (when-let [text-area (app :doc-text-area)]
-    (when-let [pos (get @caret-position text-area)]
-      (when-let [file @(:file app)]
-      (let [key-str (str "caret_" (.getAbsolutePath file))]
-        (write-value-to-prefs clooj-prefs key-str pos))))))
+  (when-lets [text-area (app :doc-text-area)
+              pos (get @caret-position text-area)
+              file @(:file app)]
+    (let [key-str (str "caret_" (.getAbsolutePath file))]
+      (write-value-to-prefs clooj-prefs key-str pos))))
 
 (defn load-caret-position [app]
-  (let [text-area (app :doc-text-area)]
-    (when-let [file @(:file app)]
-      (let [key-str (str "caret_" (.getAbsolutePath file))]
-        (when-let [pos (read-value-from-prefs clooj-prefs key-str)]
-          (awt-event
-            (let [length (.. text-area getDocument getLength)
-                  pos2 (Math/min pos length)]
-              (.setCaretPosition text-area pos2)
-              (scroll-to-caret text-area))))))))
+  (when-lets [text-area (app :doc-text-area)
+              file @(:file app)
+              key-str (str "caret_" (.getAbsolutePath file))
+              pos (read-value-from-prefs clooj-prefs key-str)]
+    (awt-event
+      (let [length (.. text-area getDocument getLength)
+            pos2 (Math/min pos length)]
+        (.setCaretPosition text-area pos2)
+        (scroll-to-caret text-area)))))
 
 (defn update-caret-position [text-comp]
   (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
