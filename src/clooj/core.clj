@@ -96,15 +96,15 @@
         (write-value-to-prefs clooj-prefs key-str pos)))))
 
 (defn load-caret-position [app]
-  (let [text-area (app :doc-text-area)
-        key-str (str "caret_" (.getAbsolutePath @(:file app)))
-        pos (read-value-from-prefs clooj-prefs key-str)]
-    (when pos
-      (awt-event
-        (let [length (.. text-area getDocument getLength)
-              pos2 (Math/min pos length)]
-          (.setCaretPosition text-area pos2)
-          (scroll-to-caret text-area))))))
+  (let [text-area (app :doc-text-area)]
+    (when-let [path (.getAbsolutePath @(:file app))]
+      (let [key-str (str "caret_" (.getAbsolutePath @(:file app)))]
+        (when-let [pos (read-value-from-prefs clooj-prefs key-str)]
+          (awt-event
+            (let [length (.. text-area getDocument getLength)
+                  pos2 (Math/min pos length)]
+              (.setCaretPosition text-area pos2)
+              (scroll-to-caret text-area))))))))
 
 (defn update-caret-position [text-comp]
   (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
