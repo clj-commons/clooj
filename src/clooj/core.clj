@@ -92,13 +92,14 @@
 (defn save-caret-position [app]
   (when-let [text-area (app :doc-text-area)]
     (when-let [pos (get @caret-position text-area)]
-      (let [key-str (str "caret_" (.getAbsolutePath @(:file app)))]
-        (write-value-to-prefs clooj-prefs key-str pos)))))
+      (when-let [file @(:file app)]
+      (let [key-str (str "caret_" (.getAbsolutePath file))]
+        (write-value-to-prefs clooj-prefs key-str pos))))))
 
 (defn load-caret-position [app]
   (let [text-area (app :doc-text-area)]
-    (when-let [path (.getAbsolutePath @(:file app))]
-      (let [key-str (str "caret_" (.getAbsolutePath @(:file app)))]
+    (when-let [file @(:file app)]
+      (let [key-str (str "caret_" (.getAbsolutePath file))]
         (when-let [pos (read-value-from-prefs clooj-prefs key-str)]
           (awt-event
             (let [length (.. text-area getDocument getLength)
