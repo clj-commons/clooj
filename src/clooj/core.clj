@@ -110,7 +110,7 @@
 
 (def default-font
   (cond (is-mac) (font "Monaco" 11)
-        (is-win) (font "Courier New")
+        (is-win) (font "Courier New" 12)
         :else    (font "Monospaced" 12)))
 
 (defn set-font
