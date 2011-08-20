@@ -13,7 +13,7 @@
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (java.awt Insets Point Rectangle Window)
-           (java.awt.event AWTEventListener FocusAdapter
+           (java.awt.event AWTEventListener FocusAdapter MouseAdapter
                            WindowAdapter KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
@@ -219,6 +219,20 @@
       (add-caret-listener text-comp f)
       (add-text-change-listener text-comp f))))
 
+;; double-click paren to select form
+
+(defn double-click-selector [text-comp]
+  (.addMouseListener text-comp
+    (proxy [MouseAdapter] []
+      (mouseClicked [e]
+        (when (== 2 (.getClickCount e))
+          (when-lets [pos (.viewToModel text-comp (.getPoint e))
+                      c (.. text-comp getDocument (getText pos 1) (charAt 0))
+                      pos (cond (#{\( \[ \{ \"} c) (inc pos)
+                       (#{\) \] \} \"} c) pos)]
+            (apply set-selection text-comp
+                   (find-enclosing-brackets (.getText text-comp) pos))))))))
+
 ;; temp files
 
 (defn dump-temp-doc [app orig-f txt]
@@ -413,6 +427,8 @@
       (.add arglist-label))
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
+    (double-click-selector doc-text-area)
+    (double-click-selector repl-in-text-area)
     (.setModel docs-tree (DefaultTreeModel. nil))
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
     (constrain-to-parent doc-scroll-pane :n 0 :w 0 :s -16 :e 0)
