@@ -77,6 +77,30 @@
           (.replace "clooj/core.class" "project.clj")
           URL. slurp read-string (nth 2)))))
     
+;; line numbers
+
+(defn add-line-numbers [text-comp max-lines size]
+  (let [row-height (.. text-comp getGraphics
+                       (getFontMetrics (. text-comp getFont)) getHeight)
+        sp (.. text-comp getParent getParent)
+        jl (JList.
+             (proxy [AbstractListModel] []
+               (getSize [] max-lines)
+               (getElementAt [i] (str (inc i) " "))))
+        cr (. jl getCellRenderer)]
+    (.setMargin text-comp (Insets. 0 10 0 0))
+    (dorun (map #(.removeMouseListener jl %) (.getMouseListeners jl)))
+    (dorun (map #(.removeMouseMotionListener jl %) (.getMouseMotionListeners jl)))
+    (doto jl
+      (.setBackground (Color. 235 235 235))
+      (.setForeground (Color. 50 50 50))
+      (.setFixedCellHeight row-height)
+      (.setFont (Font. "Monaco" Font/PLAIN size)))
+    (doto cr
+      (.setHorizontalAlignment JLabel/RIGHT)
+      (.setVerticalAlignment JLabel/BOTTOM))
+    (.setRowHeaderView sp jl)))
+
 ;; font
 
 (def current-font (atom nil))
@@ -98,6 +122,7 @@
                   [:doc-text-area :repl-in-text-area
                    :repl-out-text-area :arglist-label
                    :search-text-area]))
+      (add-line-numbers (app :doc-text-area) Short/MAX_VALUE (int (* 0.75 size)))
       (reset! current-font [font-name size])))
   ([app font-name]
     (let [size (second @current-font)]
@@ -107,11 +132,13 @@
    (apply set-font app (or (read-value-from-prefs clooj-prefs "app-font")
                      default-font)))
   
-(defn grow-font [app]
-  )
+(defn resize-font [app fun]
+  (let [[name size] @current-font]
+    (set-font app name (fun size))))
 
-(defn shrink-font [app]
-  )
+(defn grow-font [app] (resize-font app inc))
+
+(defn shrink-font [app] (resize-font app dec))
 
 (defn create-font-menu-items [app]
   (concat (list ["Bigger" nil "cmd1 PLUS" #(grow-font app)]
@@ -269,28 +296,6 @@
   (apply put-constraints comp
          (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
 
-(defn add-line-numbers [text-comp max-lines]
-  (let [row-height (.. text-comp getGraphics
-                       (getFontMetrics (. text-comp getFont)) getHeight)
-        sp (.. text-comp getParent getParent)
-        jl (JList.
-             (proxy [AbstractListModel] []
-               (getSize [] max-lines)
-               (getElementAt [i] (str (inc i) " "))))
-        cr (. jl getCellRenderer)]
-    (.setMargin text-comp (Insets. 0 10 0 0))
-    (dorun (map #(.removeMouseListener jl %) (.getMouseListeners jl)))
-    (dorun (map #(.removeMouseMotionListener jl %) (.getMouseMotionListeners jl)))
-    (doto jl
-      (.setBackground (Color. 235 235 235))
-      (.setForeground (Color. 50 50 50))
-      (.setFixedCellHeight row-height)
-      (.setFont (Font. "Monaco" Font/PLAIN 8)))
-    (doto cr
-      (.setHorizontalAlignment JLabel/RIGHT)
-      (.setVerticalAlignment JLabel/BOTTOM))
-    (.setRowHeaderView sp jl)))
-
 (defn make-split-pane [comp1 comp2 horizontal resize-weight]
   (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT 
                                     JSplitPane/VERTICAL_SPLIT)
@@ -355,6 +360,7 @@
 
 (defn attach-global-action-keys [comp app]
   (attach-action-keys comp
+    ["cmd1 EQUALS" #(grow-font app)]
     ["cmd2 MINUS" #(.toBack (:frame app))]
     ["cmd2 PLUS" #(.toFront (:frame app))]
     ["cmd2 EQUALS" #(.toFront (:frame app))]))
@@ -424,7 +430,7 @@
     (attach-action-keys doc-text-area
       ["cmd1 shift O" #(open-project app)])
     (dorun (map #(attach-global-action-keys % app)
-                [docs-tree doc-text-area repl-in-text-area repl-out-text-area]))
+                [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane f)]))
     app))
 
 ;; clooj docs
@@ -653,7 +659,6 @@
     (doall (map #(add-project app %) (load-project-set)))
     (persist-window-shape clooj-prefs "main-window" (app :frame)) 
     (.setVisible (app :frame) true)
-    (add-line-numbers (app :doc-text-area) Short/MAX_VALUE)
     (setup-temp-writer app)
     (let [tree (app :docs-tree)]
       (load-expanded-paths tree)
