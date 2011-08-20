@@ -89,3 +89,4 @@
     (if (not back)
         (.setSelectionStart dta (.getSelectionEnd dta)))
     (update-find-highlight app back)))
+

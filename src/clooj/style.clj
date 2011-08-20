@@ -18,6 +18,7 @@
 
 ;; fonts
 
+
 (def monospaced?
   (memoize
     (fn [font]
@@ -31,5 +32,9 @@
                        getAvailableFontFamilyNames)]
     (map #(Font. % Font/PLAIN 12) font-names)))
 
-(def get-monospaced-fonts []
-  (filter monospaced? (get-all-fonts-12)))
+(defn get-monospaced-fonts []
+  (map #(.getName %) (filter monospaced? (get-all-fonts-12))))
+
+(defn grow-font [app font])
+
+(defn shrink-font [app font])

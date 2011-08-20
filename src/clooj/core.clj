@@ -47,7 +47,8 @@
                             get-keystroke printstream-to-writer
                             focus-in-text-component
                             scroll-to-caret when-lets)]
-        [clooj.indent :only (setup-autoindent fix-indent-selected-lines)])
+        [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
+        [clooj.style :only (get-monospaced-fonts)])
   (:require [clojure.main :only (repl repl-prompt)])
   (:gen-class
    :methods [^{:static true} [show [] void]]))
@@ -57,11 +58,6 @@
 
 (def embedded (atom false))
   
-(def mono-font
-  (cond (is-mac) (Font. "Monaco" Font/PLAIN 11)
-        (is-win) (Font. "Courier New" Font/PLAIN 12)
-        :else    (Font. "Monospaced" Font/PLAIN 12)))
-
 (defn make-text-area [wrap]
   (doto (proxy [JTextPane] []
           (getScrollableTracksViewportWidth []
@@ -71,7 +67,7 @@
                     (. parent getWidth))
                 false)
               true)))
-    (.setFont mono-font)))  
+    ))  
 
 (def get-clooj-version
   (memoize
@@ -81,6 +77,48 @@
           (.replace "clooj/core.class" "project.clj")
           URL. slurp read-string (nth 2)))))
     
+;; font
+
+(def current-font (atom nil))
+
+(defn font [name size]
+  (Font. name Font/PLAIN size))
+
+(def default-font
+  (cond (is-mac) (font "Monaco" 11)
+        (is-win) (font "Courier New")
+        :else    (font "Monospaced" 12)))
+
+(defn set-font
+  ([app font-name size]
+    (let [f (font font-name size)]
+      (write-value-to-prefs clooj-prefs "app-font"
+                            [font-name size])
+      (dorun (map #(.setFont (app %) f)
+                  [:doc-text-area :repl-in-text-area
+                   :repl-out-text-area :arglist-label
+                   :search-text-area]))
+      (reset! current-font [font-name size])))
+  ([app font-name]
+    (let [size (second @current-font)]
+      (set-font app font-name size))))
+
+(defn load-font [app]
+   (apply set-font app (or (read-value-from-prefs clooj-prefs "app-font")
+                     default-font)))
+  
+(defn grow-font [app]
+  )
+
+(defn shrink-font [app]
+  )
+
+(defn create-font-menu-items [app]
+  (concat (list ["Bigger" nil "cmd1 PLUS" #(grow-font app)]
+                ["Smaller" nil "cmd1 MINUS" #(shrink-font app)])
+          (for [font (get-monospaced-fonts)]
+            [font nil nil #(set-font app font)])))
+
 ;; caret finding
 
 (def highlight-agent (agent nil))
@@ -265,7 +303,6 @@
 (defn setup-search-text-area [app]
   (let [sta (doto (app :search-text-area)
       (.setVisible false)
-      (.setFont mono-font)
       (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
       (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (stop-find app)))))]
     (add-text-change-listener sta #(update-find-highlight app false))
@@ -276,7 +313,7 @@
 (defn create-arglist-label []
   (doto (JLabel.)
     (.setVisible true)
-    (.setFont mono-font)))
+    ))
 
 (defn exit-if-closed [^java.awt.Window f]
   (when-not @embedded
@@ -533,6 +570,8 @@
             (update-project-tree (:docs-tree app))
             (restart-doc app f))))))
       
+
+
 (defn make-menus [app]
   (when (is-mac)
     (System/setProperty "apple.laf.useScreenMenuBar" "true"))
@@ -570,13 +609,16 @@
       ["Find" "F" "cmd1 F" #(start-find app)]
       ["Find next" "N" "cmd1 G" #(highlight-step app false)]
       ["Find prev" "P" "cmd1 shift G" #(highlight-step app true)])
-    (add-menu menu-bar "Window" "W"
-      ["Go to REPL input" "R" "cmd1 3" #(.requestFocusInWindow (:repl-in-text-area app))]
-      ["Go to Editor" "E" "cmd1 2" #(.requestFocusInWindow (:doc-text-area app))]
-      ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
-      ["Send clooj window to back" "B" "cmd2 MINUS" #(.toBack (:frame app))]
-      ["Bring clooj window to front" "F" "cmd2 PLUS" #(.toFront (:frame app))])))
-
+    (let [window-menu
+          (add-menu menu-bar "Window" "W"
+            ["Go to REPL input" "R" "cmd1 3" #(.requestFocusInWindow (:repl-in-text-area app))]
+            ["Go to Editor" "E" "cmd1 2" #(.requestFocusInWindow (:doc-text-area app))]
+            ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
+            ["Send clooj window to back" "B" "cmd2 MINUS" #(.toBack (:frame app))]
+            ["Bring clooj window to front" "F" "cmd2 PLUS" #(.toFront (:frame app))])]
+      (apply add-menu window-menu "Display Font" nil (create-font-menu-items app)))))
+      
+    
 (defn add-visibility-shortcut [app]
   (let [shortcuts [(map get-keystroke ["cmd2 EQUALS" "cmd2 PLUS"])]]
     (.. Toolkit getDefaultToolkit
@@ -617,6 +659,7 @@
       (load-expanded-paths tree)
       (load-tree-selection tree))
     (redirect-stdout-and-stderr (app :repl-out-writer))
+    (load-font app)
     (awt-event
       (let [path (get-selected-file-path app)
             file (when path (File. path))]

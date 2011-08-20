@@ -294,7 +294,7 @@
           (response-fn))))
     (.add menu menu-item)))
 
-(defn add-menu [^JMenuBar menu-bar title key-mnemonic & item-tuples]
+(defn add-menu [menu-bar title key-mnemonic & item-tuples]
   "Each item-tuple is a vector containing a
   menu item's text, mnemonic key, accelerator key, and the function
   it executes."
@@ -451,5 +451,3 @@
       (flush [] (.flush writer))
       (close [] (.close writer)))
     (PrintStream. true)))
- 
-
