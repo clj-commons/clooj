@@ -142,7 +142,8 @@
 
 (defn create-font-menu-items [app]
   (concat (list ["Bigger" nil "cmd1 PLUS" #(grow-font app)]
-                ["Smaller" nil "cmd1 MINUS" #(shrink-font app)])
+                ["Smaller" nil "cmd1 MINUS" #(shrink-font app)]
+                [:sep])
           (for [font (get-monospaced-fonts)]
             [font nil nil #(set-font app font)])))
 
@@ -622,7 +623,7 @@
             ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
             ["Send clooj window to back" "B" "cmd2 MINUS" #(.toBack (:frame app))]
             ["Bring clooj window to front" "F" "cmd2 PLUS" #(.toFront (:frame app))])]
-      (apply add-menu window-menu "Display Font" nil (create-font-menu-items app)))))
+      (apply add-menu window-menu "Font" nil (create-font-menu-items app)))))
       
     
 (defn add-visibility-shortcut [app]

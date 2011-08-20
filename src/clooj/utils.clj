@@ -282,18 +282,22 @@
 
 ;; menus
 
-(defn add-menu-item [menu item-name key-mnemonic key-accelerator response-fn]
-  (let [menu-item (JMenuItem. item-name)]  
-    (when key-accelerator
-      (.setAccelerator menu-item (get-keystroke key-accelerator)))
-    (when (and (not (is-mac)) key-mnemonic)
-      (.setMnemonic menu-item (.getKeyCode (get-keystroke key-mnemonic))))
-    (.addActionListener menu-item
-      (reify ActionListener
-        (actionPerformed [this action-event]
-          (response-fn))))
-    (.add menu menu-item)))
-
+(defn add-menu-item
+  ([menu item-name key-mnemonic key-accelerator response-fn]
+    (let [menu-item (JMenuItem. item-name)]  
+      (when key-accelerator
+        (.setAccelerator menu-item (get-keystroke key-accelerator)))
+      (when (and (not (is-mac)) key-mnemonic)
+        (.setMnemonic menu-item (.getKeyCode (get-keystroke key-mnemonic))))
+      (.addActionListener menu-item
+                          (reify ActionListener
+                            (actionPerformed [this action-event]
+                                             (response-fn))))
+      (.add menu menu-item)))
+  ([menu item]
+    (condp = item
+      :sep (.addSeparator menu))))
+  
 (defn add-menu [menu-bar title key-mnemonic & item-tuples]
   "Each item-tuple is a vector containing a
   menu item's text, mnemonic key, accelerator key, and the function
