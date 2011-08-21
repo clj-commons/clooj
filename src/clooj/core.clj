@@ -229,9 +229,9 @@
           (when-lets [pos (.viewToModel text-comp (.getPoint e))
                       c (.. text-comp getDocument (getText pos 1) (charAt 0))
                       pos (cond (#{\( \[ \{ \"} c) (inc pos)
-                       (#{\) \] \} \"} c) pos)]
-            (apply set-selection text-comp
-                   (find-enclosing-brackets (.getText text-comp) pos))))))))
+                                (#{\) \] \} \"} c) pos)
+                      [a b] (find-enclosing-brackets (.getText text-comp) pos)]
+            (set-selection text-comp a (inc b))))))))
 
 ;; temp files
 

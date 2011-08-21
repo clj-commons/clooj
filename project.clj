@@ -3,4 +3,6 @@
   :main clooj.core
   :dependencies [[clojure "1.2.1"]
                  [clojure-contrib "1.2.0"]]
-  :dev-dependencies [[lein-javac "1.2.1-SNAPSHOT"]])
+  :java-source-path ["java"]
+ ; :dev-dependencies [[org.clojars.mcav/lein-javac "1.2.1"]]
+)
