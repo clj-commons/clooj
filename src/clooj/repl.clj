@@ -192,10 +192,12 @@
 
 (defn repl-writer-write
   ([buffer char-array offset length]
-    (.append buffer char-array offset length))
+    (.append buffer char-array offset length)
+    buffer)
   ([buffer ^int t]
     (when (= Integer (type t))
-      (.append buffer (char t)))))
+      (.append buffer (char t)))
+    buffer))
 
 (defn repl-writer-flush [buf ta-out]
   (when ta-out
@@ -203,18 +205,19 @@
       (.setLength buf 0)
       (awt-event
         (do (append-text ta-out text)
-            (scroll-to-last ta-out))))))
+            (scroll-to-last ta-out)))))
+  buf)
 
 (defn make-repl-writer [ta-out]
   (->
-    (let [buf (StringBuffer.)]
+    (let [buf (agent (StringBuffer.))]
       (proxy [Writer] []
         (write
           ([char-array offset length]
-            (repl-writer-write buf char-array offset length))
+            (send-off buf repl-writer-write char-array offset length))
           ([^int t]          
-            (repl-writer-write buf t)))
-        (flush [] (repl-writer-flush buf ta-out))
+            (send-off buf repl-writer-write t)))
+        (flush [] (send-off buf repl-writer-flush ta-out))
         (close [] nil)))
     (PrintWriter. true)))
   
