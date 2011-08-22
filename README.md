@@ -19,6 +19,7 @@ The source code editor offers a few simple things to make writing clojure code e
  *  Automatically comment-out (and un-comment-out) multiple lines.
  *  When newlines are entered, the next line is automatically indented. 
  *  Press ctrl-ENTER to send either the nearest root form or the selected text to the REPL.
+ *  Double-click a paren to highlight a form
  *  Source files are continuously saved in the background to prevent accidental loss of your work in the event of a crash.
 
 ### clojure projects
