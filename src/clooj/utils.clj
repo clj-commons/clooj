@@ -11,7 +11,7 @@
                     File FilenameFilter
                     ObjectInputStream ObjectOutputStream
                     OutputStream Writer PrintStream)
-           (javax.swing AbstractAction JButton JFileChooser JMenu JMenuBar JMenuItem
+           (javax.swing AbstractAction JButton JFileChooser JMenu JMenuBar JMenuItem BorderFactory
                         JOptionPane JSplitPane KeyStroke SpringLayout SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.undo UndoManager))
@@ -225,6 +225,17 @@
 (defn unindent [text-comp]
   (when (.isFocusOwner text-comp)
     (remove-from-selected-row-headers text-comp " ")))
+
+;; other gui
+
+(defn make-split-pane [comp1 comp2 horizontal divider-size resize-weight]
+  (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT 
+                                    JSplitPane/VERTICAL_SPLIT)
+                     true comp1 comp2)
+        (.setResizeWeight resize-weight)
+        (.setOneTouchExpandable false)
+        (.setBorder (BorderFactory/createEmptyBorder))
+        (.setDividerSize divider-size)))
 
 ;; keys
 

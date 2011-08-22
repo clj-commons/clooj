@@ -46,9 +46,10 @@
                             confirmed? create-button is-win
                             get-keystroke printstream-to-writer
                             focus-in-text-component
-                            scroll-to-caret when-lets)]
+                            scroll-to-caret when-lets
+                            constrain-to-parent make-split-pane)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
-        [clooj.style :only (get-monospaced-fonts)])
+        [clooj.style :only (get-monospaced-fonts show-font-window)])
   (:require [clojure.main :only (repl repl-prompt)])
   (:gen-class
    :methods [^{:static true} [show [] void]]))
@@ -116,14 +117,15 @@
 (defn set-font
   ([app font-name size]
     (let [f (font font-name size)]
-      (write-value-to-prefs clooj-prefs "app-font"
-                            [font-name size])
-      (dorun (map #(.setFont (app %) f)
-                  [:doc-text-area :repl-in-text-area
-                   :repl-out-text-area :arglist-label
-                   :search-text-area]))
-      (add-line-numbers (app :doc-text-area) Short/MAX_VALUE (int (* 0.75 size)))
-      (reset! current-font [font-name size])))
+      (awt-event
+        (write-value-to-prefs clooj-prefs "app-font"
+                              [font-name size])
+        (dorun (map #(.setFont (app %) f)
+                    [:doc-text-area :repl-in-text-area
+                     :repl-out-text-area :arglist-label
+                     :search-text-area]))
+        (add-line-numbers (app :doc-text-area) Short/MAX_VALUE (int (* 0.75 size)))
+        (reset! current-font [font-name size]))))
   ([app font-name]
     (let [size (second @current-font)]
       (set-font app font-name size))))
@@ -139,13 +141,6 @@
 (defn grow-font [app] (resize-font app inc))
 
 (defn shrink-font [app] (resize-font app dec))
-
-(defn create-font-menu-items [app]
-  (concat (list ["Bigger" nil "cmd1 PLUS" #(grow-font app)]
-                ["Smaller" nil "cmd1 MINUS" #(shrink-font app)]
-                [:sep])
-          (for [font (get-monospaced-fonts)]
-            [font nil nil #(set-font app font)])))
 
 ;; caret finding
 
@@ -293,33 +288,6 @@
 (defn make-scroll-pane [text-area]
   (JScrollPane. text-area))
 
-(defn put-constraint [comp1 edge1 comp2 edge2 dist]
-  (let [edges {:n SpringLayout/NORTH
-               :w SpringLayout/WEST
-               :s SpringLayout/SOUTH
-               :e SpringLayout/EAST}]
-    (.. comp1 getParent getLayout
-        (putConstraint (edges edge1) comp1 
-                       dist (edges edge2) comp2))))
-
-(defn put-constraints [comp & args]
-  (let [args (partition 3 args)
-        edges [:n :w :s :e]]
-    (dorun (map #(apply put-constraint comp %1 %2) edges args))))
-
-(defn constrain-to-parent [comp & args]
-  (apply put-constraints comp
-         (flatten (map #(cons (.getParent comp) %) (partition 2 args)))))
-
-(defn make-split-pane [comp1 comp2 horizontal resize-weight]
-  (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT 
-                                    JSplitPane/VERTICAL_SPLIT)
-                     true comp1 comp2)
-        (.setResizeWeight resize-weight)
-        (.setOneTouchExpandable false)
-        (.setBorder (BorderFactory/createEmptyBorder))
-        (.setDividerSize gap)))
-
 (defn setup-search-text-area [app]
   (let [sta (doto (app :search-text-area)
       (.setVisible false)
@@ -395,11 +363,11 @@
         docs-tree (JTree.)
         doc-split-pane (make-split-pane
                          (make-scroll-pane docs-tree)
-                         doc-text-panel true 0)
+                         doc-text-panel true gap 0)
         repl-split-pane (make-split-pane
                           (make-scroll-pane repl-out-text-area)
-                          (make-scroll-pane repl-in-text-area) false 0.75)
-        split-pane (make-split-pane doc-split-pane repl-split-pane true 0.5)
+                          (make-scroll-pane repl-in-text-area) false gap 0.75)
+        split-pane (make-split-pane doc-split-pane repl-split-pane true gap 0.5)
         app {:doc-text-area doc-text-area
              :repl-out-text-area repl-out-text-area
              :repl-in-text-area repl-in-text-area
@@ -632,14 +600,16 @@
       ["Find" "F" "cmd1 F" #(start-find app)]
       ["Find next" "N" "cmd1 G" #(highlight-step app false)]
       ["Find prev" "P" "cmd1 shift G" #(highlight-step app true)])
-    (let [window-menu
-          (add-menu menu-bar "Window" "W"
-            ["Go to REPL input" "R" "cmd1 3" #(.requestFocusInWindow (:repl-in-text-area app))]
-            ["Go to Editor" "E" "cmd1 2" #(.requestFocusInWindow (:doc-text-area app))]
-            ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
-            ["Send clooj window to back" "B" "cmd2 MINUS" #(.toBack (:frame app))]
-            ["Bring clooj window to front" "F" "cmd2 PLUS" #(.toFront (:frame app))])]
-      (apply add-menu window-menu "Font" nil (create-font-menu-items app)))))
+    (add-menu menu-bar "Window" "W"
+      ["Go to REPL input" "R" "cmd1 3" #(.requestFocusInWindow (:repl-in-text-area app))]
+      ["Go to Editor" "E" "cmd1 2" #(.requestFocusInWindow (:doc-text-area app))]
+      ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
+      ["Send clooj window to back" "B" "cmd2 MINUS" #(.toBack (:frame app))]
+      ["Bring clooj window to front" "F" "cmd2 PLUS" #(.toFront (:frame app))]
+      ["Increase font size" nil "cmd1 PLUS" #(grow-font app)]
+      ["Decrease font size" nil "cmd1 MINUS" #(shrink-font app)]
+      ["Choose font..." nil nil #(apply show-font-window
+                                        app set-font @current-font)])))
       
     
 (defn add-visibility-shortcut [app]
