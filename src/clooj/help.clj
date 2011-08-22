@@ -1,7 +1,8 @@
 (ns clooj.help
   (:import (java.io LineNumberReader InputStreamReader PushbackReader)
            (clojure.lang RT Reflector))
-  (:use [clooj.brackets :only (find-enclosing-brackets)])
+  (:use [clooj.brackets :only (find-enclosing-brackets)]
+        [clooj.utils :only (attach-action-keys awt-event)])
   (:require [clojure.contrib.string :as string]))
 
 ; from http://clojure.org/special_forms
@@ -99,3 +100,19 @@
 (defn arglist-from-caret-pos [ns text pos]
   (let [token (token-from-caret-pos ns text pos)]
     (arglist-from-token ns token)))
+
+;; tab help
+
+(defn show-tab-help [app]
+  (awt-event
+    (.setTopComponent (app :repl-split-pane) (app :help-text-scroll-pane))))
+
+(defn hide-tab-help [app]
+  (awt-event
+    (.setTopComponent (app :repl-split-pane)
+                      (app :repl-out-scroll-pane))))
+
+(defn setup-tab-help [app text-comp]
+  (attach-action-keys text-comp
+    ["TAB" #(show-tab-help app)]
+    ["ESCAPE" #(hide-tab-help app)]))

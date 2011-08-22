@@ -24,7 +24,7 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
-        [clooj.help :only (arglist-from-caret-pos)]
+        [clooj.help :only (arglist-from-caret-pos setup-tab-help)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
@@ -123,7 +123,7 @@
         (dorun (map #(.setFont (app %) f)
                     [:doc-text-area :repl-in-text-area
                      :repl-out-text-area :arglist-label
-                     :search-text-area]))
+                     :search-text-area :help-text-area]))
         (add-line-numbers (app :doc-text-area) Short/MAX_VALUE (int (* 0.75 size)))
         (reset! current-font [font-name size]))))
   ([app font-name]
@@ -356,6 +356,8 @@
         repl-out-text-area (make-text-area true)
         repl-out-writer (make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
+        help-text-area (make-text-area false)
+        help-text-scroll-pane (make-scroll-pane help-text-area)
         search-text-area (JTextField.)
         arglist-label (create-arglist-label)
         pos-label (JLabel.)
@@ -366,14 +368,18 @@
         doc-split-pane (make-split-pane
                          (make-scroll-pane docs-tree)
                          doc-text-panel true gap 0)
+        repl-out-scroll-pane (make-scroll-pane repl-out-text-area)
         repl-split-pane (make-split-pane
-                          (make-scroll-pane repl-out-text-area)
+                          repl-out-scroll-pane
                           (make-scroll-pane repl-in-text-area) false gap 0.75)
         split-pane (make-split-pane doc-split-pane repl-split-pane true gap 0.5)
         app {:doc-text-area doc-text-area
              :repl-out-text-area repl-out-text-area
              :repl-in-text-area repl-in-text-area
              :frame f
+             :help-text-area help-text-area
+             :help-text-scroll-pane help-text-scroll-pane
+             :repl-out-scroll-pane repl-out-scroll-pane
              :docs-tree docs-tree
              :search-text-area search-text-area
              :pos-label pos-label :file (atom nil)
@@ -411,8 +417,11 @@
     (add-caret-listener doc-text-area #(display-caret-position app))
     (activate-caret-highlighter app)
     (doto repl-out-text-area (.setEditable false))
+    (doto help-text-area (.setEditable false)
+                         (.setBackground (Color. 0xFF 0xFF 0xE8)))
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
+    (setup-tab-help app doc-text-area)
     (setup-tree app)
     (attach-action-keys doc-text-area
       ["cmd1 shift O" #(open-project app)])

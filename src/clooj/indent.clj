@@ -72,8 +72,7 @@
     (apply str "\n" (repeat indent-size " "))))
    
 (defn setup-autoindent [text-comp]
-  (attach-action-keys text-comp
-    ["TAB" #(do)]                  
+  (attach-action-keys text-comp                 
     ["cmd1 BACK_SLASH" #(fix-indent-selected-lines text-comp)] ; "cmd1 \"
     ["cmd1 CLOSE_BRACKET" #(indent text-comp)]   ; "cmd1 ]"
     ["cmd1 OPEN_BRACKET" #(unindent text-comp)]) ; "cmd1 ["
