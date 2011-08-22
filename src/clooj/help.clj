@@ -3,7 +3,8 @@
            (clojure.lang RT Reflector))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
         [clooj.repl :only (get-current-namespace)]
-        [clooj.utils :only (attach-action-keys awt-event)])
+        [clooj.utils :only (attach-action-keys awt-event)]
+        [clojure.repl :only (source-fn)])
   (:require [clojure.contrib.string :as string]))
 
 ; from http://clojure.org/special_forms
@@ -22,7 +23,7 @@
    "catch" "(catch classname name expr*)"
    "monitor-enter" "Avoid!"
    "monitor-exit"  "Avoid!"})
- 
+
 
 (defmacro with-ns
   "Evaluates body in another namespace.  ns is either a namespace
@@ -51,15 +52,21 @@
           ns (:ns m)
           name (:name m)
           s (binding [*ns* ns]
-              (clojure.repl/source-fn name))]
+                   (source-fn name))]
        (str (:name m)
             (if (:ns m) (str " [" (:ns m) "]") "") "\n"
-            (:arglists m) "\n"
-            (when d (str d "\n\n"))
-            (when s
-              (if d
-                (.replace s d "...docs...")
-                d))))))
+            (:arglists m)
+            "\n\n"
+            (if d
+              (str "Documentation:\n" d)
+              "No documentation found.")
+            "\n\n"
+            (if s
+              (str "Source:\n"
+                   (if d
+                     (.replace s d "...docs...")
+                     s))
+              "No source found.")))))
 
 (defn find-form-string [text pos]
   (let [[left right] (find-enclosing-brackets text pos)]
@@ -106,19 +113,24 @@
 
 ;; tab help
 
+(def help-visible (atom false))
+
 (defn show-tab-help [app text-comp]
   (let [ns (get-current-namespace text-comp)
         text (.getText text-comp)
         pos (.getCaretPosition text-comp)]
     (awt-event
       (.setText (app :help-text-area) (form-help ns (find-form-string text pos)))
-      (.setTopComponent (app :repl-split-pane) (app :help-text-scroll-pane)))))
+      (.setTopComponent (app :repl-split-pane) (app :help-text-scroll-pane))
+      (reset! help-visible true))))
 
 (defn hide-tab-help [app]
-  (awt-event
-    (.setTopComponent (app :repl-split-pane)
-                      (app :repl-out-scroll-pane))))
-
+  (when @help-visible
+    (awt-event
+      (.setTopComponent (app :repl-split-pane)
+                        (app :repl-out-scroll-pane))
+      (reset! help-visible false))))
+  
 (defn setup-tab-help [app text-comp]
   (attach-action-keys text-comp
     ["TAB" #(show-tab-help app text-comp)]

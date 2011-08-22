@@ -309,10 +309,11 @@
     (condp = item
       :sep (.addSeparator menu))))
   
-(defn add-menu [menu-bar title key-mnemonic & item-tuples]
+(defn add-menu
   "Each item-tuple is a vector containing a
   menu item's text, mnemonic key, accelerator key, and the function
   it executes."
+  [menu-bar title key-mnemonic & item-tuples]
   (let [menu (JMenu. title)]
     (when (and (not (is-mac)) key-mnemonic)
       (.setMnemonic menu (.getKeyCode (get-keystroke key-mnemonic))))

@@ -24,7 +24,7 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
-        [clooj.help :only (arglist-from-caret-pos setup-tab-help)]
+        [clooj.help :only (arglist-from-caret-pos hide-tab-help setup-tab-help)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
@@ -177,6 +177,7 @@
 
 (defn handle-caret-move [app text-comp ns]
   (update-caret-position text-comp)
+  (hide-tab-help app)
   (send-off highlight-agent
             (fn [old-pos]
               (try
@@ -680,7 +681,7 @@
 
 ;; testing
 
-(defn get-text []
+(defn get-text` []
   (.getText (@current-app :doc-text-area)))
 
 ; not working yet:
