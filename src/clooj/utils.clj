@@ -279,8 +279,9 @@
   (attach-child-action-key component input-key
                            (constantly true) action-fn))
 
-(defn attach-action-keys [comp & items]
+(defn attach-action-keys
   "Maps input keys to action-fns."
+  [comp & items]
   (doall (map #(apply attach-action-key comp %) items)))
   
 ;; buttons

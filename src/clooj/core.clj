@@ -681,7 +681,7 @@
 
 ;; testing
 
-(defn get-text` []
+(defn get-text []
   (.getText (@current-app :doc-text-area)))
 
 ; not working yet:
