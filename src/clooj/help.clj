@@ -2,6 +2,7 @@
   (:import (java.io LineNumberReader InputStreamReader PushbackReader)
            (clojure.lang RT Reflector))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
+        [clooj.repl :only (get-current-namespace)]
         [clooj.utils :only (attach-action-keys awt-event)])
   (:require [clojure.contrib.string :as string]))
 
@@ -47,8 +48,10 @@
 (defn var-help [v]
   (when-let [m (meta v)]
     (let [d (:doc m)
-          s  (or (:clooj/src m)
-                 (var-source v))]
+          ns (:ns m)
+          name (:name m)
+          s (binding [*ns* ns]
+              (clojure.repl/source-fn name))]
        (str (:name m)
             (if (:ns m) (str " [" (:ns m) "]") "") "\n"
             (:arglists m) "\n"
@@ -81,7 +84,7 @@
           (safe-resolve (find-ns 'clojure.core) sym)))))
 
 (defn form-help [ns form-string]
-  (var-help (ns-resolve ns (head-token form-string))))
+  (var-help (ns-resolve (symbol ns) (symbol (head-token form-string)))))
 
 (defn arglist-from-var [v]
   (or
@@ -103,9 +106,13 @@
 
 ;; tab help
 
-(defn show-tab-help [app]
-  (awt-event
-    (.setTopComponent (app :repl-split-pane) (app :help-text-scroll-pane))))
+(defn show-tab-help [app text-comp]
+  (let [ns (get-current-namespace text-comp)
+        text (.getText text-comp)
+        pos (.getCaretPosition text-comp)]
+    (awt-event
+      (.setText (app :help-text-area) (form-help ns (find-form-string text pos)))
+      (.setTopComponent (app :repl-split-pane) (app :help-text-scroll-pane)))))
 
 (defn hide-tab-help [app]
   (awt-event
@@ -114,5 +121,5 @@
 
 (defn setup-tab-help [app text-comp]
   (attach-action-keys text-comp
-    ["TAB" #(show-tab-help app)]
+    ["TAB" #(show-tab-help app text-comp)]
     ["ESCAPE" #(hide-tab-help app)]))

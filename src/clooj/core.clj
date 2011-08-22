@@ -356,7 +356,7 @@
         repl-out-text-area (make-text-area true)
         repl-out-writer (make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
-        help-text-area (make-text-area false)
+        help-text-area (make-text-area true)
         help-text-scroll-pane (make-scroll-pane help-text-area)
         search-text-area (JTextField.)
         arglist-label (create-arglist-label)
