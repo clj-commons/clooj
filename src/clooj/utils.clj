@@ -43,6 +43,10 @@
 (defmacro awt-event [& body]
   `(SwingUtilities/invokeLater (fn [] ~@body)))
 
+(defmacro gen-map [& args]
+  (let [kw (map keyword args)]
+    (zipmap kw args)))
+
 ;; preferences
   
 ;; define a UUID for clooj preferences

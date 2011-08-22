@@ -1,6 +1,7 @@
 (ns clooj.help
   (:import (java.io LineNumberReader InputStreamReader PushbackReader)
-           (clojure.lang RT Reflector))
+           (clojure.lang RT Reflector)
+           (java.awt Point))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
         [clooj.repl :only (get-current-namespace)]
         [clooj.utils :only (attach-action-keys awt-event)]
@@ -91,7 +92,8 @@
           (safe-resolve (find-ns 'clojure.core) sym)))))
 
 (defn form-help [ns form-string]
-  (var-help (ns-resolve (symbol ns) (symbol (head-token form-string)))))
+  (var-help (try (ns-resolve (symbol ns) (symbol (head-token form-string)))
+                 (catch ClassNotFoundException e nil))))
 
 (defn arglist-from-var [v]
   (or
@@ -115,20 +117,36 @@
 
 (def help-visible (atom false))
 
+
+(defn set-first-component [split-pane comp]
+  (let [loc (.getDividerLocation split-pane)]
+    (.setTopComponent split-pane comp)
+    (.setDividerLocation split-pane loc)))
+
 (defn show-tab-help [app text-comp]
   (let [ns (get-current-namespace text-comp)
         text (.getText text-comp)
         pos (.getCaretPosition text-comp)]
     (awt-event
-      (.setText (app :help-text-area) (form-help ns (find-form-string text pos)))
-      (.setTopComponent (app :repl-split-pane) (app :help-text-scroll-pane))
-      (reset! help-visible true))))
+      (when-let [help-txt (form-help ns (find-form-string text pos))]
+        (.setText (app :help-text-area) help-txt)
+        (set-first-component (app :repl-split-pane)
+                             (app :help-text-scroll-pane))
+        (set-first-component (app :doc-split-pane)
+                             (app :completion-scroll-pane))
+        (.ensureIndexIsVisible (app :completion-list) 0)
+        (awt-event 
+          (-> app :help-text-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
+          (-> app :completion-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
+          (reset! help-visible true))))))
 
 (defn hide-tab-help [app]
   (when @help-visible
     (awt-event
-      (.setTopComponent (app :repl-split-pane)
-                        (app :repl-out-scroll-pane))
+      (set-first-component (app :repl-split-pane)
+                           (app :repl-out-scroll-pane))
+      (set-first-component (app :doc-split-pane)
+                           (app :docs-tree-scroll-pane))
       (reset! help-visible false))))
   
 (defn setup-tab-help [app text-comp]

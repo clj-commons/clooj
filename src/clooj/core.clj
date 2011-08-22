@@ -12,7 +12,7 @@
                               TreeExpansionListener)
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
-           (java.awt Insets Point Rectangle Window)
+           (java.awt Insets Rectangle Window)
            (java.awt.event AWTEventListener FocusAdapter MouseAdapter
                            WindowAdapter KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
@@ -47,7 +47,8 @@
                             get-keystroke printstream-to-writer
                             focus-in-text-component
                             scroll-to-caret when-lets
-                            constrain-to-parent make-split-pane)]
+                            constrain-to-parent make-split-pane
+                            gen-map)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
         [clooj.style :only (get-monospaced-fonts show-font-window)])
   (:require [clojure.main :only (repl repl-prompt)])
@@ -359,40 +360,49 @@
         repl-in-text-area (make-text-area false)
         help-text-area (make-text-area true)
         help-text-scroll-pane (make-scroll-pane help-text-area)
+        completion-list (JList.)
+        completion-scroll-pane (make-scroll-pane completion-list)
         search-text-area (JTextField.)
         arglist-label (create-arglist-label)
         pos-label (JLabel.)
-        f (JFrame.)
-        cp (.getContentPane f)
+        frame (JFrame.)
+        cp (.getContentPane frame)
         layout (SpringLayout.)
         docs-tree (JTree.)
+        docs-tree-scroll-pane (make-scroll-pane docs-tree)
         doc-split-pane (make-split-pane
-                         (make-scroll-pane docs-tree)
+                         docs-tree-scroll-pane
                          doc-text-panel true gap 0)
         repl-out-scroll-pane (make-scroll-pane repl-out-text-area)
         repl-split-pane (make-split-pane
                           repl-out-scroll-pane
                           (make-scroll-pane repl-in-text-area) false gap 0.75)
         split-pane (make-split-pane doc-split-pane repl-split-pane true gap 0.5)
-        app {:doc-text-area doc-text-area
-             :repl-out-text-area repl-out-text-area
-             :repl-in-text-area repl-in-text-area
-             :frame f
-             :help-text-area help-text-area
-             :help-text-scroll-pane help-text-scroll-pane
-             :repl-out-scroll-pane repl-out-scroll-pane
-             :docs-tree docs-tree
-             :search-text-area search-text-area
-             :pos-label pos-label :file (atom nil)
-             :repl-out-writer repl-out-writer
-             :repl (atom (create-clojure-repl repl-out-writer nil))
-             :doc-split-pane doc-split-pane
-             :repl-split-pane repl-split-pane
-             :split-pane split-pane
-             :changed false
-             :arglist-label arglist-label}
+        app (merge {:file (atom nil)
+                    :repl (atom (create-clojure-repl repl-out-writer nil))
+                    :changed false}
+                   (gen-map
+                     doc-text-area
+                     repl-out-text-area
+                     repl-in-text-area
+                     frame
+                     help-text-area
+                     help-text-scroll-pane
+                     repl-out-scroll-pane
+                     docs-tree
+                     docs-tree-scroll-pane
+                     search-text-area
+                     pos-label
+                     repl-out-writer
+                     doc-split-pane
+                     repl-split-pane
+                     split-pane
+                     arglist-label
+                     completion-list
+                     completion-scroll-pane
+                     ))
         doc-scroll-pane (make-scroll-pane doc-text-area)]
-    (doto f
+    (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
       (.add split-pane))
@@ -412,22 +422,24 @@
     (constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
     (constrain-to-parent arglist-label :s -14 :w 80 :s -1 :e -10)
-    (.layoutContainer layout f)
-    (exit-if-closed f)
+    (.layoutContainer layout frame)
+    (exit-if-closed frame)
     (setup-search-text-area app)
     (add-caret-listener doc-text-area #(display-caret-position app))
     (activate-caret-highlighter app)
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
+    (doto completion-list (.setBackground (Color. 0xFF 0xFF 0xE8)))
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)
+    (setup-tab-help app repl-in-text-area)
     (setup-tree app)
     (attach-action-keys doc-text-area
       ["cmd1 shift O" #(open-project app)])
     (dorun (map #(attach-global-action-keys % app)
-                [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane f)]))
+                [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane frame)]))
     app))
 
 ;; clooj docs
