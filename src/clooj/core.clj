@@ -104,7 +104,7 @@
 
 ;; font
 
-(def current-font (atom nil))
+(defonce current-font (atom nil))
 
 (defn font [name size]
   (Font. name Font/PLAIN size))
