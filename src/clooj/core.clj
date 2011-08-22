@@ -344,6 +344,8 @@
 (defn attach-global-action-keys [comp app]
   (attach-action-keys comp
     ["cmd1 EQUALS" #(grow-font app)]
+    ["cmd1 shift EQUALS" #(grow-font app)]
+    ["cmd1 PLUS" #(grow-font app)]                  
     ["cmd2 MINUS" #(.toBack (:frame app))]
     ["cmd2 PLUS" #(.toFront (:frame app))]
     ["cmd2 EQUALS" #(.toFront (:frame app))]))
