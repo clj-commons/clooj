@@ -124,7 +124,8 @@
         (dorun (map #(.setFont (app %) f)
                     [:doc-text-area :repl-in-text-area
                      :repl-out-text-area :arglist-label
-                     :search-text-area :help-text-area]))
+                     :search-text-area :help-text-area
+                     :completion-list]))
         (add-line-numbers (app :doc-text-area) Short/MAX_VALUE (int (* 0.75 size)))
         (reset! current-font [font-name size]))))
   ([app font-name]
@@ -430,7 +431,8 @@
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
-    (doto completion-list (.setBackground (Color. 0xFF 0xFF 0xE8)))
+    (doto completion-list (.setBackground (Color. 0xFF 0xFF 0xE8))
+                          (.setFocusable false))
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)

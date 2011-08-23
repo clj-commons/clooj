@@ -145,10 +145,12 @@
             cmd (.trim cmd-ln)]
         (append-text (app :repl-out-text-area) cmd-ln)
         (binding [*out* (:input-writer @(app :repl))]
-          (pr 'SILENT-EVAL `(set! *file* ~file)
+          (pr 'SILENT-EVAL '(set! *warn-on-reflection* false)
+              'SILENT-EVAL `(set! *file* ~file)
               'SILENT-EVAL `(set! *line-offset*
                                   (+ *line-offset*
-                                     (- ~line (.getLineNumber *in*)))))
+                                     (- ~line (.getLineNumber *in*))))
+              'SILENT-EVAL `(set! *warn-on-reflection* ~*warn-on-reflection*))
           (println cmd)
           (flush))
         (when (not= cmd (second @(:items repl-history)))

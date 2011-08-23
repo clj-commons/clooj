@@ -1,7 +1,8 @@
 (ns clooj.help
   (:import (java.io LineNumberReader InputStreamReader PushbackReader)
            (clojure.lang RT Reflector)
-           (java.awt Point))
+           (java.awt Point)
+           (java.util Vector))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
         [clooj.repl :only (get-current-namespace)]
         [clooj.utils :only (attach-action-keys awt-event)]
@@ -117,11 +118,15 @@
 
 (def help-visible (atom false))
 
-
 (defn set-first-component [split-pane comp]
   (let [loc (.getDividerLocation split-pane)]
     (.setTopComponent split-pane comp)
     (.setDividerLocation split-pane loc)))
+
+(defn ns-symbols [ns]
+  (concat
+    (sort (keys (ns-interns ns)))
+    (sort (keys (ns-refers ns)))))
 
 (defn show-tab-help [app text-comp]
   (let [ns (get-current-namespace text-comp)
@@ -130,6 +135,8 @@
     (awt-event
       (when-let [help-txt (form-help ns (find-form-string text pos))]
         (.setText (app :help-text-area) help-txt)
+        (.setListData (app :completion-list)
+                      (-> ns symbol ns-symbols Vector.))
         (set-first-component (app :repl-split-pane)
                              (app :help-text-scroll-pane))
         (set-first-component (app :doc-split-pane)
