@@ -105,8 +105,9 @@
           (safe-resolve (find-ns 'clojure.core) sym)))))
 
 (defn token-help [ns token]
+  (when (pos? (.length token))
   (var-help (try (ns-resolve (symbol ns) (symbol token))
-                 (catch ClassNotFoundException e nil))))
+                 (catch ClassNotFoundException e nil)))))
 
 (defn arglist-from-var [v]
   (or
@@ -142,8 +143,10 @@
 
 (defn present-help-list [app ns token]
   (let [l (app :completion-list)
-        symbols (map str (-> ns symbol ns-symbols))]
-    (.setListData l (Vector. (filter #(.startsWith % token) symbols)))
+        symbols (map str (-> ns symbol ns-symbols))
+        best-symbols (sort (filter #(.startsWith % token) symbols))
+        others (sort (filter #(.contains (.substring % 1) token) symbols))]
+    (.setListData l (Vector. (concat best-symbols others)))
     (.setSelectedIndex l 0)))
 
 (defn show-tab-help [app text-comp]
