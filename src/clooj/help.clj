@@ -5,7 +5,7 @@
            (java.util Vector))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
         [clooj.repl :only (get-current-namespace)]
-        [clooj.utils :only (attach-action-keys awt-event)]
+        [clooj.utils :only (attach-action-keys awt-event when-lets)]
         [clojure.repl :only (source-fn)])
   (:require [clojure.contrib.string :as string]))
 
@@ -25,7 +25,6 @@
    "catch" "(catch classname name expr*)"
    "monitor-enter" "Avoid!"
    "monitor-exit"  "Avoid!"})
-
 
 (defmacro with-ns
   "Evaluates body in another namespace.  ns is either a namespace
@@ -75,6 +74,19 @@
     (when (> (.length text) left)
       (.substring text (inc left)))))
 
+(def non-token-chars [\( \) \[ \] \{ \} \  \newline \" \'])
+
+(defn local-token [text pos]
+  (let [start (loop [p (dec pos)]
+                (if (some #{(.charAt text p)} non-token-chars)
+                  (inc p)
+                  (recur (dec p))))
+        stop (loop [p pos]
+               (if (some #{(.charAt text p)} non-token-chars)
+                 p
+                 (recur (inc p))))]
+    (.substring text start stop)))
+
 (defn head-token [form-string]
   (when form-string
     (second
@@ -92,8 +104,8 @@
       (or (safe-resolve ns sym)
           (safe-resolve (find-ns 'clojure.core) sym)))))
 
-(defn form-help [ns form-string]
-  (var-help (try (ns-resolve (symbol ns) (symbol (head-token form-string)))
+(defn token-help [ns token]
+  (var-help (try (ns-resolve (symbol ns) (symbol token))
                  (catch ClassNotFoundException e nil))))
 
 (defn arglist-from-var [v]
@@ -128,15 +140,22 @@
     (sort (keys (ns-interns ns)))
     (sort (keys (ns-refers ns)))))
 
+(defn present-help-list [app ns token]
+  (let [l (app :completion-list)
+        symbols (map str (-> ns symbol ns-symbols))]
+    (.setListData l (Vector. (filter #(.startsWith % token) symbols)))
+    (.setSelectedIndex l 0)))
+
 (defn show-tab-help [app text-comp]
   (let [ns (get-current-namespace text-comp)
         text (.getText text-comp)
         pos (.getCaretPosition text-comp)]
     (awt-event
-      (when-let [help-txt (form-help ns (find-form-string text pos))]
-        (.setText (app :help-text-area) help-txt)
-        (.setListData (app :completion-list)
-                      (-> ns symbol ns-symbols Vector.))
+      (when-let [token (local-token text pos)]
+        (print token)
+        (let [help-txt (or (token-help ns token) "")]
+          (.setText (app :help-text-area) help-txt))
+        (present-help-list app ns token)
         (set-first-component (app :repl-split-pane)
                              (app :help-text-scroll-pane))
         (set-first-component (app :doc-split-pane)
