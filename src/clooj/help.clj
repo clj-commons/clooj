@@ -80,13 +80,16 @@
 
 (defn local-token-location [text pos]
   [(loop [p (dec pos)]
-     (if (some #{(.charAt text p)} non-token-chars)
+     (if (or (neg? p)
+             (some #{(.charAt text p)} non-token-chars))
        (inc p)
        (recur (dec p))))
-   (loop [p pos]
-     (if (some #{(.charAt text p)} non-token-chars)
-       p
-       (recur (inc p))))])
+   (let [n (.length text)]
+     (loop [p pos]
+       (if (or (>= p n)
+               (some #{(.charAt text p)} non-token-chars))
+         p
+         (recur (inc p)))))])
 
 (defn local-token [text pos]
   (let [[start stop] (local-token-location text pos)]
