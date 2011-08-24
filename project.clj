@@ -4,5 +4,4 @@
   :dependencies [[clojure "1.2.1"]
                  [clojure-contrib "1.2.0"]]
   :java-source-path ["java"]
- ; :dev-dependencies [[org.clojars.mcav/lein-javac "1.2.1"]]
 )
