@@ -5,7 +5,7 @@
 (ns clooj.utils
   (:import (java.util UUID)
            (java.awt FileDialog Point Window)
-           (java.awt.event ActionListener)
+           (java.awt.event ActionListener MouseAdapter)
            (java.util.prefs Preferences)
            (java.io ByteArrayInputStream ByteArrayOutputStream
                     File FilenameFilter
@@ -325,6 +325,17 @@
     (doall (map #(apply add-menu-item menu %) item-tuples))
     (.add menu-bar menu)
     menu))
+
+;; mouse
+
+(defn on-double-click [comp fun]
+  (.addMouseListener comp
+    (proxy [MouseAdapter] []
+      (mouseClicked [event]
+        (when (== 2 (.getClickCount event))
+          (.consume event)
+          (println "double click")
+          (fun))))))
 
 ;; undoability
 

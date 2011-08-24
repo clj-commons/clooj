@@ -7,6 +7,7 @@
                         JFrame JLabel JList JMenuBar JOptionPane
                         JPanel JScrollPane JSplitPane JTextArea
                         JTextField JTree KeyStroke SpringLayout JTextPane
+                        ListSelectionModel
                         UIManager)
            (javax.swing.event TreeSelectionListener
                               TreeExpansionListener)
@@ -24,7 +25,8 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
-        [clooj.help :only (arglist-from-caret-pos hide-tab-help setup-tab-help)]
+        [clooj.help :only (arglist-from-caret-pos hide-tab-help setup-tab-help
+                           setup-completion-list)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
@@ -413,6 +415,7 @@
       (.add pos-label)
       (.add search-text-area)
       (.add arglist-label))
+    (setup-completion-list completion-list app)
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
     (double-click-selector doc-text-area)
@@ -431,8 +434,6 @@
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
-    (doto completion-list (.setBackground (Color. 0xFF 0xFF 0xE8))
-                          (.setFocusable false))
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)
