@@ -211,11 +211,11 @@
 
 (defn activate-caret-highlighter [app]
   (when-let [text-comp (app :doc-text-area)]
-    (let [f #(handle-caret-move app text-comp (get-current-namespace text-comp))]
+    (let [f #(handle-caret-move app text-comp (get-file-ns app))]
       (add-caret-listener text-comp f)
       (add-text-change-listener text-comp f)))
   (when-let [text-comp (app :repl-in-text-area)]
-    (let [f  #(handle-caret-move app text-comp (get-repl-ns app))]
+    (let [f #(handle-caret-move app text-comp (get-repl-ns app))]
       (add-caret-listener text-comp f)
       (add-text-change-listener text-comp f))))
 

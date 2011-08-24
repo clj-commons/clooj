@@ -5,7 +5,7 @@
            (java.util Vector)
            (javax.swing ListSelectionModel))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
-        [clooj.repl :only (get-current-namespace)]
+        [clooj.repl :only (get-file-ns get-repl-ns)]
         [clooj.utils :only (attach-action-keys attach-child-action-keys
                             on-double-click awt-event when-lets)]
         [clojure.repl :only (source-fn)])
@@ -201,7 +201,9 @@
 
 (defn show-tab-help [app text-comp forward?]
     (awt-event
-      (let [ns (get-current-namespace text-comp)
+      (let [ns (condp = text-comp
+                     (app :doc-text-area) (get-file-ns app)
+                     (app :repl-in-text-area) (get-repl-ns app))
         text (.getText text-comp)
         pos (.getCaretPosition text-comp)]
       (when-let [token (local-token text pos)]

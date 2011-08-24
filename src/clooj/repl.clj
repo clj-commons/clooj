@@ -239,15 +239,15 @@
            #(Math/max 0 (dec %)))
     (update-repl-in app)))
   
-(defn get-current-namespace [text-comp]
+(defn get-file-ns [app]
   (try
-    (when-let [sexpr (read-string (. text-comp getText))]
+    (when-let [sexpr (read-string (.getText (app :doc-text-area)))]
       (when (= 'ns (first sexpr))
         (str (second sexpr))))
     (catch Exception e)))
 
 (defn apply-namespace-to-repl [app]
-  (when-let [current-ns (get-current-namespace (app :doc-text-area))]
+  (when-let [current-ns (get-file-ns app)]
     (send-to-repl app (str "(ns " current-ns ")"))
     (swap! repls assoc-in
            [(-> app :repl deref :project-path) :ns]
