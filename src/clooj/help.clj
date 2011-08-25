@@ -221,11 +221,12 @@
       (swap! help-state assoc :visible false :pos nil))))
   
 (defn help-handle-caret-move [app text-comp]
-  (let [[start _] (local-token-location (.getText text-comp) 
+  (when (@help-state :visible)
+    (let [[start _] (local-token-location (.getText text-comp) 
                                         (.getCaretPosition text-comp))]
     (if-not (= start (@help-state :pos))
       (hide-tab-help app)
-      (show-tab-help app text-comp identity))))
+      (show-tab-help app text-comp identity)))))
 
 (defn update-token [app text-comp]
   (awt-event
