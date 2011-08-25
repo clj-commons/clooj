@@ -25,8 +25,9 @@
         [clooj.highlighting]
         [clooj.repl]
         [clooj.search]
-        [clooj.help :only (arglist-from-caret-pos hide-tab-help setup-tab-help
-                           setup-completion-list help-handle-caret-move)]
+        [clooj.help :only (arglist-from-caret-pos show-tab-help setup-tab-help
+                           setup-completion-list help-handle-caret-move
+                           find-focused-text-pane)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
@@ -612,10 +613,10 @@
     (add-menu menu-bar "Source" "U"
       ["Comment-out" "C" "cmd1 SEMICOLON" #(comment-out (:doc-text-area app))]
       ["Uncomment-out" "U" "cmd1 shift SEMICOLON" #(uncomment-out (:doc-text-area app))]
-;      ["Show docs" "S" "TAB" #(do)]
       ["Fix indentation" "F" "cmd1 BACK_SLASH" #(fix-indent-selected-lines (:doc-text-area app))]
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(indent (:doc-text-area app))]
-      ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(indent (:doc-text-area app))])
+      ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(indent (:doc-text-area app))]
+      ["Name search/docs" "S" "TAB" #(show-tab-help app (find-focused-text-pane app) true)])
     (add-menu menu-bar "REPL" "R"
       ["Evaluate here" "E" "cmd1 ENTER" #(send-selected-to-repl app)]
       ["Evaluate entire file" "F" "cmd1 E" #(send-doc-to-repl app)]
