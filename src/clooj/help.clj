@@ -70,10 +70,6 @@
          p
          (recur (inc p)))))])
 
-(defn local-token [text pos]
-  (let [[start stop] (local-token-location text pos)]
-      (.substring text start stop)))
-
 (defn head-token [form-string]
   (when form-string
     (second
@@ -111,9 +107,8 @@
 
 ;; tab help
 
-(def help-visible (atom false))
 
-(def help-token (atom nil))
+(defonce help-state (atom {:visible false :token nil :pos nil}))
 
 (defn var-help [v]
   (when-let [m (meta v)]
@@ -163,9 +158,9 @@
 (defn advance-help-list [app ns token forward?]
   (let [local-ns (symbol ns)
         help-list (app :completion-list)]
-    (if (not= token @help-token)
+    (if (not= token (@help-state :token))
       (do
-        (reset! help-token token)
+        (swap! help-state assoc :token token)
         (.setListData help-list (Vector.))
         (when-lets [vars (ns-vars local-ns)
                     best-vars (sort-by var-name
@@ -201,7 +196,7 @@
   (let [help-text (or (when choice (var-help choice)) "")]
     (.setText (app :help-text-area) help-text))
   (-> app :help-text-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
-  (reset! help-visible true))
+  (swap! help-state assoc :visible true))
 
 (defn show-tab-help [app text-comp forward?]
   (awt-event
@@ -209,19 +204,28 @@
                (app :doc-text-area) (get-file-ns app)
                (app :repl-in-text-area) (get-repl-ns app))
           text (.getText text-comp)
-          pos (.getCaretPosition text-comp)]
-      (when-let [token (local-token text pos)]
+          pos (.getCaretPosition text-comp)
+          [start stop] (local-token-location text pos)]
+      (when-let [token (.substring text start stop)]
+        (swap! help-state assoc :pos start)
         (advance-help-list app ns token forward?)))))
 
 (defn hide-tab-help [app]
   (awt-event
-    (when @help-visible
+    (when (@help-state :visible)
       (set-first-component (app :repl-split-pane)
                            (app :repl-out-scroll-pane))
       (set-first-component (app :doc-split-pane)
                            (app :docs-tree-scroll-pane))
-      (reset! help-visible false))))
+      (swap! help-state assoc :visible false :pos nil))))
   
+(defn help-handle-caret-move [app text-comp]
+  (let [[start _] (local-token-location (.getText text-comp) 
+                                        (.getCaretPosition text-comp))]
+    (if-not (= start (@help-state :pos))
+      (hide-tab-help app)
+      (show-tab-help app text-comp true))))
+
 (defn update-token [app text-comp]
   (awt-event
     (let [[start stop] (local-token-location
@@ -240,7 +244,7 @@
     ["shift TAB" #(show-tab-help app text-comp false)]
     ["ESCAPE" #(hide-tab-help app)])
   (attach-child-action-keys text-comp
-    ["ENTER" #(deref help-visible) #(update-token app text-comp)]))
+    ["ENTER" #(-> help-state deref :visible) #(update-token app text-comp)]))
 
 (defn find-focused-text-pane [app]
   (let [t1 (app :doc-text-area)

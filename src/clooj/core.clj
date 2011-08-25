@@ -26,7 +26,7 @@
         [clooj.repl]
         [clooj.search]
         [clooj.help :only (arglist-from-caret-pos hide-tab-help setup-tab-help
-                           setup-completion-list)]
+                           setup-completion-list help-handle-caret-move)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
@@ -50,7 +50,7 @@
                             focus-in-text-component
                             scroll-to-caret when-lets
                             constrain-to-parent make-split-pane
-                            gen-map)]
+                            gen-map on-click)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
         [clooj.style :only (get-monospaced-fonts show-font-window)])
   (:require [clojure.main :only (repl repl-prompt)])
@@ -181,7 +181,7 @@
 
 (defn handle-caret-move [app text-comp ns]
   (update-caret-position text-comp)
-  (hide-tab-help app)
+  (help-handle-caret-move app text-comp)
   (send-off highlight-agent
             (fn [old-pos]
               (try
