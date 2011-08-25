@@ -328,13 +328,12 @@
 
 ;; mouse
 
-(defn on-double-click [comp fun]
+(defn on-click [comp num-clicks fun]
   (.addMouseListener comp
     (proxy [MouseAdapter] []
       (mouseClicked [event]
-        (when (== 2 (.getClickCount event))
+        (when (== num-clicks (.getClickCount event))
           (.consume event)
-          (println "double click")
           (fun))))))
 
 ;; undoability

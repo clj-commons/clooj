@@ -3,11 +3,12 @@
            (clojure.lang RT Reflector)
            (java.awt Color Point)
            (java.util Vector)
-           (javax.swing ListSelectionModel))
+           (javax.swing DefaultListCellRenderer ListSelectionModel)
+           (javax.swing.event ListSelectionListener))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
         [clooj.repl :only (get-file-ns get-repl-ns)]
         [clooj.utils :only (attach-action-keys attach-child-action-keys
-                            on-double-click awt-event when-lets)]
+                            on-click awt-event when-lets)]
         [clojure.repl :only (source-fn)])
   (:require [clojure.contrib.string :as string]))
 
@@ -165,6 +166,9 @@
 (defn list-size [list]
   (-> list .getModel .getSize))
 
+(defn var-name [v]
+  (-> v meta :name str))
+
 (defn advance-help-list [app ns token forward?]
   (let [local-ns (symbol ns)
         help-list (app :completion-list)]
@@ -172,12 +176,16 @@
       (do
         (reset! help-token token)
         (.setListData help-list (Vector.))
-        (when-lets [symbols (map #(-> % meta :name str) (ns-vars local-ns))
-                    best-symbols (sort (filter #(.startsWith % token) symbols))
-                    others (sort (filter #(.contains (.substring % 1) token) symbols))
-                    syms-with-namespace (for [sym (concat best-symbols others)]
-                                          (str sym " [" (ns-of-token local-ns sym) "]"))]
-                   (.setListData help-list (Vector. syms-with-namespace))
+        (when-lets [vars (ns-vars local-ns)
+                    best-vars (sort-by var-name
+                                (filter
+                                  #(.startsWith (var-name %) token)
+                                  vars))
+                    other-vars (sort-by var-name
+                                 (filter 
+                                   #(.contains (.substring (var-name %) 1) token)
+                                   vars))]
+                   (.setListData help-list (Vector. (concat best-vars other-vars)))
                    (.setSelectedIndex help-list 0)
                    ))
       (let [n (list-size help-list)]
@@ -196,24 +204,23 @@
                              (.getSelectedIndex help-list)))))
   
 (defn get-list-token [app]
-  (when-let [val (-> app :completion-list .getSelectedValue)]
-        (-> val (.split "\\[") first string/trim)))
+  (-> app :completion-list .getSelectedValue var-name))
+
+(defn show-help-text [app choice]
+  (let [help-text (or (when choice (var-help choice)) "")]
+    (.setText (app :help-text-area) help-text))
+  (-> app :help-text-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
+  (reset! help-visible true))
 
 (defn show-tab-help [app text-comp forward?]
-    (awt-event
-      (let [ns (condp = text-comp
-                     (app :doc-text-area) (get-file-ns app)
-                     (app :repl-in-text-area) (get-repl-ns app))
-        text (.getText text-comp)
-        pos (.getCaretPosition text-comp)]
+  (awt-event
+    (let [ns (condp = text-comp
+               (app :doc-text-area) (get-file-ns app)
+               (app :repl-in-text-area) (get-repl-ns app))
+          text (.getText text-comp)
+          pos (.getCaretPosition text-comp)]
       (when-let [token (local-token text pos)]
-        (advance-help-list app ns token forward?)
-        (let [choice (get-list-token app)
-              help-txt (or (when choice (token-help ns choice)) "")]
-          (.setText (app :help-text-area) help-txt))
-          (-> app :help-text-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
-          (-> app :completion-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
-          (reset! help-visible true)))))
+        (advance-help-list app ns token forward?)))))
 
 (defn hide-tab-help [app]
   (awt-event
@@ -250,10 +257,24 @@
     (cond (.hasFocus t1) t1
           (.hasFocus t2) t2)))
 
+(defn present-var [v]
+  (str (var-name v) " [" (-> v meta :ns) "]"))
+
 (defn setup-completion-list [l app]
   (doto l
     (.setBackground (Color. 0xFF 0xFF 0xE8))
     (.setFocusable false)
     (.setSelectionMode ListSelectionModel/SINGLE_SELECTION)
-    (on-double-click #(when-let [text-pane (find-focused-text-pane app)]
+    (.setCellRenderer
+      (proxy [DefaultListCellRenderer] []
+        (getListCellRendererComponent [list var index isSelected cellHasFocus]
+          (doto (proxy-super getListCellRendererComponent list var index isSelected cellHasFocus)
+            (.setText (present-var var)))))) 
+    (.addListSelectionListener
+      (reify ListSelectionListener
+        (valueChanged [_ e]
+          (when-not (.getValueIsAdjusting e)
+            (.ensureIndexIsVisible l (.getSelectedIndex l))
+            (show-help-text app (.getSelectedValue l))))))
+    (on-click 2 #(when-let [text-pane (find-focused-text-pane app)]
                         (update-token app text-pane)))))
