@@ -58,17 +58,18 @@
 (def non-token-chars [\; \~ \@ \( \) \[ \] \{ \} \  \newline \" \'])
 
 (defn local-token-location [text pos]
-  [(loop [p (dec pos)]
-     (if (or (neg? p)
-             (some #{(.charAt text p)} non-token-chars))
-       (inc p)
-       (recur (dec p))))
-   (let [n (.length text)]
+  (let [n (.length text)
+        pos (-> pos (Math/max 0) (Math/min n))]
+    [(loop [p (dec pos)]
+       (if (or (neg? p)
+               (some #{(.charAt text p)} non-token-chars))
+         (inc p)
+         (recur (dec p))))
      (loop [p pos]
        (if (or (>= p n)
                (some #{(.charAt text p)} non-token-chars))
          p
-         (recur (inc p)))))])
+         (recur (inc p))))]))
 
 (defn head-token [form-string]
   (when form-string
