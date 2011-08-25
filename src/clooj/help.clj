@@ -155,7 +155,7 @@
 (defn var-name [v]
   (-> v meta :name str))
 
-(defn advance-help-list [app ns token forward?]
+(defn advance-help-list [app ns token index-change-fn]
   (let [local-ns (symbol ns)
         help-list (app :completion-list)]
     (if (not= token (@help-state :token))
@@ -178,7 +178,7 @@
         (when (pos? n)
           (.setSelectedIndex help-list
                              (clock-num
-                               ((if forward? inc dec)
+                               (index-change-fn
                                     (.getSelectedIndex help-list))
                                n)))))
     (when (pos? (list-size help-list))
@@ -198,7 +198,7 @@
   (-> app :help-text-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
   (swap! help-state assoc :visible true))
 
-(defn show-tab-help [app text-comp forward?]
+(defn show-tab-help [app text-comp index-change-fn]
   (awt-event
     (let [ns (condp = text-comp
                (app :doc-text-area) (get-file-ns app)
@@ -208,7 +208,7 @@
           [start stop] (local-token-location text pos)]
       (when-let [token (.substring text start stop)]
         (swap! help-state assoc :pos start)
-        (advance-help-list app ns token forward?)))))
+        (advance-help-list app ns token index-change-fn)))))
 
 (defn hide-tab-help [app]
   (awt-event
@@ -224,7 +224,7 @@
                                         (.getCaretPosition text-comp))]
     (if-not (= start (@help-state :pos))
       (hide-tab-help app)
-      (show-tab-help app text-comp true))))
+      (show-tab-help app text-comp identity))))
 
 (defn update-token [app text-comp]
   (awt-event
@@ -240,8 +240,8 @@
 
 (defn setup-tab-help [app text-comp]
   (attach-action-keys text-comp
-    ["TAB" #(show-tab-help app text-comp true)]
-    ["shift TAB" #(show-tab-help app text-comp false)]
+    ["TAB" #(show-tab-help app text-comp inc)]
+    ["shift TAB" #(show-tab-help app text-comp dec)]
     ["ESCAPE" #(hide-tab-help app)])
   (attach-child-action-keys text-comp
     ["ENTER" #(-> help-state deref :visible) #(update-token app text-comp)]))

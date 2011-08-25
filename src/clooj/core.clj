@@ -616,7 +616,7 @@
       ["Fix indentation" "F" "cmd1 BACK_SLASH" #(fix-indent-selected-lines (:doc-text-area app))]
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(indent (:doc-text-area app))]
-      ["Name search/docs" "S" "TAB" #(show-tab-help app (find-focused-text-pane app) true)])
+      ["Name search/docs" "S" "TAB" #(show-tab-help app (find-focused-text-pane app) inc)])
     (add-menu menu-bar "REPL" "R"
       ["Evaluate here" "E" "cmd1 ENTER" #(send-selected-to-repl app)]
       ["Evaluate entire file" "F" "cmd1 E" #(send-doc-to-repl app)]
