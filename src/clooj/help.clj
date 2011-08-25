@@ -50,34 +50,12 @@
           (read (PushbackReader. pbr))
           (str text))))))
 
-(defn var-help [v]
-  (when-let [m (meta v)]
-    (let [d (:doc m)
-          ns (:ns m)
-          name (:name m)
-          s (binding [*ns* ns]
-                   (source-fn name))]
-       (str (:name m)
-            (if (:ns m) (str " [" (:ns m) "]") "") "\n"
-            (:arglists m)
-            "\n\n"
-            (if d
-              (str "Documentation:\n" d)
-              "No documentation found.")
-            "\n\n"
-            (if s
-              (str "Source:\n"
-                   (if d
-                     (.replace s d "...docs...")
-                     s))
-              "No source found.")))))
-
 (defn find-form-string [text pos]
   (let [[left right] (find-enclosing-brackets text pos)]
     (when (> (.length text) left)
       (.substring text (inc left)))))
 
-(def non-token-chars [\( \) \[ \] \{ \} \  \newline \" \'])
+(def non-token-chars [\; \~ \@ \( \) \[ \] \{ \} \  \newline \" \'])
 
 (defn local-token-location [text pos]
   [(loop [p (dec pos)]
@@ -113,11 +91,6 @@
       (or (safe-resolve ns sym)
           (safe-resolve (find-ns 'clojure.core) sym)))))
 
-(defn token-help [ns token]
-  (when (pos? (.length token))
-  (var-help (try (ns-resolve (symbol ns) (symbol token))
-                 (catch ClassNotFoundException e nil)))))
-
 (defn arglist-from-var [v]
   (or
     (when-let [m (meta v)]
@@ -142,6 +115,28 @@
 
 (def help-token (atom nil))
 
+(defn var-help [v]
+  (when-let [m (meta v)]
+    (let [d (:doc m)
+          ns (:ns m)
+          name (:name m)
+          s (binding [*ns* ns]
+                   (source-fn name))]
+       (str (:name m)
+            (if (:ns m) (str " [" (:ns m) "]") "") "\n"
+            (:arglists m)
+            "\n\n"
+            (if d
+              (str "Documentation:\n" d)
+              "No documentation found.")
+            "\n\n"
+            (if s
+              (str "Source:\n"
+                   (if d
+                     (.replace s d "...docs...")
+                     s))
+              "No source found.")))))
+
 (defn set-first-component [split-pane comp]
   (let [loc (.getDividerLocation split-pane)]
     (.setTopComponent split-pane comp)
@@ -155,13 +150,9 @@
 (defn clock-num [i n]
   (if (zero? n)
     0
-    (cond (< i 0) (recur (+ i n) n)
-          (>= i n) (recur (- i n) n)
+    (cond (< i 0) (dec n)
+          (>= i n) 0
           :else i)))
-
-(defn ns-of-token [local-ns token]
-  (when-not (empty? token)
-    (->> token symbol (ns-resolve local-ns) meta :ns ns-name)))
 
 (defn list-size [list]
   (-> list .getModel .getSize))
