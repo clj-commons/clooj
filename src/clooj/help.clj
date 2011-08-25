@@ -156,7 +156,7 @@
   (-> v meta :name str))
 
 (defn advance-help-list [app ns token index-change-fn]
-  (let [local-ns (symbol ns)
+  (let [local-ns (when ns (symbol ns))
         help-list (app :completion-list)]
     (if (not= token (@help-state :token))
       (do
@@ -208,7 +208,8 @@
           [start stop] (local-token-location text pos)]
       (when-let [token (.substring text start stop)]
         (swap! help-state assoc :pos start)
-        (advance-help-list app ns token index-change-fn)))))
+        (when ns
+          (advance-help-list app ns token index-change-fn))))))
 
 (defn hide-tab-help [app]
   (awt-event
