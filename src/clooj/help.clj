@@ -138,12 +138,6 @@
     (.setTopComponent split-pane comp)
     (.setDividerLocation split-pane loc)))
 
-(defn ns-vars [ns]
-  (concat
-    (vals (ns-interns ns))
-    (vals (ns-refers ns))
-    (vals (ns-imports ns))))
-
 (defn clock-num [i n]
   (if (zero? n)
     0
