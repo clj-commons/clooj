@@ -141,7 +141,8 @@
 (defn ns-vars [ns]
   (concat
     (vals (ns-interns ns))
-    (vals (ns-refers ns))))
+    (vals (ns-refers ns))
+    (vals (ns-imports ns))))
 
 (defn clock-num [i n]
   (if (zero? n)
@@ -153,8 +154,10 @@
 (defn list-size [list]
   (-> list .getModel .getSize))
 
-(defn var-name [v]
-  (-> v meta :name str))
+(defn ns-item-name [item]
+  (cond
+    (var? item) (-> item meta :name str)
+    (class? item) (.getSimpleName item)))
 
 (defn advance-help-list [app ns token index-change-fn]
   (let [local-ns (when ns (symbol ns))
@@ -163,16 +166,16 @@
       (do
         (swap! help-state assoc :token token)
         (.setListData help-list (Vector.))
-        (when-lets [vars (ns-vars local-ns)
-                    best-vars (sort-by var-name
+        (when-lets [ns-items (vals (ns-map local-ns))
+                    best (sort-by #(.toLowerCase (ns-item-name %))
                                 (filter
-                                  #(.startsWith (var-name %) token)
-                                  vars))
-                    other-vars (sort-by var-name
+                                  #(.startsWith (ns-item-name %) token)
+                                  ns-items))
+                    others (sort-by #(.toLowerCase (ns-item-name %))
                                  (filter 
-                                   #(.contains (.substring (var-name %) 1) token)
-                                   vars))]
-                   (.setListData help-list (Vector. (concat best-vars other-vars)))
+                                   #(.contains (.substring (ns-item-name %) 1) token)
+                                   ns-items))]
+                   (.setListData help-list (Vector. (concat best others)))
                    (.setSelectedIndex help-list 0)
                    ))
       (let [n (list-size help-list)]
@@ -191,7 +194,7 @@
                              (.getSelectedIndex help-list)))))
   
 (defn get-list-token [app]
-  (-> app :completion-list .getSelectedValue var-name))
+  (-> app :completion-list .getSelectedValue ns-item-name))
 
 (defn show-help-text [app choice]
   (let [help-text (or (when choice (var-help choice)) "")]
@@ -255,8 +258,13 @@
     (cond (.hasFocus t1) t1
           (.hasFocus t2) t2)))
 
-(defn present-var [v]
-  (str (var-name v) " [" (-> v meta :ns) "]"))
+(defn ns-item-package [item]
+  (cond
+    (var? item) (-> item meta :ns)
+    (class? item) (.. item getPackage getName)))
+
+(defn present-ns-item [item]
+  (str (ns-item-name item) " [" (ns-item-package item) "]"))
 
 (defn setup-completion-list [l app]
   (doto l
@@ -265,9 +273,9 @@
     (.setSelectionMode ListSelectionModel/SINGLE_SELECTION)
     (.setCellRenderer
       (proxy [DefaultListCellRenderer] []
-        (getListCellRendererComponent [list var index isSelected cellHasFocus]
-          (doto (proxy-super getListCellRendererComponent list var index isSelected cellHasFocus)
-            (.setText (present-var var)))))) 
+        (getListCellRendererComponent [list item index isSelected cellHasFocus]
+          (doto (proxy-super getListCellRendererComponent list item index isSelected cellHasFocus)
+            (.setText (present-ns-item item)))))) 
     (.addListSelectionListener
       (reify ListSelectionListener
         (valueChanged [_ e]
