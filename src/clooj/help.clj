@@ -155,7 +155,9 @@
 
 (defn advance-help-list [app ns token index-change-fn]
   (let [local-ns (when ns (symbol ns))
-        help-list (app :completion-list)]
+        help-list (app :completion-list)
+        token-pat1 (re-pattern (str "(?i)\\A\\Q" token "\\E"))
+        token-pat2 (re-pattern (str "(?i)\\Q" token "\\E"))]
     (if (not= token (@help-state :token))
       (do
         (swap! help-state assoc :token token)
@@ -163,11 +165,11 @@
         (when-lets [ns-items (vals (ns-map local-ns))
                     best (sort-by #(.toLowerCase (ns-item-name %))
                                 (filter
-                                  #(.startsWith (ns-item-name %) token)
+                                  #(re-find token-pat1 (ns-item-name %))
                                   ns-items))
                     others (sort-by #(.toLowerCase (ns-item-name %))
                                  (filter 
-                                   #(.contains (.substring (ns-item-name %) 1) token)
+                                   #(re-find token-pat2 (.substring (ns-item-name %) 1))
                                    ns-items))]
                    (.setListData help-list (Vector. (concat best others)))
                    (.setSelectedIndex help-list 0)
