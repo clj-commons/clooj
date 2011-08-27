@@ -513,7 +513,7 @@
                          nil
                          nil
                          default-namespace)]
-    (let [tokens (.split namespace "\\.")
+    (let [tokens (map munge (.split namespace "\\."))
           dirs (cons "src" (butlast tokens))
           dirstring (apply str (interpose File/separator dirs))
           name (last tokens)
@@ -564,7 +564,7 @@
 
 (defn delete-file [app]
   (let [path (get-selected-file-path app)]
-    (when (confirmed? "Are you sure you want to delete this file?" path)
+    (when (confirmed? "Are you sure you want to delete this file?\nDeleting cannot be undone." path)
       (loop [f (File. path)]
         (when (and (empty? (.listFiles f))
                    (let [p (-> f .getParentFile .getAbsolutePath)]
