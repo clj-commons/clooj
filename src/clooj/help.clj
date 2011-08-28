@@ -29,6 +29,19 @@
    "monitor-enter" "Avoid!"
    "monitor-exit"  "Avoid!"})
 
+(defn ns-item-name [item]
+  (cond
+    (var? item) (-> item meta :name str)
+    (class? item) (.getSimpleName item)))
+
+(defn ns-item-package [item]
+  (cond
+    (var? item) (-> item meta :ns)
+    (class? item) (.. item getPackage getName)))
+
+(defn present-ns-item [item]
+  (str (ns-item-name item) " [" (ns-item-package item) "]"))
+
 (defmacro with-ns
   "Evaluates body in another namespace.  ns is either a namespace
   object or a symbol.  This makes it possible to define functions in
@@ -133,6 +146,23 @@
                      s))
               "No source found.")))))
 
+(defn method-help [method]
+  (str "." (.getName method)
+       " ([" (apply str (interpose " " (map #(.getSimpleName %) (.getParameterTypes method)))) "])"
+       " --> " (.getName (.getReturnType method))))
+
+(defn class-help [c]
+  (apply str
+         (present-ns-item c) "\n  java class\n\n"
+         (interpose "\n"
+                    (sort
+                      (for [method (.getDeclaredMethods c)]
+                        (method-help method))))))
+
+(defn item-help [item]
+  (cond (var? item) (var-help item)
+        (class? item) (class-help item)))    
+
 (defn set-first-component [split-pane comp]
   (let [loc (.getDividerLocation split-pane)]
     (.setTopComponent split-pane comp)
@@ -147,11 +177,6 @@
 
 (defn list-size [list]
   (-> list .getModel .getSize))
-
-(defn ns-item-name [item]
-  (cond
-    (var? item) (-> item meta :name str)
-    (class? item) (.getSimpleName item)))
 
 (defn advance-help-list [app ns token index-change-fn]
   (let [local-ns (when ns (symbol ns))
@@ -193,7 +218,7 @@
   (-> app :completion-list .getSelectedValue ns-item-name))
 
 (defn show-help-text [app choice]
-  (let [help-text (or (when choice (var-help choice)) "")]
+  (let [help-text (or (when choice (item-help choice)) "")]
     (.setText (app :help-text-area) help-text))
   (-> app :help-text-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
   (swap! help-state assoc :visible true))
@@ -253,14 +278,6 @@
         t2 (app :repl-in-text-area)]
     (cond (.hasFocus t1) t1
           (.hasFocus t2) t2)))
-
-(defn ns-item-package [item]
-  (cond
-    (var? item) (-> item meta :ns)
-    (class? item) (.. item getPackage getName)))
-
-(defn present-ns-item [item]
-  (str (ns-item-name item) " [" (ns-item-package item) "]"))
 
 (defn setup-completion-list [l app]
   (doto l
