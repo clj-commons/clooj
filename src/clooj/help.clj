@@ -1,6 +1,7 @@
 (ns clooj.help
   (:import (java.io LineNumberReader InputStreamReader PushbackReader)
            (clojure.lang RT Reflector)
+           (java.lang.reflect Modifier)
            (java.awt Color Point)
            (java.util Vector)
            (javax.swing DefaultListCellRenderer ListSelectionModel)
@@ -147,17 +148,39 @@
               "No source found.")))))
 
 (defn method-help [method]
-  (str "." (.getName method)
-       " ([" (apply str (interpose " " (map #(.getSimpleName %) (.getParameterTypes method)))) "])"
-       " --> " (.getName (.getReturnType method))))
+  (str
+    (if (Modifier/isStatic (.getModifiers method))
+      (str (.. method getDeclaringClass getSimpleName)
+           "/" (.getName method) " ([")
+      (str "." (.getName method) " ([this "))
+    (apply str (interpose " " (map #(.getSimpleName %) 
+                                   (.getParameterTypes method)))) "])"
+    " --> " (.getName (.getReturnType method))))
+
+(defn field-help [field]
+  (let [c (.. field getDeclaringClass getSimpleName)]
+  (str
+    (if (Modifier/isStatic (.getModifiers field))
+      (str (.. field getDeclaringClass getSimpleName)
+           "/" (.getName field)
+           (when (Modifier/isFinal (.getModifiers field))
+             (str " --> " (.. field (get nil) toString))))
+      (str "." (.getName field) " --> " (.getName (.getType field)))))))
 
 (defn class-help [c]
   (apply str
-         (present-ns-item c) "\n  java class\n\n"
-         (interpose "\n"
-                    (sort
-                      (for [method (.getMethods c)]
-                        (method-help method))))))
+         (concat
+           [(present-ns-item c) "\n  java class"]
+           ["\n\nMETHODS\n"]
+           (interpose "\n"
+                      (sort
+                        (for [method (.getMethods c)]
+                          (method-help method))))
+           ["\n\nFIELDS\n"]
+           (interpose "\n"
+                      (sort
+                        (for [field (.getFields c)]
+                          (field-help field)))))))
 
 (defn item-help [item]
   (cond (var? item) (var-help item)
