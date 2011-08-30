@@ -156,7 +156,7 @@
          (present-ns-item c) "\n  java class\n\n"
          (interpose "\n"
                     (sort
-                      (for [method (.getDeclaredMethods c)]
+                      (for [method (.getMethods c)]
                         (method-help method))))))
 
 (defn item-help [item]
@@ -220,8 +220,8 @@
 (defn show-help-text [app choice]
   (let [help-text (or (when choice (item-help choice)) "")]
     (.setText (app :help-text-area) help-text))
-  (-> app :help-text-scroll-pane .getViewport (.setViewPosition (Point. (int 0) (int 0))))
-  (swap! help-state assoc :visible true))
+  (-> app :help-text-scroll-pane .getViewport
+      (.setViewPosition (Point. (int 0) (int 0)))))
 
 (defn show-tab-help [app text-comp index-change-fn]
   (awt-event
@@ -232,7 +232,7 @@
           pos (.getCaretPosition text-comp)
           [start stop] (local-token-location text pos)]
       (when-let [token (.substring text start stop)]
-        (swap! help-state assoc :pos start)
+        (swap! help-state assoc :pos start :visible true)
         (when ns
           (advance-help-list app ns token index-change-fn))))))
 
@@ -242,16 +242,17 @@
       (set-first-component (app :repl-split-pane)
                            (app :repl-out-scroll-pane))
       (set-first-component (app :doc-split-pane)
-                           (app :docs-tree-scroll-pane))
-      (swap! help-state assoc :visible false :pos nil))))
+                           (app :docs-tree-scroll-pane)))
+    (swap! help-state assoc :visible false :pos nil)))
   
 (defn help-handle-caret-move [app text-comp]
-  (when (@help-state :visible)
-    (let [[start _] (local-token-location (.getText text-comp) 
-                                        (.getCaretPosition text-comp))]
-    (if-not (= start (@help-state :pos))
-      (hide-tab-help app)
-      (show-tab-help app text-comp identity)))))
+  (awt-event
+    (when (@help-state :visible)
+      (let [[start _] (local-token-location (.getText text-comp) 
+                                            (.getCaretPosition text-comp))]
+        (if-not (= start (@help-state :pos))
+          (hide-tab-help app)
+          (show-tab-help app text-comp identity))))))
 
 (defn update-token [app text-comp]
   (awt-event
