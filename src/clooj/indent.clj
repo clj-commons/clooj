@@ -1,3 +1,8 @@
+; Copyright (c) 2011, Arthur Edelstein
+; All rights reserved.
+; Eclipse Public License 1.0
+; arthuredelstein@gmail.com
+
 (ns clooj.indent
   (:use [clooj.utils :only (attach-action-keys indent unindent
                             get-coords get-line-of-offset

@@ -1,5 +1,6 @@
 ; Copyright (c) 2011, Arthur Edelstein
 ; All rights reserved.
+; Eclipse Public License 1.0
 ; arthuredelstein@gmail.com
 
 (ns clooj.repl
@@ -53,6 +54,7 @@
 (defn create-class-loader [project-path]
     (let [files (setup-classpath project-path)
           urls (map #(.toURL %) files)]
+      (dorun (map #(println (.getAbsolutePath %))files))
       (URLClassLoader.
         (into-array URL urls)
         (.getClassLoader clojure.lang.RT))))

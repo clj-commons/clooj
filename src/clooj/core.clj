@@ -1,5 +1,6 @@
 ; Copyright (c) 2011, Arthur Edelstein
 ; All rights reserved.
+; Eclipse Public License 1.0
 ; arthuredelstein@gmail.com
 
 (ns clooj.core
