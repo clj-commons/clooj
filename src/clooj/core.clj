@@ -620,7 +620,7 @@
     (add-menu menu-bar "REPL" "R"
       ["Evaluate here" "E" "cmd1 ENTER" #(send-selected-to-repl app)]
       ["Evaluate entire file" "F" "cmd1 E" #(send-doc-to-repl app)]
-      ["Apply file ns" "A" "cmd1 L" #(apply-namespace-to-repl app)]
+      ["Apply file ns" "A" "cmd1 shift A" #(apply-namespace-to-repl app)]
       ["Clear output" "C" "cmd1 K" #(.setText (app :repl-out-text-area) "")]
       ["Restart" "R" "cmd1 R" #(restart-repl app
                             (first (get-selected-projects app)))])

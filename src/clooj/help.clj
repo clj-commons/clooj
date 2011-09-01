@@ -148,14 +148,19 @@
               "No source found.")))))
 
 (defn method-help [method]
-  (str
-    (if (Modifier/isStatic (.getModifiers method))
-      (str (.. method getDeclaringClass getSimpleName)
-           "/" (.getName method) " ([")
-      (str "." (.getName method) " ([this "))
-    (apply str (interpose " " (map #(.getSimpleName %) 
-                                   (.getParameterTypes method)))) "])"
-    " --> " (.getName (.getReturnType method))))
+  (let [stat (Modifier/isStatic (.getModifiers method))]
+    (str
+      (if stat
+        (str (.. method getDeclaringClass getSimpleName)
+             "/" (.getName method))
+        (str "." (.getName method)))
+      " (["
+      (let [type-names (map #(.getSimpleName %)
+                            (.getParameterTypes method))
+            param-names (if stat type-names (cons "this" type-names))]
+        (apply str (interpose " " param-names)))
+      "])"
+      " --> " (.getName (.getReturnType method)))))
 
 (defn field-help [field]
   (let [c (.. field getDeclaringClass getSimpleName)]

@@ -10,9 +10,10 @@
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event recording-source-reader
                             get-line-of-offset get-line-start-offset
-                            append-text)]
+                            append-text when-lets)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
-        [clojure.pprint :only (pprint)])
+        [clojure.pprint :only (pprint)]
+        [clooj.project :only (get-temp-file)])
   (:require [clojure.contrib.string :as string]))
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
@@ -47,7 +48,7 @@
                                (.listFiles project-dir))]
           (concat sub-dirs
                  (filter #(.endsWith (.getName %) ".jar")
-                         (mapcat #(.listFiles %) sub-dirs))))))))
+                         (mapcat #(.listFiles %) (file-seq project-dir)))))))))
 
 (defn create-class-loader [project-path]
     (let [files (setup-classpath project-path)
@@ -245,6 +246,11 @@
       (when (= 'ns (first sexpr))
         (str (second sexpr))))
     (catch Exception e)))
+
+(defn load-file-in-repl [app]
+  (when-lets [f0 @(:file app)
+              f (or (get-temp-file f0) f0)]
+    (send-to-repl app (str "(load-file \"" (.getAbsolutePath f) "\")"))))
 
 (defn apply-namespace-to-repl [app]
   (when-let [current-ns (get-file-ns app)]
