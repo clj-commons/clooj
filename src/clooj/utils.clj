@@ -8,6 +8,7 @@
            (java.awt FileDialog Point Window)
            (java.awt.event ActionListener MouseAdapter)
            (java.util.prefs Preferences)
+           (java.security MessageDigest)
            (java.io ByteArrayInputStream ByteArrayOutputStream
                     File FilenameFilter
                     ObjectInputStream ObjectOutputStream
@@ -467,6 +468,9 @@
                      (.setLength text 0)
                      s)))))
 
+(defn sha1-str [obj]
+   (let [bytes (.getBytes (with-out-str (pr obj)))] 
+     (String. (.digest (MessageDigest/getInstance "SHA1") bytes))))
 
 ;; streams and writers
  

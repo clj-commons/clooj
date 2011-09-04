@@ -52,7 +52,7 @@
                             focus-in-text-component
                             scroll-to-caret when-lets
                             constrain-to-parent make-split-pane
-                            gen-map on-click)]
+                            gen-map on-click sha1-str)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
         [clooj.style :only (get-monospaced-fonts show-font-window)])
   (:require [clojure.main :only (repl repl-prompt)])
@@ -160,13 +160,13 @@
   (when-lets [text-area (app :doc-text-area)
               pos (get @caret-position text-area)
               file @(:file app)]
-    (let [key-str (str "caret_" (.getAbsolutePath file))]
+    (let [key-str (sha1-str (.getAbsolutePath file))]
       (write-value-to-prefs clooj-prefs key-str pos))))
 
 (defn load-caret-position [app]
   (when-lets [text-area (app :doc-text-area)
               file @(:file app)
-              key-str (str "caret_" (.getAbsolutePath file))
+              key-str (sha1-str (.getAbsolutePath file))
               pos (read-value-from-prefs clooj-prefs key-str)]
     (awt-event
       (let [length (.. text-area getDocument getLength)
