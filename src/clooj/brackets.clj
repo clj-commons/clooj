@@ -35,10 +35,10 @@
         reckon-dist (fn [stacks]
                       (let [scores (map count stacks)]
                         (count-while #(<= (first scores) %) scores)))
-        before (.substring text 0 pos)
+        before (.substring text 0 (Math/min (.length text) pos))
         stacks-before (reverse (reductions process nil before))
         left (- pos (reckon-dist stacks-before))
-        after (.substring text pos)
+        after (.substring text (Math/min (.length text) pos))
         stacks-after (reductions process (first stacks-before) after)
         right (+ -1 pos (reckon-dist stacks-after))]
     [left right]))
