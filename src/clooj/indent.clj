@@ -11,7 +11,7 @@
                             awt-event
                             get-selected-lines)]
         [clooj.brackets :only (find-enclosing-brackets)]
-        [clojure.contrib.string :only (ltrim rtrim)])
+        [clojure.string :only (triml trimr)])
   (:import  (javax.swing.text DocumentFilter)))
 
 ;(defn t [] (@clooj.core/current-app :doc-text-area))
@@ -29,7 +29,7 @@
   (second (re-find #"\((.+?)\s" txt)))
           
 (defn second-token-pos [txt]
-  (when-let [x (re-find #".+?\s" (rtrim (first (.split #"\r?\n" txt))))]
+  (when-let [x (re-find #".+?\s" (trimr (first (.split #"\r?\n" txt))))]
     (.length x)))
 
 (defn left-paren-indent-size [txt]
@@ -37,7 +37,7 @@
     (or
       (when (and token1
                  (not (or (some #{token1} special-tokens)
-                          (.startsWith (ltrim token1) "["))))
+                          (.startsWith (triml token1) "["))))
         (second-token-pos txt))
       2)))
 

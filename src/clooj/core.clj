@@ -20,8 +20,7 @@
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
            (java.io File FileReader FileWriter))
-  (:use [clojure.contrib.duck-streams :only (writer)]
-        [clojure.pprint :only (pprint)]
+  (:use [clojure.pprint :only (pprint)]
         [clooj.brackets]
         [clooj.highlighting]
         [clooj.repl]
@@ -55,7 +54,8 @@
                             gen-map on-click)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
         [clooj.style :only (get-monospaced-fonts show-font-window)])
-  (:require [clojure.main :only (repl repl-prompt)])
+  (:require [clojure.main :only (repl repl-prompt)]
+            [clojure.set])
   (:gen-class
    :methods [^{:static true} [show [] void]]))
 

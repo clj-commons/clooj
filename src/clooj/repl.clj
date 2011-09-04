@@ -15,15 +15,15 @@
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
         [clooj.project :only (get-temp-file)])
-  (:require [clojure.contrib.string :as string]))
+  (:require [clojure.string :as string]))
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
 
 (def repls (atom {}))
 
-(def *printStackTrace-on-error* false)
+(def ^:dynamic *printStackTrace-on-error* false)
 
-(def *line-offset*)
+(def ^:dynamic *line-offset*)
 
 (defn is-eof-ex? [throwable]
   (and (instance? clojure.lang.LispReader$ReaderException throwable)
@@ -197,7 +197,7 @@
   ([buffer char-array offset length]
     (.append buffer char-array offset length)
     buffer)
-  ([buffer ^int t]
+  ([buffer t]
     (when (= Integer (type t))
       (.append buffer (char t)))
     buffer))
@@ -218,7 +218,7 @@
         (write
           ([char-array offset length]
             (send-off buf repl-writer-write char-array offset length))
-          ([^int t]          
+          ([t]          
             (send-off buf repl-writer-write t)))
         (flush [] (send-off buf repl-writer-flush ta-out))
         (close [] nil)))
@@ -287,7 +287,7 @@
         get-caret-pos #(.getCaretPosition ta-in)
         ready #(let [caret-pos (get-caret-pos)
                      txt (.getText ta-in)
-                     trim-txt (string/rtrim txt)]
+                     trim-txt (string/trimr txt)]
                  (and
                    (pos? (.length trim-txt))
                    (<= (.length trim-txt)

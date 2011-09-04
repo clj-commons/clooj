@@ -108,7 +108,7 @@
                   (file-seq dir)))))
 
 (defn path-to-namespace [src-dir file-path]
-  (let [drop-suffix #(clojure.contrib.string/butlast 4 %)]
+  (let [drop-suffix #(apply str (drop-last 4 %))]
     (-> file-path
         (.replace (str src-dir File/separator) "")
         drop-suffix
