@@ -160,13 +160,13 @@
   (when-lets [text-area (app :doc-text-area)
               pos (get @caret-position text-area)
               file @(:file app)]
-    (let [key-str (sha1-str (.getAbsolutePath file))]
+    (let [key-str (sha1-str (str "caret_" (.getAbsolutePath file)))]
       (write-value-to-prefs clooj-prefs key-str pos))))
 
 (defn load-caret-position [app]
   (when-lets [text-area (app :doc-text-area)
               file @(:file app)
-              key-str (sha1-str (.getAbsolutePath file))
+              key-str (sha1-str (str "caret_" (.getAbsolutePath file)))
               pos (read-value-from-prefs clooj-prefs key-str)]
     (awt-event
       (let [length (.. text-area getDocument getLength)
