@@ -279,9 +279,7 @@
           text (.getText text-comp)
           pos (.getCaretPosition text-comp)
           [start stop] (local-token-location text pos)]
-      (println "ns" ns)
       (when-let [token (.substring text start stop)]
-        (println "token" token)
         (swap! help-state assoc :pos start :visible true)
         (when ns
           (advance-help-list app ns token index-change-fn))))))
