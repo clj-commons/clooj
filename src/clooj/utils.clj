@@ -173,15 +173,6 @@
       (removeUpdate [this evt] (f))
       (changedUpdate [this evt]))))
 
-;(defn add-text-change-listener [text-comp f]
-;  "Executes f whenever text is changed in text component."
-;  (.addDocumentListener
-;    (.getDocument text-comp)
-;    (reify DocumentListener
-;      (insertUpdate [this _] (f))
-;      (removeUpdate [this _] (f))
-;      (changedUpdate [this _] (f)))))
-
 (defn remove-text-change-listeners [text-comp]
   (let [d (.getDocument text-comp)]
     (doseq [l (.getDocumentListeners d)]
