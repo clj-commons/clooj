@@ -47,13 +47,15 @@
     (when (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))]
-        (+ col
-           (condp = bracket
-             \( (left-paren-indent-size (.getText text-comp
-                                                  bracket-pos
-                                                  (- offset bracket-pos)))
-             \; 0  \\ 0  \[ 1  \{ 1  \" 1
-             :else 1))))))
+        (if (= bracket \;)
+          (compute-indent-size text-comp bracket-pos)
+          (+ col
+             (condp = bracket
+               \( (left-paren-indent-size (.getText text-comp
+                                                    bracket-pos
+                                                    (- offset bracket-pos)))
+               \\ 0  \[ 1  \{ 1  \" 1
+               :else 1)))))))
 
 (defn fix-indent [text-comp line]
   (let [start (get-line-start-offset text-comp line)
