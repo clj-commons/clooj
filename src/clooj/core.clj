@@ -73,8 +73,7 @@
                 (<= (. this getWidth)
                     (. parent getWidth))
                 false)
-              true)))
-    ))  
+              true)))))
 
 (def get-clooj-version
   (memoize
@@ -440,7 +439,6 @@
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)
-    (setup-tab-help app repl-in-text-area)
     (setup-tree app)
     (attach-action-keys doc-text-area
       ["cmd1 shift O" #(open-project app)])
@@ -672,9 +670,8 @@
     (reset! current-app app)
     (make-menus app)
     (add-visibility-shortcut app)
-    (let [ta-in (app :repl-in-text-area)
-          ta-out (app :repl-out-text-area)]
-      (add-repl-input-handler app))
+    (add-repl-input-handler app)
+    (setup-tab-help app (app :repl-in-text-area))
     (doall (map #(add-project app %) (load-project-set)))
     (persist-window-shape clooj-prefs "main-window" (app :frame)) 
     (.setVisible (app :frame) true)

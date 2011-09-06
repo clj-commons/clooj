@@ -279,7 +279,9 @@
           text (.getText text-comp)
           pos (.getCaretPosition text-comp)
           [start stop] (local-token-location text pos)]
+      (println "ns" ns)
       (when-let [token (.substring text start stop)]
+        (println "token" token)
         (swap! help-state assoc :pos start :visible true)
         (when ns
           (advance-help-list app ns token index-change-fn))))))
@@ -320,7 +322,7 @@
     ["shift TAB" #(show-tab-help app text-comp dec)]
     ["ESCAPE" #(hide-tab-help app)])
   (attach-child-action-keys text-comp
-    ["ENTER" #(-> help-state deref :visible) #(update-token app text-comp)]))
+    ["ENTER" #(@help-state :visible) #(update-token app text-comp)]))
 
 (defn find-focused-text-pane [app]
   (let [t1 (app :doc-text-area)
