@@ -54,8 +54,8 @@
 (defn create-class-loader [project-path]
     (let [files (setup-classpath project-path)
           urls (map #(.toURL %) files)]
-      (println " Classpath:")
-      (dorun (map #(println " " (.getAbsolutePath %))files))
+      ;(println " Classpath:")
+      ;(dorun (map #(println " " (.getAbsolutePath %)) files))
       (URLClassLoader.
         (into-array URL urls)
         (.getClassLoader clojure.lang.RT))))
