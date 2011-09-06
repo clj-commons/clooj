@@ -166,9 +166,14 @@
   (.addDocumentListener
     (.getDocument text-comp)
     (reify DocumentListener
-      (insertUpdate [this _] (f))
-      (removeUpdate [this _] (f))
-      (changedUpdate [this _] (f)))))
+      (insertUpdate [this evt] (f))
+      (removeUpdate [this evt] (f))
+      (changedUpdate [this evt]))))
+
+(defn remove-text-change-listeners [text-comp]
+  (let [d (.getDocument text-comp)]
+    (doseq [l (.getDocumentListeners d)]
+      (.removeDocumentListener d l))))
 
 (defn add-caret-listener [text-comp f]
   (.addCaretListener text-comp

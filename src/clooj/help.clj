@@ -152,6 +152,21 @@
                      s))
               "No source found.")))))
 
+(defn create-param-list
+  ([method-or-constructor static]
+    (str " (["
+         (let [type-names (map #(.getSimpleName %)
+                               (.getParameterTypes method-or-constructor))
+               param-names (if static type-names (cons "this" type-names))]
+           (apply str (interpose " " param-names)))
+         "])"))
+  ([method-or-constructor]
+    (create-param-list method-or-constructor true)))
+
+(defn constructor-help [constructor]
+  (str (.. constructor getDeclaringClass getSimpleName) "."
+       (create-param-list constructor)))
+
 (defn method-help [method]
   (let [stat (Modifier/isStatic (.getModifiers method))]
     (str
@@ -159,12 +174,7 @@
         (str (.. method getDeclaringClass getSimpleName)
              "/" (.getName method))
         (str "." (.getName method)))
-      " (["
-      (let [type-names (map #(.getSimpleName %)
-                            (.getParameterTypes method))
-            param-names (if stat type-names (cons "this" type-names))]
-        (apply str (interpose " " param-names)))
-      "])"
+     (create-param-list method stat)
       " --> " (.getName (.getReturnType method)))))
 
 (defn field-help [field]
@@ -181,6 +191,11 @@
   (apply str
          (concat
            [(present-ns-item c) "\n  java class"]
+           ["\n\nCONSTRUCTORS\n"]
+           (interpose "\n"
+                      (sort
+                        (for [constructor (.getConstructors c)]
+                          (constructor-help constructor))))
            ["\n\nMETHODS\n"]
            (interpose "\n"
                       (sort
