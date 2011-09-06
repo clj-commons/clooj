@@ -19,7 +19,7 @@
                            WindowAdapter KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
-           (java.io File FileReader FileWriter))
+           (java.io File FileReader FileWriter StringReader))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
         [clooj.brackets]
@@ -52,7 +52,8 @@
                             focus-in-text-component
                             scroll-to-caret when-lets
                             constrain-to-parent make-split-pane
-                            gen-map on-click sha1-str)]
+                            gen-map on-click sha1-str
+                            remove-text-change-listeners)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
         [clooj.style :only (get-monospaced-fonts show-font-window)])
   (:require [clojure.main :only (repl repl-prompt)])
@@ -259,7 +260,7 @@
                     (when-not (= old-pos pos)
                       (dump-temp-doc app f txt))
                     pos)
-                     (catch Throwable t (.printStackTrace t)))))))
+                     (catch Throwable t (awt-event (.printStackTrace t))))))))
   
 (defn setup-temp-writer [app]
   (let [text-comp (:doc-text-area app)]
@@ -457,16 +458,19 @@
                 (fn [_] (when (and f temp-file (.exists temp-file))
                           (dump-temp-doc app f txt))
                   0))))
+  (await temp-file-manager)
   (let [frame (app :frame)
         text-area (app :doc-text-area)
         temp-file (get-temp-file file)
         file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
         clooj-name (str "clooj " (get-clooj-version))]
+    (remove-text-change-listeners text-area)
     (save-caret-position app)
     (.. text-area getHighlighter removeAllHighlights)
     (if (and file-to-open (.exists file-to-open) (.isFile file-to-open))
-      (do (with-open [rdr (FileReader. file-to-open)]
-                     (.read text-area rdr nil))
+      (do (let [txt (slurp file-to-open)
+                rdr (StringReader. txt)]
+            (.read text-area rdr nil))
           (.setTitle frame (str clooj-name " \u2014  " (.getPath file)))
           (.setEditable text-area true))
       (do (.setText text-area no-project-txt)
@@ -476,11 +480,10 @@
     (make-undoable text-area)
     (setup-autoindent text-area)
     (reset! (app :file) file)
-    (setup-temp-writer app)
     (switch-repl app (first (get-selected-projects app)))
-    (apply-namespace-to-repl app))
+    (apply-namespace-to-repl app)
     (load-caret-position app)
-  app)
+    (setup-temp-writer app)))
 
 (defn new-file [app]
   (restart-doc app nil))
