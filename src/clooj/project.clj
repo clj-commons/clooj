@@ -130,31 +130,20 @@
     (.add parent node)
     node))
 
-(defn add-code-file-to-src-node [src-node src-dir code-file]
-  (let [f (.getAbsolutePath code-file)
-        namespace (path-to-namespace src-dir f)]
-        (add-node src-node namespace f)))
-
-(defn add-srcs-to-src-node [src-node src-dir]
-  (doall (map #(add-code-file-to-src-node src-node src-dir %)
-              (get-code-files src-dir ".clj"))))
+(defn add-file-tree [root-file-node]
+  (doseq [f (filter #(not (.startsWith (.getName %) "."))
+                    (.. root-file-node getUserObject listFiles))]
+    (let [node (add-node root-file-node (.getName f) (.getAbsolutePath f))]
+      (add-file-tree node))))
 
 (defn project-set-to-tree-model []
-   (let [model (DefaultTreeModel. (DefaultMutableTreeNode. "projects"))]
+   (let [model (DefaultTreeModel. (DefaultMutableTreeNode. "projects"))
+         root (.getRoot model)]
      (doseq [project (sort-by #(.getName (File. %)) @project-set)]
-       (let [src-path (str project File/separator "src")
-             test-path (str project File/separator "test")
-             src-file (File. src-path)
-             test-file (File. test-path)
-             project-clj-path (str project File/separator "project.clj")
-             root (.getRoot model)
-             project (add-node root (.getName (File. project)) project)]
-           (when (.exists (File. project-clj-path))
-             (add-node project "project.clj" project-clj-path))
-           (when (and (.exists src-file) (not (empty? (.listFiles src-file))))
-             (add-srcs-to-src-node (add-node project "src" src-path) src-path))
-           (when (and (.exists test-file) (not (empty? (.listFiles test-file))))
-             (add-srcs-to-src-node (add-node project "test" test-path) test-path))))
+       (add-file-tree (add-node root
+                                (str (-> project File. .getName) 
+                                     "   (" project ")")
+                                project)))
      model))
 
 (defn update-project-tree [tree]
