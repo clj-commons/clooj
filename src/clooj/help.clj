@@ -290,7 +290,7 @@
       (set-first-component (app :repl-split-pane)
                            (app :repl-out-scroll-pane))
       (set-first-component (app :doc-split-pane)
-                           (app :docs-tree-scroll-pane)))
+                           (app :docs-tree-panel)))
     (swap! help-state assoc :visible false :pos nil)))
   
 (defn help-handle-caret-move [app text-comp]

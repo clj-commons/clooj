@@ -368,6 +368,7 @@
 (defn create-app []
   (let [doc-text-area (make-text-area false)
         doc-text-panel (JPanel.)
+        doc-label (JLabel. "Source Editor")
         repl-out-text-area (make-text-area true)
         repl-out-writer (make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
@@ -383,19 +384,25 @@
         layout (SpringLayout.)
         docs-tree (JTree.)
         docs-tree-scroll-pane (make-scroll-pane docs-tree)
+        docs-tree-panel (JPanel.)
+        docs-tree-label (JLabel. "Projects")
         doc-split-pane (make-split-pane
-                         docs-tree-scroll-pane
+                         docs-tree-panel
                          doc-text-panel true gap 0)
         repl-out-scroll-pane (make-scroll-pane repl-out-text-area)
         repl-split-pane (make-split-pane
                           repl-out-scroll-pane
                           (make-scroll-pane repl-in-text-area) false gap 0.75)
-        split-pane (make-split-pane doc-split-pane repl-split-pane true gap 0.5)
+        repl-panel (JPanel.)
+        repl-label (JLabel. "Clojure REPL output")
+        repl-input-label (JLabel. "<html>Clojure REPL input &uarr;")
+        split-pane (make-split-pane doc-split-pane repl-panel true gap 0.5)
         app (merge {:file (atom nil)
                     :repl (atom (create-clojure-repl repl-out-writer nil))
                     :changed false}
                    (gen-map
                      doc-text-area
+                     doc-label
                      repl-out-text-area
                      repl-in-text-area
                      frame
@@ -404,6 +411,8 @@
                      repl-out-scroll-pane
                      docs-tree
                      docs-tree-scroll-pane
+                     docs-tree-panel
+                     docs-tree-label
                      search-text-area
                      pos-label
                      repl-out-writer
@@ -418,14 +427,28 @@
     (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
-      (on-window-activation #(update-project-tree docs-tree))
       (.add split-pane))
     (doto doc-text-panel
       (.setLayout (SpringLayout.))
       (.add doc-scroll-pane)
+      (.add doc-label)
       (.add pos-label)
       (.add search-text-area)
       (.add arglist-label))
+    (doto docs-tree-panel
+      (.setLayout (SpringLayout.))
+      (.add docs-tree-label)
+      (.add docs-tree-scroll-pane))
+    (doto repl-panel
+      (.setLayout (SpringLayout.))
+      (.add repl-label)
+      (.add repl-input-label)
+      (.add repl-split-pane))
+    (constrain-to-parent repl-label :n 0 :w 0 :n 15 :e 0)
+    (constrain-to-parent repl-input-label :s -15 :w 0 :s 0 :e 0)
+    (constrain-to-parent repl-split-pane :n 16 :w 0 :s -16 :e 0)
+    (constrain-to-parent docs-tree-label :n 0 :w 0 :n 15 :e 0)
+    (constrain-to-parent docs-tree-scroll-pane :n 16 :w 0 :s 0 :e 0)
     (setup-completion-list completion-list app)
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
@@ -433,7 +456,8 @@
     (double-click-selector repl-in-text-area)
     (.setModel docs-tree (DefaultTreeModel. nil))
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
-    (constrain-to-parent doc-scroll-pane :n 0 :w 0 :s -16 :e 0)
+    (constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)
+    (constrain-to-parent doc-scroll-pane :n 16 :w 0 :s -16 :e 0)
     (constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
     (constrain-to-parent arglist-label :s -14 :w 80 :s -1 :e -10)
@@ -682,8 +706,10 @@
     (add-repl-input-handler app)
     (setup-tab-help app (app :repl-in-text-area))
     (doall (map #(add-project app %) (load-project-set)))
-    (persist-window-shape clooj-prefs "main-window" (app :frame)) 
-    (.setVisible (app :frame) true)
+    (let [frame (app :frame)]
+      (persist-window-shape clooj-prefs "main-window" frame) 
+      (.setVisible frame true)
+      (on-window-activation frame #(update-project-tree (app :docs-tree))))
     (setup-temp-writer app)
     (let [tree (app :docs-tree)]
       (load-expanded-paths tree)
