@@ -276,7 +276,8 @@
   (apply-namespace-to-repl app))
 
 (defn switch-repl [app project-path]
-  (when (not= project-path (-> app :repl deref :project-path))
+  (when (and project-path
+             (not= project-path (-> app :repl deref :project-path)))
     (append-text (app :repl-out-text-area)
                  (str "\n\n=== Switching to " project-path " REPL ===\n"))
     (let [repl (or (get @repls project-path)

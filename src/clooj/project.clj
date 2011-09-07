@@ -156,6 +156,7 @@
       (.setModel tree model)
       (save-project-set)
       (load-expanded-paths tree)
+      (load-tree-selection tree)
       (save-expanded-paths tree))))
 
 (defn get-project-node [tree node]

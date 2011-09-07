@@ -287,7 +287,9 @@
               (save-tree-selection tree (.getNewLeadSelectionPath e))
               (let [f (.. e getPath getLastPathComponent
                             getUserObject)]
-                (when (.. f getName (endsWith ".clj"))
+                (when (and
+                        (not= f @(app :file))
+                        (.. f getName (endsWith ".clj")))
                   (restart-doc app f))))))))))
   
 ;; build gui

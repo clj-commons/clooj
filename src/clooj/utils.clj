@@ -190,8 +190,9 @@
         v (.getParent text-area)
         l (.. v getViewSize height)
         h (.. v getViewRect height)]
-    (.setViewPosition v
-                      (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2))))))))
+    (when r
+      (.setViewPosition v
+                        (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2)))))))))
 
 (defn scroll-to-caret [text-comp]
   (scroll-to-pos text-comp (.getCaretPosition text-comp)))
