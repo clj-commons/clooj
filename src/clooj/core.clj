@@ -432,7 +432,7 @@
       (.setBounds 25 50 950 700)
       (.setLayout layout)
       (.add split-pane)
-      (.setTitle (str "clooj " (get-clooj-version)))
+      (.setTitle (str "clooj " (get-clooj-version))))
     (doto doc-text-panel
       (.setLayout (SpringLayout.))
       (.add doc-scroll-pane)
@@ -505,7 +505,7 @@
         text-area (app :doc-text-area)
         temp-file (get-temp-file file)
         file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
-        doc-label (app :doc-labe)]
+        doc-label (app :doc-label)]
     (remove-text-change-listeners text-area)
     (save-caret-position app)
     (.. text-area getHighlighter removeAllHighlights)
