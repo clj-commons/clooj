@@ -447,7 +447,7 @@
     (constrain-to-parent repl-label :n 0 :w 0 :n 15 :e 0)
     (constrain-to-parent repl-input-label :s -15 :w 0 :s 0 :e 0)
     (constrain-to-parent repl-split-pane :n 16 :w 0 :s -16 :e 0)
-    (constrain-to-parent docs-tree-label :n 0 :w 0 :n 15 :e 0)
+    (constrain-to-parent docs-tree-label :n 0 :w 0 :n 15 :w 100)
     (constrain-to-parent docs-tree-scroll-pane :n 16 :w 0 :s 0 :e 0)
     (setup-completion-list completion-list app)
     (doto pos-label
