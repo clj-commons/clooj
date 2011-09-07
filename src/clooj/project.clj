@@ -124,8 +124,12 @@
       (let [mark (if (.exists (get-temp-file this)) "*" "")]
         (str mark text mark)))))
 
+(defn file-tree-node [^File f]
+  (proxy [DefaultMutableTreeNode] [f]
+    (isLeaf [] (not (.isDirectory f)))))
+
 (defn add-node [parent node-str file-path]
-  (let [node  (DefaultMutableTreeNode.
+  (let [node  (file-tree-node
                 (file-node node-str file-path))]
     (.add parent node)
     node))
