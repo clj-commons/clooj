@@ -374,6 +374,8 @@
         repl-in-text-area (make-text-area false)
         help-text-area (make-text-area true)
         help-text-scroll-pane (make-scroll-pane help-text-area)
+        completion-panel (JPanel.)
+        completion-label (JLabel. "Name search")
         completion-list (JList.)
         completion-scroll-pane (make-scroll-pane completion-list)
         search-text-area (JTextField.)
@@ -405,6 +407,7 @@
                      doc-label
                      repl-out-text-area
                      repl-in-text-area
+                     repl-label
                      frame
                      help-text-area
                      help-text-scroll-pane
@@ -422,6 +425,7 @@
                      arglist-label
                      completion-list
                      completion-scroll-pane
+                     completion-panel
                      ))
         doc-scroll-pane (make-scroll-pane doc-text-area)]
     (doto frame
@@ -444,10 +448,16 @@
       (.add repl-label)
       (.add repl-input-label)
       (.add repl-split-pane))
+    (doto completion-panel
+      (.setLayout (SpringLayout.))
+      (.add completion-label)
+      (.add completion-scroll-pane))
+    (constrain-to-parent completion-label :n 0 :w 0 :n 15 :e 0)
+    (constrain-to-parent completion-scroll-pane :n 16 :w 0 :s 0 :e 0)
     (constrain-to-parent repl-label :n 0 :w 0 :n 15 :e 0)
     (constrain-to-parent repl-input-label :s -15 :w 0 :s 0 :e 0)
     (constrain-to-parent repl-split-pane :n 16 :w 0 :s -16 :e 0)
-    (constrain-to-parent docs-tree-label :n 0 :w 0 :n 15 :w 100)
+    (constrain-to-parent docs-tree-label :n 0 :w 0 :n 15 :e 0)
     (constrain-to-parent docs-tree-scroll-pane :n 16 :w 0 :s 0 :e 0)
     (setup-completion-list completion-list app)
     (doto pos-label
