@@ -431,7 +431,8 @@
     (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
-      (.add split-pane))
+      (.add split-pane)
+      (.setTitle (str "clooj " (get-clooj-version)))
     (doto doc-text-panel
       (.setLayout (SpringLayout.))
       (.add doc-scroll-pane)
@@ -504,7 +505,7 @@
         text-area (app :doc-text-area)
         temp-file (get-temp-file file)
         file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
-        clooj-name (str "clooj " (get-clooj-version))]
+        doc-label (app :doc-labe)]
     (remove-text-change-listeners text-area)
     (save-caret-position app)
     (.. text-area getHighlighter removeAllHighlights)
@@ -512,10 +513,10 @@
       (do (let [txt (slurp file-to-open)
                 rdr (StringReader. txt)]
             (.read text-area rdr nil))
-          (.setTitle frame (str clooj-name " \u2014  " (.getPath file)))
+          (.setText doc-label (str "Source Editor \u2014" (.getPath file)))
           (.setEditable text-area true))
       (do (.setText text-area no-project-txt)
-          (.setTitle frame (str clooj-name " \u2014 (No file selected)"))
+          (.setText doc-label (str "Source Editor (No file selected)")))
           (.setEditable text-area false)))
     (update-caret-position text-area)
     (make-undoable text-area)
