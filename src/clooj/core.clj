@@ -513,11 +513,11 @@
       (do (let [txt (slurp file-to-open)
                 rdr (StringReader. txt)]
             (.read text-area rdr nil))
-          (.setText doc-label (str "Source Editor \u2014" (.getPath file)))
+          (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
           (.setEditable text-area true))
       (do (.setText text-area no-project-txt)
           (.setText doc-label (str "Source Editor (No file selected)"))
-          (.setEditable text-area false))))
+          (.setEditable text-area false)))
     (update-caret-position text-area)
     (make-undoable text-area)
     (setup-autoindent text-area)
