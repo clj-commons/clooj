@@ -357,6 +357,12 @@
     ["cmd2 PLUS" #(.toFront (:frame app))]
     ["cmd2 EQUALS" #(.toFront (:frame app))]))
   
+(defn on-window-activation [win fun]
+  (.addWindowListener win
+    (proxy [WindowAdapter] []
+      (windowActivated [_]
+        (fun)))))
+
 (defn create-app []
   (let [doc-text-area (make-text-area false)
         doc-text-panel (JPanel.)
@@ -410,6 +416,7 @@
     (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
+      (on-window-activation #(update-project-tree docs-tree))
       (.add split-pane))
     (doto doc-text-panel
       (.setLayout (SpringLayout.))
