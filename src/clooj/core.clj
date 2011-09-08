@@ -269,6 +269,17 @@
 
 (declare restart-doc)
 
+(defn file-suffix [^File f]
+  (when-lets [name (.getName f)
+             last-dot (.lastIndexOf name ".")
+             suffix (.substring name (inc last-dot))]
+    suffix))
+    
+(defn text-file? [f]
+  (println f)
+  (not (some #{(file-suffix f)}
+             ["jar" "class" "dll" "jpg" "png" "bmp"])))
+
 (defn setup-tree [app]
   (let [tree (:docs-tree app)
         save #(save-expanded-paths tree)]
@@ -289,7 +300,7 @@
                             getUserObject)]
                 (when (and
                         (not= f @(app :file))
-                        (.. f getName (endsWith ".clj")))
+                        (text-file? f))
                   (restart-doc app f))))))))))
   
 ;; build gui
