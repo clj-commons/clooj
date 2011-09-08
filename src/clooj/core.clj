@@ -408,7 +408,7 @@
                           (make-scroll-pane repl-in-text-area) false gap 0.75)
         repl-panel (JPanel.)
         repl-label (JLabel. "Clojure REPL output")
-        repl-input-label (JLabel. "<html>Clojure REPL input &uarr;")
+        repl-input-label (JLabel. "Clojure REPL input \u2191")
         split-pane (make-split-pane doc-split-pane repl-panel true gap 0.5)
         app (merge {:file (atom nil)
                     :repl (atom (create-clojure-repl repl-out-writer nil))
