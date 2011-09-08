@@ -483,7 +483,6 @@
     (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)
-    (setup-tree app)
     (attach-action-keys doc-text-area
       ["cmd1 shift O" #(open-project app)])
     (dorun (map #(attach-global-action-keys % app)
@@ -492,7 +491,7 @@
 
 ;; clooj docs
 
-(defn restart-doc [app ^File file] 
+(defn restart-doc [app ^File file]
   (send-off temp-file-manager
             (let [f @(:file app)
                   txt (.getText (:doc-text-area app))]
@@ -526,9 +525,6 @@
     (apply-namespace-to-repl app)
     (load-caret-position app)
     (setup-temp-writer app)))
-
-(defn new-file [app]
-  (restart-doc app nil))
 
 (defn save-file [app]
   (try
@@ -722,15 +718,12 @@
       (.setVisible frame true)
       (on-window-activation frame #(update-project-tree (app :docs-tree))))
     (setup-temp-writer app)
+    (setup-tree app)
     (let [tree (app :docs-tree)]
       (load-expanded-paths tree)
       (load-tree-selection tree))
     (redirect-stdout-and-stderr (app :repl-out-writer))
-    (load-font app)
-    (awt-event
-      (let [path (get-selected-file-path app)
-            file (when path (File. path))]
-        (restart-doc app file)))))
+    (load-font app)))
 
 (defn -show []
   (reset! embedded true)
