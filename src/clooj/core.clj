@@ -353,7 +353,7 @@
   (when-let [dir (choose-directory (app :f) "Choose a project directory")]
     (let [project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
       (add-project app (.getAbsolutePath project-dir))
-      (update-project-tree app)
+      (update-project-tree (:docs-tree app))
       (when-let [clj-file (-> (File. project-dir "src")
                               .getAbsolutePath
                               (get-code-files ".clj")
@@ -596,7 +596,7 @@
           (.mkdirs (File. dir "src"))
           (new-project-clj app dir)
           (add-project app path)
-          (update-project-tree app)
+          (update-project-tree (:docs-tree app))
           (set-tree-selection (app :docs-tree) path)
           (create-file app dir (str (.getName dir) ".core")))))
       (catch Exception e (do (JOptionPane/showMessageDialog nil
