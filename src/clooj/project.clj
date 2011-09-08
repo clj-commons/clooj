@@ -185,8 +185,7 @@
            .getUserObject .getAbsolutePath))))
 
 (defn add-project [app project-path]
-  (swap! project-set conj project-path)
-  (update-project-tree (app :docs-tree)))
+  (swap! project-set conj project-path))
 
 (defn rename-project [app]
   (when-let [dir (choose-file (app :frame) "Move/rename project directory" "" false)]
