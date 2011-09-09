@@ -688,6 +688,9 @@
     (System/setErr stream)))
 
 (defn startup []
+  (Thread/setDefaultUncaughtExceptionHandler (proxy [Thread$UncaughtExceptionHandler] [] 
+    (uncaughtException [thread exception]
+      (println thread) (.printStackTrace exception))))
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [app (create-app)]
     (reset! current-app app)
