@@ -135,7 +135,9 @@
     node))
 
 (defn add-file-tree [root-file-node]
-  (doseq [f (filter #(not (.startsWith (.getName %) "."))
+  (doseq [f (filter #(let [name (.getName %)]
+                      (and (not (.startsWith name "."))
+                           (not (.endsWith name "~"))))
                     (sort (.. root-file-node getUserObject listFiles)))]
     (let [node (add-node root-file-node (.getName f) (.getAbsolutePath f))]
       (add-file-tree node))))

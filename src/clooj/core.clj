@@ -67,6 +67,8 @@
 
 (def embedded (atom false))
 
+(def *changing-file* (atom false))
+
 (def get-clooj-version
   (memoize
     (fn []
@@ -229,10 +231,12 @@
                      (catch Throwable t (awt-event (.printStackTrace t))))))))
   
 (defn setup-temp-writer [app]
+  (reset! *changing-file* false)
   (let [text-comp (:doc-text-area app)]
     (add-text-change-listener text-comp
-      #(do (update-caret-position text-comp)
-           (update-temp app)))))
+      #(when-not @*changing-file*
+         (update-caret-position text-comp)
+         (update-temp app)))))
 
 (declare restart-doc)
 
@@ -370,7 +374,7 @@
         doc-split-pane (make-split-pane
                          docs-tree-panel
                          doc-text-panel true gap 0)
-        repl-out-scroll-pane (RTextScrollPane. repl-out-text-area)
+        repl-out-scroll-pane (make-scroll-pane repl-out-text-area)
         repl-split-pane (make-split-pane
                           repl-out-scroll-pane
                           (make-scroll-pane repl-in-text-area) false gap 0.75)
@@ -485,6 +489,7 @@
         file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
         doc-label (app :doc-label)]
     ;(remove-text-change-listeners text-area)
+    (reset! *changing-file* true)
     (save-caret-position app)
     (.. text-area getHighlighter removeAllHighlights)
     (if (and file-to-open (.exists file-to-open) (.isFile file-to-open))
@@ -507,7 +512,8 @@
     (switch-repl app (first (get-selected-projects app)))
     (apply-namespace-to-repl app)
     (load-caret-position app)
-    (setup-temp-writer app)))
+    (awt-event
+      (setup-temp-writer app))))
 
 (defn save-file [app]
   (try
