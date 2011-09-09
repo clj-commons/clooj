@@ -19,7 +19,9 @@
                            WindowAdapter KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
-           (java.io File FileReader FileWriter StringReader))
+           (java.io File FileReader FileWriter StringReader)
+           (org.fife.ui.rsyntaxtextarea RSyntaxTextArea SyntaxConstants)
+           (org.fife.ui.rtextarea RTextScrollPane))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
         [clooj.brackets]
@@ -64,16 +66,6 @@
 (def gap 5)
 
 (def embedded (atom false))
-  
-(defn make-text-area [wrap]
-  (doto (proxy [JTextPane] []
-          (getScrollableTracksViewportWidth []
-            (if-not wrap
-              (if-let [parent (.getParent this)]
-                (<= (. this getWidth)
-                    (. parent getWidth))
-                false)
-              true)))))
 
 (def get-clooj-version
   (memoize
@@ -82,30 +74,6 @@
           (.getResource "clooj/core.class") .toString
           (.replace "clooj/core.class" "project.clj")
           URL. slurp read-string (nth 2)))))
-    
-;; line numbers
-
-(defn add-line-numbers [text-comp max-lines size]
-  (let [row-height (.. text-comp getGraphics
-                       (getFontMetrics (. text-comp getFont)) getHeight)
-        sp (.. text-comp getParent getParent)
-        jl (JList.
-             (proxy [AbstractListModel] []
-               (getSize [] max-lines)
-               (getElementAt [i] (str (inc i) " "))))
-        cr (. jl getCellRenderer)]
-    (.setMargin text-comp (Insets. 0 10 0 0))
-    (dorun (map #(.removeMouseListener jl %) (.getMouseListeners jl)))
-    (dorun (map #(.removeMouseMotionListener jl %) (.getMouseMotionListeners jl)))
-    (doto jl
-      (.setBackground (Color. 235 235 235))
-      (.setForeground (Color. 50 50 50))
-      (.setFixedCellHeight row-height)
-      (.setFont (Font. "Monaco" Font/PLAIN size)))
-    (doto cr
-      (.setHorizontalAlignment JLabel/RIGHT)
-      (.setVerticalAlignment JLabel/BOTTOM))
-    (.setRowHeaderView sp jl)))
 
 ;; font
 
@@ -130,7 +98,6 @@
                      :repl-out-text-area :arglist-label
                      :search-text-area :help-text-area
                      :completion-list]))
-        (add-line-numbers (app :doc-text-area) Short/MAX_VALUE (int (* 0.75 size)))
         (reset! current-font [font-name size]))))
   ([app font-name]
     (let [size (second @current-font)]
@@ -377,14 +344,14 @@
         (fun)))))
 
 (defn create-app []
-  (let [doc-text-area (make-text-area false)
+  (let [doc-text-area (RSyntaxTextArea.)
         doc-text-panel (JPanel.)
         doc-label (JLabel. "Source Editor")
-        repl-out-text-area (make-text-area true)
+        repl-out-text-area (RSyntaxTextArea.)
         repl-out-writer (make-repl-writer repl-out-text-area)
-        repl-in-text-area (make-text-area false)
-        help-text-area (make-text-area true)
-        help-text-scroll-pane (make-scroll-pane help-text-area)
+        repl-in-text-area (RSyntaxTextArea.)
+        help-text-area (RSyntaxTextArea.)
+        help-text-scroll-pane (RTextScrollPane. help-text-area)
         completion-panel (JPanel.)
         completion-label (JLabel. "Name search")
         completion-list (JList.)
@@ -402,7 +369,7 @@
         doc-split-pane (make-split-pane
                          docs-tree-panel
                          doc-text-panel true gap 0)
-        repl-out-scroll-pane (make-scroll-pane repl-out-text-area)
+        repl-out-scroll-pane (RTextScrollPane. repl-out-text-area)
         repl-split-pane (make-split-pane
                           repl-out-scroll-pane
                           (make-scroll-pane repl-in-text-area) false gap 0.75)
@@ -438,7 +405,7 @@
                      completion-scroll-pane
                      completion-panel
                      ))
-        doc-scroll-pane (make-scroll-pane doc-text-area)]
+        doc-scroll-pane (RTextScrollPane. doc-text-area)]
     (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
@@ -524,7 +491,11 @@
                 rdr (StringReader. txt)]
             (.read text-area rdr nil))
           (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
-          (.setEditable text-area true))
+          (.setEditable text-area true)
+          (.setSyntaxEditingStyle text-area
+            (if (.endsWith (.getName file-to-open) ".clj")
+                   SyntaxConstants/SYNTAX_STYLE_CLOJURE
+                   SyntaxConstants/SYNTAX_STYLE_NONE)))
       (do (.setText text-area no-project-txt)
           (.setText doc-label (str "Source Editor (No file selected)"))
           (.setEditable text-area false)))

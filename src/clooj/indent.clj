@@ -5,9 +5,7 @@
 
 (ns clooj.indent
   (:use [clooj.utils :only (attach-action-keys indent unindent
-                            get-coords get-line-of-offset
-                            get-line-start-offset
-                            get-line-end-offset
+                            get-coords
                             awt-event
                             get-selected-lines)]
         [clooj.brackets :only (find-enclosing-brackets)]
@@ -58,8 +56,8 @@
                :else 1)))))))
 
 (defn fix-indent [text-comp line]
-  (let [start (get-line-start-offset text-comp line)
-        end (get-line-end-offset text-comp line)
+  (let [start (.getLineStartOffset text-comp line)
+        end (.getLineEndOffset text-comp line)
         document (.getDocument text-comp)
         line-text (.getText document start (- end start))]
     (let [old-indent-size (count (re-find #"\A\ +" line-text))]
