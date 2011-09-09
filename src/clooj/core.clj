@@ -267,7 +267,8 @@
                 (when (and
                         (not= f @(app :file))
                         (text-file? f))
-                  (restart-doc app f))))))))))
+                  (restart-doc app f)
+                  )))))))))
   
 ;; build gui
 
@@ -483,7 +484,7 @@
         temp-file (get-temp-file file)
         file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
         doc-label (app :doc-label)]
-    (remove-text-change-listeners text-area)
+    ;(remove-text-change-listeners text-area)
     (save-caret-position app)
     (.. text-area getHighlighter removeAllHighlights)
     (if (and file-to-open (.exists file-to-open) (.isFile file-to-open))
@@ -612,7 +613,8 @@
           (when (confirmed? "Revert the file? This cannot be undone." path)
             (.delete temp-file)
             (update-project-tree (:docs-tree app))
-            (restart-doc app f))))))
+            (restart-doc app f)
+            )))))
       
 
 
@@ -719,7 +721,7 @@
 
 (defn -main [& args]
   (reset! embedded false)
-  (startup))
+  (awt-event (startup)))
 
 ;; testing
 
