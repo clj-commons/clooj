@@ -44,7 +44,7 @@
                             is-mac count-while add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
                             attach-child-action-keys attach-action-keys
-                            get-caret-coords add-menu make-undoable
+                            get-caret-coords add-menu
                             add-menu-item
                             choose-file choose-directory
                             comment-out uncomment-out
@@ -464,7 +464,6 @@
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
-    (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)
     (attach-action-keys doc-text-area
@@ -509,7 +508,6 @@
           (.setEditable text-area false)))
     (update-caret-position text-area)
     (reset! changing-file false)
-   ; (make-undoable text-area)
     (reset! (app :file) file)
     (switch-repl app (first (get-selected-projects app)))
     (apply-namespace-to-repl app)

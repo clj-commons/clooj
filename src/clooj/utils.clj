@@ -335,19 +335,6 @@
           (.consume event)
           (fun))))))
 
-;; undoability
-
-(defn make-undoable [text-area]
-  (let [undoMgr (UndoManager.)]
-    (.setLimit undoMgr 1000)
-    (.. text-area getDocument (addUndoableEditListener
-        (reify UndoableEditListener
-          (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))
-    (attach-action-keys text-area
-      ["cmd1 Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
-      ["cmd1 shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
-
-
 ;; file handling
 
 (defn choose-file [parent title suffix load]
