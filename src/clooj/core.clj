@@ -67,7 +67,7 @@
 
 (def embedded (atom false))
 
-(def *changing-file* (atom false))
+(def changing-file (atom false))
 
 (def get-clooj-version
   (memoize
@@ -231,10 +231,9 @@
                      (catch Throwable t (awt-event (.printStackTrace t))))))))
   
 (defn setup-temp-writer [app]
-  (reset! *changing-file* false)
   (let [text-comp (:doc-text-area app)]
     (add-text-change-listener text-comp
-      #(when-not @*changing-file*
+      #(when-not @changing-file
          (update-caret-position text-comp)
          (update-temp app)))))
 
@@ -436,6 +435,7 @@
       (.setLayout (SpringLayout.))
       (.add completion-label)
       (.add completion-scroll-pane))
+    (setup-autoindent doc-text-area)
     (constrain-to-parent completion-label :n 0 :w 0 :n 15 :e 0)
     (constrain-to-parent completion-scroll-pane :n 16 :w 0 :s 0 :e 0)
     (constrain-to-parent repl-label :n 0 :w 0 :n 15 :e 0)
@@ -460,6 +460,7 @@
     (setup-search-text-area app)
     (add-caret-listener doc-text-area #(display-caret-position app))
     (activate-caret-highlighter app)
+    (setup-temp-writer app)
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
@@ -470,6 +471,7 @@
       ["cmd1 shift O" #(open-project app)])
     (dorun (map #(attach-global-action-keys % app)
                 [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane frame)]))
+    (setup-autoindent doc-text-area)
     app))
 
 ;; clooj docs
@@ -489,7 +491,7 @@
         file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
         doc-label (app :doc-label)]
     ;(remove-text-change-listeners text-area)
-    (reset! *changing-file* true)
+    (reset! changing-file true)
     (save-caret-position app)
     (.. text-area getHighlighter removeAllHighlights)
     (if (and file-to-open (.exists file-to-open) (.isFile file-to-open))
@@ -506,14 +508,12 @@
           (.setText doc-label (str "Source Editor (No file selected)"))
           (.setEditable text-area false)))
     (update-caret-position text-area)
-    (make-undoable text-area)
-    (setup-autoindent text-area)
+    (reset! changing-file false)
+   ; (make-undoable text-area)
     (reset! (app :file) file)
     (switch-repl app (first (get-selected-projects app)))
     (apply-namespace-to-repl app)
-    (load-caret-position app)
-    (awt-event
-      (setup-temp-writer app))))
+    (load-caret-position app)))
 
 (defn save-file [app]
   (try
@@ -621,8 +621,6 @@
             (update-project-tree (:docs-tree app))
             (restart-doc app f)
             )))))
-      
-
 
 (defn make-menus [app]
   (when (is-mac)
