@@ -137,11 +137,10 @@
               file @(:file app)
               key-str (sha1-str (str "caret_" (.getAbsolutePath file)))
               pos (read-value-from-prefs clooj-prefs key-str)]
-    (awt-event
       (let [length (.. text-area getDocument getLength)
             pos2 (Math/min pos length)]
         (.setCaretPosition text-area pos2)
-        (scroll-to-caret text-area)))))
+        (scroll-to-caret text-area))))
 
 (defn update-caret-position [text-comp]
   (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
