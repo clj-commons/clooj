@@ -49,6 +49,33 @@
   (let [kw (map keyword args)]
     (zipmap kw args)))
 
+(defn trespass-fn [method-sym object & args]
+  (let [clazz (.getClass object)
+        method-name (let [method-name (str method-sym)]
+                          (if (.startsWith method-name ".")
+                            (.substring method-name 1)
+                            method-name))
+        arg-types (for [arg args]
+                    (condp = (class arg)
+                      Character Character/TYPE
+                      Integer Integer/TYPE
+                      Long Long/TYPE
+                      Float Float/TYPE
+                      Double Double/TYPE
+                      Boolean Boolean/TYPE
+                      Byte Byte/TYPE
+                      Short Short/TYPE
+                      :else (class arg)))
+        method (.getDeclaredMethod clazz
+                                   method-name (into-array Class arg-types))
+        declaring-class (.getDeclaringClass method)]
+    (.setAccessible method true)
+    (.setAccessible declaring-class true)
+    (.invoke method object (to-array args))))
+
+(defmacro trespass [method object & args]
+  `(trespass-fn '~method ~object ~@args))
+     
 ;; preferences
   
 ;; define a UUID for clooj preferences

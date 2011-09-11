@@ -447,6 +447,8 @@
       (.setFont (Font. "Courier" Font/PLAIN 13)))
     (double-click-selector doc-text-area)
     (double-click-selector repl-in-text-area)
+    (.setSyntaxEditingStyle repl-in-text-area
+                   SyntaxConstants/SYNTAX_STYLE_CLOJURE)
     (.setModel docs-tree (DefaultTreeModel. nil))
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
     (constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)

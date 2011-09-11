@@ -178,6 +178,7 @@
       " --> " (.getName (.getReturnType method)))))
 
 (defn field-help [field]
+  (.setAccessible field true)
   (let [c (.. field getDeclaringClass getSimpleName)]
   (str
     (if (Modifier/isStatic (.getModifiers field))
