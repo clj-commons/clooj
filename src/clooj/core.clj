@@ -19,7 +19,8 @@
                            WindowAdapter KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
-           (java.io File FileReader FileWriter StringReader))
+           (java.io File FileReader StringReader
+                    BufferedWriter OutputStreamWriter FileOutputStream))
   (:use [clojure.contrib.duck-streams :only (writer)]
         [clojure.pprint :only (pprint)]
         [clooj.brackets]
@@ -541,7 +542,10 @@
   (try
     (let [f @(app :file)
           ft (File. (str (.getAbsolutePath f) "~"))]
-      (with-open [writer (FileWriter. f)]
+      (with-open [writer (BufferedWriter.
+                           (OutputStreamWriter.
+                             (FileOutputStream. f)
+                             "UTF-8"))]
         (.write (app :doc-text-area) writer))
       (send-off temp-file-manager (fn [_] 0))
       (.delete ft)
