@@ -57,7 +57,8 @@
                             gen-map on-click sha1-str
                             remove-text-change-listeners)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
-        [clooj.style :only (get-monospaced-fonts show-font-window)])
+        [clooj.style :only (get-monospaced-fonts show-font-window)]
+        [clooj.navigate :only (attach-navigation-keys)])
   (:require [clojure.main :only (repl repl-prompt)])
   (:gen-class
    :methods [^{:static true} [show [] void]]))
@@ -465,8 +466,10 @@
     (activate-caret-highlighter app)
     (setup-temp-writer app)
     (doto repl-out-text-area (.setEditable false))
-    (doto doc-text-area (.setBracketMatchingEnabled false))
-    (doto repl-in-text-area (.setBracketMatchingEnabled false))
+    (doto doc-text-area (.setBracketMatchingEnabled false)
+                        (attach-navigation-keys))
+    (doto repl-in-text-area (.setBracketMatchingEnabled false)
+                            (attach-navigation-keys))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8))
                          ;(.setHighlightCurrentLine false)
