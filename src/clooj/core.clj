@@ -355,12 +355,12 @@
     (let [project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
       (add-project app (.getAbsolutePath project-dir))
       (update-project-tree (:docs-tree app))
-      (when-let [clj-file (-> (File. project-dir "src")
-                              .getAbsolutePath
-                              (get-code-files ".clj")
-                              first
-                              .getAbsolutePath)]
-        (awt-event (set-tree-selection (app :docs-tree) clj-file))))))
+      (when-let [clj-file (or (-> (File. project-dir "src")
+                                 .getAbsolutePath
+                                 (get-code-files ".clj")
+                                 first)
+                              project-dir)]
+        (awt-event (set-tree-selection (app :docs-tree) (.getAbsolutePath clj-file)))))))
 
 (defn attach-global-action-keys [comp app]
   (attach-action-keys comp
