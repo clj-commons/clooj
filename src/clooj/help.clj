@@ -74,7 +74,7 @@
     (when (> (.length text) left)
       (.substring text (inc left)))))
 
-(def non-token-chars [\; \~ \@ \( \) \[ \] \{ \} \  \newline \" \'])
+(def non-token-chars [\; \~ \@ \( \) \[ \] \{ \} \  \. \newline \/ \" \'])
 
 (defn local-token-location [text pos]
   (let [n (.length text)
