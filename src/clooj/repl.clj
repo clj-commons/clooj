@@ -139,6 +139,7 @@
   (let [rdr (-> cmd StringReader. PushbackReader.)]
     (try (while (read rdr nil nil))
          true
+         (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
          (catch Exception e false))))
 
 (defn send-to-repl
