@@ -646,7 +646,7 @@
             (.delete temp-file)
             (update-project-tree (:docs-tree app))
             (restart-doc app f))))))
-      
+
 
 
 (defn make-menus [app]
