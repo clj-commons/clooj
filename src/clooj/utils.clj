@@ -16,8 +16,7 @@
            (javax.swing AbstractAction JButton JFileChooser JMenu JMenuBar JMenuItem BorderFactory
                         JOptionPane JSplitPane KeyStroke SpringLayout SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
-           (javax.swing.undo UndoManager))
-  (:require [clojure.contrib.string :as string]))
+           (javax.swing.undo UndoManager)))
 
 ;; general
 
@@ -56,11 +55,9 @@
                      (node "clooj") (node "c6833c87-9631-44af-af83-f417028ea7aa")))
 
 (defn partition-str [n s]
-  (loop [rem s acc []]
-    (if (pos? (.length rem))
-      (recur (clojure.contrib.string/drop n rem)
-             (conj acc (clojure.contrib.string/take n rem)))
-      (seq acc))))
+  (let [l (.length s)]
+    (for [i (range 0 l n)]
+      (.substring s i (Math/min l (+ i n)))))) 
 
 (def pref-max-bytes (* 3/4 Preferences/MAX_VALUE_LENGTH))
 
@@ -488,7 +485,7 @@
           (.write writer
                   (.toCharArray (String. ^bytes bs "utf-8"))
                   offset length))
-        ([^int b]
+        ([b]
           (.write writer b)))
       (flush [] (.flush writer))
       (close [] (.close writer)))

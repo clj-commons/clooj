@@ -5,7 +5,7 @@
 
 (ns clooj.brackets
   (:import (javax.swing.text JTextComponent))
-  (:require [clojure.contrib.string :as string])
+  (:require [clojure.string :as string])
   (:use [clooj.utils :only (count-while)]))
 
 (defn mismatched-brackets [a b]
@@ -29,16 +29,16 @@
         \( j \[ j \{ j
         \) p \] p \} p
         s))))
-  
+
 (defn find-enclosing-brackets [text pos]
   (let [process #(process-bracket-stack %1 %2 nil)
         reckon-dist (fn [stacks]
                       (let [scores (map count stacks)]
                         (count-while #(<= (first scores) %) scores)))
-        before (string/take pos text)
+        before (.substring text 0 (Math/min (.length text) pos))
         stacks-before (reverse (reductions process nil before))
         left (- pos (reckon-dist stacks-before))
-        after (string/drop pos text)
+        after (.substring text (Math/min (.length text) pos))
         stacks-after (reductions process (first stacks-before) after)
         right (+ -1 pos (reckon-dist stacks-after))]
     [left right]))
@@ -60,7 +60,7 @@
 
 (defn find-left-gap [text pos]
   (let [p (min (.length text) (inc pos))
-        before-reverse (string/reverse (string/take p text))
+        before-reverse (string/reverse (.substring text 0 p))
         matcher (blank-line-matcher before-reverse)]
     (if (.find matcher)
       (- p (.start matcher))
@@ -68,7 +68,7 @@
 
 (defn find-right-gap [text pos]
   (let [p (max 0 (dec pos))
-        after (string/drop p text)
+        after (.substring text p)
         matcher (blank-line-matcher after) ]
     (if (.find matcher)
       (+ p (.start matcher))
