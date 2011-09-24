@@ -57,7 +57,7 @@
 (defn partition-str [n s]
   (let [l (.length s)]
     (for [i (range 0 l n)]
-      (.substring s i (Math/min l (+ i n)))))) 
+      (.substring s i (Math/min l (+ (int i) (int n))))))) 
 
 (def pref-max-bytes (* 3/4 Preferences/MAX_VALUE_LENGTH))
 
