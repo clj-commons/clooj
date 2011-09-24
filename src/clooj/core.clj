@@ -21,8 +21,7 @@
            (java.net URL)
            (java.io File FileReader StringReader
                     BufferedWriter OutputStreamWriter FileOutputStream))
-  (:use [clojure.contrib.duck-streams :only (writer)]
-        [clojure.pprint :only (pprint)]
+  (:use [clojure.pprint :only (pprint)]
         [clooj.brackets]
         [clooj.highlighting]
         [clooj.repl]
