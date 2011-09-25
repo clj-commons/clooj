@@ -200,7 +200,7 @@
     (.append buffer char-array offset length)
     buffer)
   ([buffer t]
-    (when (= Integer (type t))
+    (when (= Long (type t))
       (.append buffer (char t)))
     buffer))
 
