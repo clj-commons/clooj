@@ -54,11 +54,12 @@
 (defn create-class-loader [project-path]
     (let [files (setup-classpath project-path)
           urls (map #(.toURL %) files)]
-      ;(println " Classpath:")
-      ;(dorun (map #(println " " (.getAbsolutePath %)) files))
+      (println " Classpath:")
+      (dorun (map #(println " " (.getAbsolutePath %)) files))
       (URLClassLoader.
         (into-array URL urls)
-        (.getClassLoader clojure.lang.RT))))
+        (.getClassLoader clojure.lang.RT)
+        )))
     
 (defn create-clojure-repl
   "This function creates an instance of clojure repl, with output going to output-writer
@@ -119,9 +120,9 @@
                             (catch java.lang.InterruptedException ex)
                             (catch java.nio.channels.ClosedByInterruptException ex)))
         thread (Thread. repl-thread-fn)]
-    (when classloader
-      (.setContextClassLoader thread classloader))
-    (.start thread)
+    (doto thread
+      (.setContextClassLoader classloader)   
+      .start)
     (let [repl {:thread thread
                 :input-writer input-writer
                 :project-path project-path}]
