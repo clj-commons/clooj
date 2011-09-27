@@ -719,7 +719,13 @@
     (System/setOut stream)
     (System/setErr stream)))
 
+(defn shutdown-agents-handler []
+  (def original-shutdown-agents clojure.core/shutdown-agents)
+  (intern 'clojure.core 'shutdown-agents
+          #(println "Ignoring shutdown-agents call.")))
+
 (defn startup []
+  (shutdown-agents-handler)
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [app (create-app)]
     (reset! current-app app)

@@ -51,6 +51,13 @@
                  (filter #(.endsWith (.getName %) ".jar")
                          (mapcat #(.listFiles %) (file-seq project-dir)))))))))
 
+(defn selfish-class-loader [url-array parent]
+  (proxy [URLClassLoader] [url-array nil]
+    (findClass [classname]
+      (try (proxy-super findClass classname)
+           (catch ClassNotFoundException e
+                  (.findClass parent classname))))))
+
 (defn create-class-loader [project-path]
   (when project-path
     (let [files (setup-classpath project-path)
