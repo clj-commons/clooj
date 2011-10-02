@@ -205,7 +205,8 @@
 (defn relative-file [app]
   (let [prefix (str (-> app :repl deref :project-path) File/separator
                     "src"  File/separator)]
-    (when-let [path (.getAbsolutePath @(app :file))]
+    (when-lets [f @(app :file)
+                path (.getAbsolutePath f)]
       (subs path (count prefix)))))
 
 (defn selected-region [ta]
