@@ -4,7 +4,10 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.repl
-  (:import (java.io File PipedReader PipedWriter PrintWriter Writer
+  (:import (java.io
+             BufferedReader BufferedWriter
+             InputStreamReader
+             File PipedReader PipedWriter PrintWriter Writer
                     StringReader PushbackReader)
            (java.awt Rectangle)
            (java.net URL URLClassLoader))
@@ -58,7 +61,7 @@
            (catch ClassNotFoundException e
                   (.findClass parent classname))))))
 
-(defn create-class-loader [project-path]
+(defn create-class-loader [project-path parent]
   (when project-path
     (let [files (setup-classpath project-path)
           urls (map #(.toURL %) files)]
@@ -66,14 +69,37 @@
       (dorun (map #(println " " (.getAbsolutePath %)) files))
       (URLClassLoader.
         (into-array URL urls)
-        (.getClassLoader clojure.lang.RT)
         ))))
     
+(defn find-clojure-jar [class-loader]
+  (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
+      (-> url .getFile URL. .getFile (.split "!/") first)))
+
+(defn create-outside-repl
+  "This function creates an outside process with a clojure repl."
+  [project-path classpath]
+  (let [java (str (System/getProperty "java.home")
+                  File/separator "bin" File/separator "java")
+        builder (ProcessBuilder. [java "-cp" classpath "clojure.main"])]
+    (.redirectErrorStream builder true)
+    (.directory builder project-path)
+    (let [proc (.start builder)
+          reader #(-> % (InputStreamReader. "utf-8") BufferedReader.)]
+      {:in (-> proc .getOutputStream (PrintWriter. true))
+       :out (-> proc .getInputStream reader)
+       :err (-> proc .getErrorStream reader)})))
+
+(defn transmit [reader-in writer-out]
+  (doto (Thread. (while true
+                   (.println writer-out
+                             (.readLine reader-in)))) .start))  
+
 (defn create-clojure-repl
   "This function creates an instance of clojure repl, with output going to output-writer
    Returns an input writer."
   [result-writer project-path]
-  (let [classloader (create-class-loader project-path)
+  (let [classloader (create-class-loader project-path
+                                         (.getClassLoader clojure.lang.RT))
         first-prompt (atom true)
         input-writer (PipedWriter.)
         piped-in (-> input-writer
@@ -325,3 +351,4 @@
     (attach-action-keys ta-in ["cmd1 UP" prev-hist]
                         ["cmd1 DOWN" next-hist]
                         ["cmd1 ENTER" submit])))
+

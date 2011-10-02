@@ -402,7 +402,7 @@
         docs-tree-label (JLabel. "Projects")
         doc-split-pane (make-split-pane
                          docs-tree-panel
-                         doc-text-panel true gap 0)
+                         doc-text-panel true gap 0.25)
         repl-out-scroll-pane (make-scroll-pane repl-out-text-area)
         repl-split-pane (make-split-pane
                           repl-out-scroll-pane
