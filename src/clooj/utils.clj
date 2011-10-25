@@ -377,9 +377,11 @@
         (let [dir (choose-file parent title "" true)]
           (dirs-on false)
           dir))
-    (let [fc (JFileChooser.)]
+    (let [fc (JFileChooser.)
+          last-open-dir (read-value-from-prefs clooj-prefs "last-open-dir")]
       (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)
-               (.setDialogTitle title))
+               (.setDialogTitle title)
+               (.setCurrentDirectory (if last-open-dir (File. last-open-dir) nil)))
        (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
          (.getSelectedFile fc)))))
 

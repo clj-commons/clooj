@@ -353,6 +353,7 @@
 (defn open-project [app]
   (when-let [dir (choose-directory (app :f) "Choose a project directory")]
     (let [project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
+      (write-value-to-prefs clooj-prefs "last-open-dir" (.getAbsolutePath (.getParentFile project-dir)))
       (add-project app (.getAbsolutePath project-dir))
       (update-project-tree (:docs-tree app))
       (when-let [clj-file (or (-> (File. project-dir "src")
