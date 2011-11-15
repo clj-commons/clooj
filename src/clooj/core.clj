@@ -53,7 +53,7 @@
                             scroll-to-caret when-lets
                             constrain-to-parent make-split-pane
                             gen-map on-click sha1-str
-                            remove-text-change-listeners)]
+                            remove-text-change-listeners get-text-str)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
         [clooj.style :only (get-monospaced-fonts show-font-window)])
   (:require [clojure.main :only (repl repl-prompt)]
@@ -161,19 +161,20 @@
   (when-lets [text-area (app :doc-text-area)
               pos (get @caret-position text-area)
               file @(:file app)]
-    (let [key-str (sha1-str (str "caret_" (.getAbsolutePath file)))]
-      (write-value-to-prefs clooj-prefs key-str pos))))
+    (when-not (.isDirectory file)
+      (let [key-str (sha1-str (str "caret_" (.getAbsolutePath file)))]
+        (write-value-to-prefs clooj-prefs key-str pos)))))
 
 (defn load-caret-position [app]
   (when-lets [text-area (app :doc-text-area)
-              file @(:file app)
-              key-str (sha1-str (str "caret_" (.getAbsolutePath file)))
-              pos (read-value-from-prefs clooj-prefs key-str)]
-    (awt-event
-      (let [length (.. text-area getDocument getLength)
-            pos2 (Math/min pos length)]
-        (.setCaretPosition text-area pos2)
-        (scroll-to-caret text-area)))))
+              file @(:file app)]
+  ;  (when-not (.isDirectory file)
+      (when-lets [key-str (sha1-str (str "caret_" (.getAbsolutePath file)))
+                  pos (read-value-from-prefs clooj-prefs key-str)]
+        (let [length (.. text-area getDocument getLength)
+              pos2 (Math/min pos length)]
+          (.setCaretPosition text-area pos2)
+          (scroll-to-caret text-area)))));)
 
 (defn update-caret-position [text-comp]
   (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
@@ -189,7 +190,7 @@
             (fn [old-pos]
               (try
                 (let [pos (@caret-position text-comp)
-                      text (.getText text-comp)]
+                      text (get-text-str text-comp)]
                   (when-not (= pos old-pos)
                     (let [enclosing-brackets (find-enclosing-brackets text pos)
                           bad-brackets (find-bad-brackets text)
@@ -203,7 +204,7 @@
               (fn [old-pos]
                 (try
                   (let [pos (@caret-position text-comp)
-                        text (.getText text-comp)]
+                        text (get-text-str text-comp)]
                     (when-not (= pos old-pos)
                       (let [arglist-text
                             (arglist-from-caret-pos (find-ns (symbol ns)) text pos)]
@@ -233,7 +234,7 @@
                       c (.. text-comp getDocument (getText pos 1) (charAt 0))
                       pos (cond (#{\( \[ \{ \"} c) (inc pos)
                                 (#{\) \] \} \"} c) pos)
-                      [a b] (find-enclosing-brackets (.getText text-comp) pos)]
+                      [a b] (find-enclosing-brackets (get-text-str text-comp) pos)]
             (set-selection text-comp a (inc b))))))))
 
 ;; temp files
@@ -251,7 +252,7 @@
 
 (defn update-temp [app]
   (let [text-comp (app :doc-text-area)
-        txt (.getText text-comp)
+        txt (get-text-str text-comp)
         f @(app :file)]
     (send-off temp-file-manager
               (fn [old-pos]
@@ -506,7 +507,7 @@
 (defn restart-doc [app ^File file]
   (send-off temp-file-manager
             (let [f @(:file app)
-                  txt (.getText (:doc-text-area app))]
+                  txt (get-text-str (:doc-text-area app))]
               (let [temp-file (get-temp-file f)]
                 (fn [_] (when (and f temp-file (.exists temp-file))
                           (dump-temp-doc app f txt))
@@ -759,7 +760,7 @@
 ;; testing
 
 (defn get-text []
-  (.getText (@current-app :doc-text-area)))
+  (get-text-str (@current-app :doc-text-area)))
 
 ; not working yet:
 ;(defn restart

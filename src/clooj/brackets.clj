@@ -6,7 +6,7 @@
 (ns clooj.brackets
   (:import (javax.swing.text JTextComponent))
   (:require [clojure.string :as string])
-  (:use [clooj.utils :only (count-while)]))
+  (:use [clooj.utils :only (count-while get-text-str)]))
 
 (defn mismatched-brackets [a b]
   (and (or (nil? a) (some #{a} [\( \[ \{]))
@@ -75,6 +75,6 @@
       (.length text))))
 
 (defn find-line-group [text-comp]
-  (let [text (.getText text-comp)
+  (let [text (get-text-str text-comp)
         pos (.getCaretPosition text-comp)]
     [(find-left-gap text pos) (find-right-gap text pos)]))

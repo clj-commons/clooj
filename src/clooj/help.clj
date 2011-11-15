@@ -14,7 +14,7 @@
   (:use [clooj.brackets :only (find-enclosing-brackets)]
         [clooj.repl :only (get-file-ns get-repl-ns)]
         [clooj.utils :only (attach-action-keys attach-child-action-keys
-                            on-click awt-event when-lets)]
+                            on-click awt-event when-lets get-text-str)]
         [clojure.repl :only (source-fn)])
   (:require [clojure.string :as string]))
 
@@ -277,7 +277,7 @@
     (let [ns (condp = text-comp
                (app :doc-text-area) (get-file-ns app)
                (app :repl-in-text-area) (get-repl-ns app))
-          text (.getText text-comp)
+          text (get-text-str text-comp)
           pos (.getCaretPosition text-comp)
           [start stop] (local-token-location text pos)]
       (when-let [token (.substring text start stop)]
@@ -298,7 +298,7 @@
 (defn help-handle-caret-move [app text-comp]
   (awt-event
     (when (@help-state :visible)
-      (let [[start _] (local-token-location (.getText text-comp) 
+      (let [[start _] (local-token-location (get-text-str text-comp) 
                                             (.getCaretPosition text-comp))]
         (if-not (= start (@help-state :pos))
           (hide-tab-help app)
@@ -307,7 +307,7 @@
 (defn update-token [app text-comp]
   (awt-event
     (let [[start stop] (local-token-location
-                         (.getText text-comp)
+                         (get-text-str text-comp)
                          (.getCaretPosition text-comp))
           len (- stop start)
           new-token (get-list-token app)]

@@ -9,7 +9,8 @@
                             get-line-start-offset
                             get-line-end-offset
                             awt-event
-                            get-selected-lines)]
+                            get-selected-lines
+                            get-text-str)]
         [clooj.brackets :only (find-enclosing-brackets)]
         [clojure.string :only (triml trimr)])
   (:import  (javax.swing.text DocumentFilter)))
@@ -43,7 +44,7 @@
 
 (defn compute-indent-size [text-comp offset]
   (let [bracket-pos (first (find-enclosing-brackets
-                             (.getText text-comp) offset))]
+                             (get-text-str text-comp) offset))]
     (when (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
             col (:col (get-coords text-comp bracket-pos))]
@@ -51,7 +52,7 @@
           (compute-indent-size text-comp bracket-pos)
           (+ col
              (condp = bracket
-               \( (left-paren-indent-size (.getText text-comp
+               \( (left-paren-indent-size (get-text-str text-comp
                                                     bracket-pos
                                                     (- offset bracket-pos)))
                \\ 0  \[ 1  \{ 1  \" 1
@@ -61,7 +62,7 @@
   (let [start (get-line-start-offset text-comp line)
         end (get-line-end-offset text-comp line)
         document (.getDocument text-comp)
-        line-text (.getText document start (- end start))]
+        line-text (get-text-str document start (- end start))]
     (let [old-indent-size (count (re-find #"\A\ +" line-text))]
       (when-let [new-indent-size (compute-indent-size text-comp start)]       
         (let [delta (- new-indent-size old-indent-size)]
