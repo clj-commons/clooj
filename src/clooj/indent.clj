@@ -52,9 +52,9 @@
           (compute-indent-size text-comp bracket-pos)
           (+ col
              (condp = bracket
-               \( (left-paren-indent-size (get-text-str text-comp
+               \( (left-paren-indent-size (.. text-comp getDocument (getText
                                                     bracket-pos
-                                                    (- offset bracket-pos)))
+                                                    (- offset bracket-pos))))
                \\ 0  \[ 1  \{ 1  \" 1
                :else 1)))))))
 
@@ -62,7 +62,7 @@
   (let [start (get-line-start-offset text-comp line)
         end (get-line-end-offset text-comp line)
         document (.getDocument text-comp)
-        line-text (get-text-str document start (- end start))]
+        line-text (.getText document start (- end start))]
     (let [old-indent-size (count (re-find #"\A\ +" line-text))]
       (when-let [new-indent-size (compute-indent-size text-comp start)]       
         (let [delta (- new-indent-size old-indent-size)]
