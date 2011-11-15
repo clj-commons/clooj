@@ -73,11 +73,12 @@
 (defn read-value-from-prefs
   "Reads a pure clojure data structure from Preferences object."
   [prefs key]
-  (let [node (. prefs node key)]
-    (let [s (apply str
-                   (for [i (range (count (. node keys)))]
-                     (.get node (str i) nil)))]
-      (when (and s (pos? (.length s))) (read-string s)))))
+  (when-not (.endsWith key "/")
+    (let [node (. prefs node key)]
+      (let [s (apply str
+                     (for [i (range (count (. node keys)))]
+                       (.get node (str i) nil)))]
+        (when (and s (pos? (.length s))) (read-string s))))))
 
 (defn write-obj-to-prefs
   "Writes a java object to a Preferences object."
