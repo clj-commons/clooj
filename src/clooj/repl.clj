@@ -14,7 +14,7 @@
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event recording-source-reader
                             get-line-of-offset get-line-start-offset
-                            append-text when-lets)]
+                            append-text when-lets get-text-str)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
         [clooj.project :only (get-temp-file)])
@@ -169,7 +169,7 @@
 
 (defn update-repl-history [app]
   (swap! (:items repl-history) replace-first
-         (.getText (app :repl-in-text-area))))
+         (get-text-str (app :repl-in-text-area))))
 
 (defn correct-expression? [cmd]
   (let [rdr (-> cmd StringReader. PushbackReader.)]

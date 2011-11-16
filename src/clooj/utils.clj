@@ -175,6 +175,10 @@
   (let [d (.getDocument text-comp)]
     (doseq [l (.getDocumentListeners d)]
       (.removeDocumentListener d l))))
+                               
+(defn get-text-str [text-comp]
+  (let [doc (.getDocument text-comp)]
+    (.getText doc 0 (.getLength doc))))
 
 (defn add-caret-listener [text-comp f]
   (.addCaretListener text-comp
@@ -219,7 +223,7 @@
     (let [len (count txt)
           document (.getDocument text-comp)]
       (doseq [start (get-selected-line-starts text-comp)]
-        (when (= (.getText text-comp start len) txt)
+        (when (= (.getText (.getDocument text-comp) start len) txt)
           (.remove document start len))))))
   
 (defn comment-out [text-comp]
