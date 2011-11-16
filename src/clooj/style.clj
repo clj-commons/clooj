@@ -30,10 +30,10 @@
 ;; fonts
 
 (def monospaced?
-    (fn [font]
-      (let [g (graphics-object)
-            m (.getFontMetrics g font)]
-        (apply == (map #(.charWidth m %) [\m \n \. \M \-])))))
+  (fn [font]
+    (let [g (graphics-object)
+          m (.getFontMetrics g font)]
+      (apply == (map #(.charWidth m %) [\m \n \. \M \-])))))
 
 (defn get-all-fonts-12 []
   (let [font-names (.. GraphicsEnvironment
