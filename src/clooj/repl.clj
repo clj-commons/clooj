@@ -20,6 +20,8 @@
         [clooj.project :only (get-temp-file)])
   (:require [clojure.string :as string]))
 
+(use 'clojure.java.javadoc)
+
 (def repl-history {:items (atom nil) :pos (atom 0)})
 
 (def repls (atom {}))
@@ -68,7 +70,7 @@
       (println " Classpath:")
       (dorun (map #(println " " (.getAbsolutePath %)) files))
       (URLClassLoader.
-        (into-array URL urls)
+        (into-array URL urls) parent
         ))))
     
 (defn find-clojure-jar [class-loader]
