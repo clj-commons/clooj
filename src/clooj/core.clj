@@ -79,10 +79,12 @@
 (def get-clooj-version
   (memoize
     (fn []
+      (try
       (-> (Thread/currentThread) .getContextClassLoader
           (.getResource "clooj/core.class") .toString
           (.replace "clooj/core.class" "project.clj")
-          URL. slurp read-string (nth 2)))))
+          URL. slurp read-string (nth 2))
+        (catch Exception _ nil)))))
     
 ;; line numbers
 

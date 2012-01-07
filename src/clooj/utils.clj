@@ -478,7 +478,7 @@
 
 (defn sha1-str [obj]
    (let [bytes (.getBytes (with-out-str (pr obj)))] 
-     (String. (.digest (MessageDigest/getInstance "SHA1") bytes))))
+     (String. (.digest (MessageDigest/getInstance "MD") bytes))))
 
 ;; streams and writers
  
