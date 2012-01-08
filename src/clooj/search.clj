@@ -7,7 +7,7 @@
   (:import (java.awt Color)
            (java.util.regex Pattern Matcher))
   (:use [clooj.highlighting :only (highlight remove-highlights)]
-        [clooj.utils :only (scroll-to-pos set-selection get-text-str)]))
+        [clooj.utils :only (scroll-to-pos set-selection get-text-str get-selected-text)]))
 
 (def case-insensitive-search
   (reduce bit-or
@@ -64,12 +64,16 @@
 
 (defn start-find [app]
   (let [sta (app :search-text-area)
-        arg (app :arglist-label)]
+        arg (app :arglist-label)
+        dta (:doc-text-area app)
+        sel-text (get-selected-text dta)]
     (.setVisible arg false)
     (doto sta
       (.setVisible true)
       (.requestFocus)
-      (.selectAll))))
+      (.selectAll))
+    (if (not (empty? sel-text))
+      (.setText sta sel-text))))
 
 (defn stop-find [app]
   (let [sta (app :search-text-area)

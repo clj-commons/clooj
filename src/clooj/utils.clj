@@ -203,6 +203,9 @@
   (.requestFocusInWindow text-comp)
   (scroll-to-caret text-comp))
 
+(defn get-selected-text [text-comp]
+  (.getText text-comp (.getSelectionStart text-comp) (- (.getSelectionEnd text-comp) (.getSelectionStart text-comp))))
+
 (defn get-selected-lines [text-comp]
   (let [row1 (get-line-of-offset text-comp (.getSelectionStart text-comp))
         row2 (inc (get-line-of-offset text-comp (.getSelectionEnd text-comp)))]
