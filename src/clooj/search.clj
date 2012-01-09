@@ -66,7 +66,7 @@
   (let [sta (app :search-text-area)
         arg (app :arglist-label)
         dta (:doc-text-area app)
-        sel-text (get-selected-text dta)]
+        sel-text (.getSelectedText dta)]
     (.setVisible arg false)
     (doto sta
       (.setVisible true)
