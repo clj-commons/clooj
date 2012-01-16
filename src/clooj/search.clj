@@ -7,7 +7,7 @@
   (:import (java.awt Color)
            (java.util.regex Pattern Matcher))
   (:use [clooj.highlighting :only (highlight remove-highlights)]
-        [clooj.utils :only (scroll-to-pos set-selection get-text-str get-selected-text)]))
+        [clooj.utils :only (scroll-to-pos set-selection get-text-str)]))
 
 (def case-insensitive-search
   (reduce bit-or

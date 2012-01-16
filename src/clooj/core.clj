@@ -28,7 +28,8 @@
         [clooj.search]
         [clooj.help :only (arglist-from-caret-pos show-tab-help setup-tab-help
                            setup-completion-list help-handle-caret-move
-                           find-focused-text-pane)]
+                           find-focused-text-pane safe-resolve 
+                           token-from-caret-pos)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
                               save-expanded-paths
@@ -53,7 +54,8 @@
                             scroll-to-caret when-lets
                             constrain-to-parent make-split-pane
                             gen-map on-click
-                            remove-text-change-listeners get-text-str)]
+                            remove-text-change-listeners get-text-str 
+                            scroll-to-line get-directories)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
         [clooj.style :only (get-monospaced-fonts show-font-window)])
   (:require [clojure.main :only (repl repl-prompt)]
@@ -649,7 +651,29 @@
             (update-project-tree (:docs-tree app))
             (restart-doc app f))))))
 
+(defn- dir-rank [dir]
+  (get {"src" 0 "test" 1 "lib" 2} (.getName dir) 100))
 
+(defn- find-file [project-path relative-file-path]
+  (let [classpath-dirs (sort-by dir-rank < (get-directories (File. project-path)))
+        file-candidates (map 
+                          #(File. (str (.getAbsolutePath %) File/separatorChar relative-file-path)) 
+                          classpath-dirs)]
+    (first (filter #(and (.exists %) (.isFile %)) file-candidates))))
+
+(defn goto-definition [ns app]
+  (let [text-comp (:doc-text-area app)
+        pos (.getCaretPosition text-comp)
+        text (.getText text-comp)
+        src-file (:file (meta (safe-resolve (find-ns (symbol ns)) (token-from-caret-pos ns text pos))))
+        line (:line (meta (safe-resolve (find-ns (symbol ns)) (token-from-caret-pos ns text pos))))
+        project-path (first (get-selected-projects app))
+        file (find-file project-path src-file)]
+    (when (and file line)
+      (when (not= file @(:file app))
+        (restart-doc app file)
+        (set-tree-selection (:docs-tree app) (.getAbsolutePath file)))
+      (scroll-to-line text-comp line))))
 
 (defn make-menus [app]
   (when (is-mac)
@@ -676,7 +700,8 @@
       ["Fix indentation" "F" "cmd1 BACK_SLASH" #(fix-indent-selected-lines (:doc-text-area app))]
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(indent (:doc-text-area app))]
-      ["Name search/docs" "S" "TAB" #(show-tab-help app (find-focused-text-pane app) inc)])
+      ["Name search/docs" "S" "TAB" #(show-tab-help app (find-focused-text-pane app) inc)]
+      ["Goto definition" "G" "F3" #(goto-definition (get-file-ns app) app)])
     (add-menu menu-bar "REPL" "R"
       ["Evaluate here" "E" "cmd1 ENTER" #(send-selected-to-repl app)]
       ["Evaluate entire file" "F" "cmd1 E" #(send-doc-to-repl app)]
@@ -770,3 +795,4 @@
 ;   []
 ;  (.setVisible (@current-app :frame) false)
 ;  (startup))
+
