@@ -322,7 +322,9 @@
     ["shift TAB" #(show-tab-help app text-comp dec)]
     ["ESCAPE" #(hide-tab-help app)])
   (attach-child-action-keys text-comp
-    ["ENTER" #(@help-state :visible) #(update-token app text-comp)]))
+    ["ENTER" #(@help-state :visible)
+             #(do (hide-tab-help app)
+                  (update-token app text-comp))]))
 
 (defn find-focused-text-pane [app]
   (let [t1 (app :doc-text-area)
