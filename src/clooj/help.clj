@@ -136,7 +136,8 @@
           ns (:ns m)
           name (:name m)
           s (binding [*ns* ns]
-                   (source-fn name))]
+              (def q "test")
+                   (source-fn (symbol (str ns "/" name))))]
        (str (:name m)
             (if (:ns m) (str " [" (:ns m) "]") "") "\n"
             (:arglists m)

@@ -355,3 +355,6 @@
                         ["cmd1 DOWN" next-hist]
                         ["cmd1 ENTER" submit])))
 
+(defn print-stack-trace [app]
+  (send-to-repl app "(.printStackTrace *e)"))
+

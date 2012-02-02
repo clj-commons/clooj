@@ -683,7 +683,8 @@
       ["Apply file ns" "A" "cmd1 shift A" #(apply-namespace-to-repl app)]
       ["Clear output" "C" "cmd1 K" #(.setText (app :repl-out-text-area) "")]
       ["Restart" "R" "cmd1 R" #(restart-repl app
-                            (first (get-selected-projects app)))])
+                            (first (get-selected-projects app)))]
+      ["Print stack trace for last error" "T" "cmd1 T" #(print-stack-trace app)])
     (add-menu menu-bar "Search" "S"
       ["Find" "F" "cmd1 F" #(start-find app)]
       ["Find next" "N" "cmd1 G" #(highlight-step app false)]
