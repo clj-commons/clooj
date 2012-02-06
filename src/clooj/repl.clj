@@ -12,7 +12,7 @@
            (java.awt Rectangle)
            (java.net URL URLClassLoader))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
-                            awt-event recording-source-reader
+                            awt-event
                             get-line-of-offset get-line-start-offset
                             append-text when-lets get-text-str)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
@@ -27,8 +27,6 @@
 (def repls (atom {}))
 
 (def ^:dynamic *printStackTrace-on-error* false)
-
-(def ^:dynamic *line-offset*)
 
 (defn is-eof-ex? [throwable]
   (and (instance? clojure.lang.LispReader$ReaderException throwable)
@@ -96,6 +94,13 @@
                    (.println writer-out
                              (.readLine reader-in)))) .start))  
 
+;(defn eval-excerpt
+;  "Evaluate a form (presumably excerpted from a file),
+;   attaching :file and :line metadata."
+;  [form file line]
+;  (binding [*file* file]
+;    (eval (with-meta form {:line (Integer. line)}))))
+
 (defn create-clojure-repl
   "This function creates an instance of clojure repl, with output going to output-writer
    Returns an input writer."
@@ -106,13 +111,11 @@
         input-writer (PipedWriter.)
         piped-in (-> input-writer
                      PipedReader.
-                     (recording-source-reader (var *line-offset*)))
+                     PushbackReader.)
         repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
                                   *in* piped-in
                                   *out* result-writer
-                                  *err* *out*
-                                  *file* "NO_SOURCE_PATH"
-                                  *line-offset* 0]
+                                  *err* *out*]
                           (try
                             (clojure.main/repl
                               :init (fn [] (in-ns 'user))
@@ -120,19 +123,9 @@
                                        (dorun (map repl-print args)))
                               :read (fn [prompt exit]
                                       (let [form (read)]
-                                        (cond
-                                          (= form 'EXIT-REPL)
-                                           exit
-                                          (= form 'SILENT-EVAL)
-                                           (do (eval (read))
-                                               (.toString piped-in)
-                                               (recur prompt exit))
-                                          (isa? (type form) clojure.lang.IObj)
-                                           (with-meta form
-                                                      (assoc (meta form)
-                                                             :clooj/src (.toString piped-in)))
-                                          :else
-                                           form)))
+                                        (if (= form 'EXIT-REPL) 
+                                          exit
+                                          form)))
                               :caught (fn [e]
                                         (when (is-eof-ex? e)
                                           (throw e))
@@ -143,12 +136,7 @@
                                         (printf "\n%s=>"
                                                 (ns-name *ns*)))
                               :need-prompt (constantly true)
-                              :eval (fn [form]
-                                      (let [val (eval form)]
-                                        (when (var? val)
-                                          (alter-meta! val
-                                                       (fn [v] (merge (meta form) v))))
-                                        val))
+                              :eval eval
                               )
                             (catch clojure.lang.LispReader$ReaderException ex
                                    (prn (.getCause ex))
@@ -180,6 +168,13 @@
          (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
          (catch Exception e false))))
 
+(defn file-and-line-eval-str [cmd file line]
+  (if (isa? (type (read-string cmd)) clojure.lang.IObj)
+    (str "(binding [*file* \"" file "\"]
+      (eval (with-meta (quote " cmd ")
+         {:line (Integer. " line ")})))")
+    cmd))
+  
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 1))
   ([app cmd file line]
@@ -188,11 +183,7 @@
             cmd (.trim cmd-ln)]
         (append-text (app :repl-out-text-area) cmd-ln)
         (binding [*out* (:input-writer @(app :repl))]
-            (pr 'SILENT-EVAL `(set! *file* ~file)
-                'SILENT-EVAL `(set! *line-offset*
-                                    (+ *line-offset*
-                                       (- ~line (.getLineNumber *in*)))))
-          (println cmd)
+          (println (file-and-line-eval-str cmd file line))
           (flush))
         (when (not= cmd (second @(:items repl-history)))
           (swap! (:items repl-history)
@@ -356,5 +347,4 @@
                         ["cmd1 ENTER" submit])))
 
 (defn print-stack-trace [app]
-  (send-to-repl app "(.printStackTrace *e)"))
-
+    (send-to-repl app "(.printStackTrace *e)"))

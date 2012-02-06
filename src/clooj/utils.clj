@@ -463,19 +463,6 @@
                                   (write-value-to-prefs prefs name shape))
                                 shape))))))
 
-(defn recording-source-reader [rdr line-offset-ref]
-  (let [text (StringBuilder.)]
-    (proxy [clojure.lang.LineNumberingPushbackReader] [rdr]
-      (getLineNumber [] (+ (proxy-super getLineNumber) @line-offset-ref))
-      (read [] (let [i (proxy-super read)]
-                 (.append text (char i))
-                 i))
-      (unread [c] (proxy-super unread c)
-                  (.setLength text (dec (.length text))))
-      (toString [] (let [s (.trim (str text))]
-                     (.setLength text 0)
-                     s)))))
-
 (defn sha1-str [obj]
    (let [bytes (.getBytes (with-out-str (pr obj)))] 
      (String. (.digest (MessageDigest/getInstance "MD") bytes))))
