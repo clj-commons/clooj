@@ -94,13 +94,6 @@
                    (.println writer-out
                              (.readLine reader-in)))) .start))  
 
-;(defn eval-excerpt
-;  "Evaluate a form (presumably excerpted from a file),
-;   attaching :file and :line metadata."
-;  [form file line]
-;  (binding [*file* file]
-;    (eval (with-meta form {:line (Integer. line)}))))
-
 (defn create-clojure-repl
   "This function creates an instance of clojure repl, with output going to output-writer
    Returns an input writer."
@@ -162,18 +155,20 @@
          (get-text-str (app :repl-in-text-area))))
 
 (defn correct-expression? [cmd]
-  (let [rdr (-> cmd StringReader. PushbackReader.)]
-    (try (while (read rdr nil nil))
-         true
-         (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
-         (catch Exception e false))))
+  (when-not (empty? (.trim cmd))
+    (let [rdr (-> cmd StringReader. PushbackReader.)]
+      (try (while (read rdr nil nil))
+           true
+           (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
+           (catch Exception e false)))))
 
-(defn file-and-line-eval-str [cmd file line]
-  (if (isa? (type (read-string cmd)) clojure.lang.IObj)
-    (str "(binding [*file* \"" file "\"]
-      (eval (with-meta (quote " cmd ")
-         {:line (Integer. " line ")})))")
-    cmd))
+(defn cmd-attach-file-and-line [cmd file line]
+  (let [form (read-string cmd)]
+    (if (isa? (type form) clojure.lang.IObj)
+      (pr-str `(binding [*file* ~file]
+                 (eval (with-meta '~form
+                                  {:line (Integer. ~line)}))))
+      (pr-str form))))
   
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 1))
@@ -183,7 +178,7 @@
             cmd (.trim cmd-ln)]
         (append-text (app :repl-out-text-area) cmd-ln)
         (binding [*out* (:input-writer @(app :repl))]
-          (println (file-and-line-eval-str cmd file line))
+          (println (cmd-attach-file-and-line cmd file line))
           (flush))
         (when (not= cmd (second @(:items repl-history)))
           (swap! (:items repl-history)
