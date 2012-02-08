@@ -9,6 +9,7 @@
              InputStreamReader
              File PipedReader PipedWriter PrintWriter Writer
                     StringReader PushbackReader)
+           (clojure.lang LineNumberingPushbackReader)
            (java.awt Rectangle)
            (java.net URL URLClassLoader))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
@@ -162,27 +163,35 @@
            (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
            (catch Exception e false)))))
 
+(defn read-string-at [source-text start-line]
+  (let [sr (StringReader. source-text)
+        rdr (proxy [LineNumberingPushbackReader] [sr]
+              (getLineNumber []
+                (+ start-line (proxy-super getLineNumber))))]
+      (take-while #(not= % :EOF_REACHED)
+                  (repeatedly #(try (read rdr)
+                                    (catch Exception e :EOF_REACHED))))))
+
 (defn cmd-attach-file-and-line [cmd file line]
-  (let [form (read-string cmd)]
-    (if (isa? (type form) clojure.lang.IObj)
-      (pr-str `(binding [*file* ~file]
-                 (eval (with-meta '~form
-                                  {:line (Integer. ~line)}))))
-      (pr-str form))))
-  
+  (pr-str
+    `(binding [*file* ~file]
+       (last
+         (for [form# (clooj.repl/read-string-at ~cmd ~line)]
+           (eval form#))))))
+           
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 1))
   ([app cmd file line]
     (awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
-            cmd (.trim cmd-ln)]
+            cmd-trim (.trim cmd)]
         (append-text (app :repl-out-text-area) cmd-ln)
         (binding [*out* (:input-writer @(app :repl))]
           (println (cmd-attach-file-and-line cmd file line))
           (flush))
-        (when (not= cmd (second @(:items repl-history)))
+        (when (not= cmd-trim (second @(:items repl-history)))
           (swap! (:items repl-history)
-                 replace-first cmd)
+                 replace-first cmd-trim)
           (swap! (:items repl-history) conj ""))
         (reset! (:pos repl-history) 0)))))
 
@@ -215,7 +224,7 @@
     (if-not (and txt (correct-expression? txt))
       (.setText (app :arglist-label) "Malformed expression")
       (let [line (get-line-of-offset ta (:start region))]
-        (send-to-repl app txt (relative-file app) (inc line))))))
+        (send-to-repl app txt (relative-file app) line)))))
 
 (defn send-doc-to-repl [app]
   (let [text (->> app :doc-text-area .getText)]
