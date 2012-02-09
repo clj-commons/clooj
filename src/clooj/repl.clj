@@ -94,9 +94,10 @@
   [result-writer project-path]
   (let [java (str (System/getProperty "java.home")
                   File/separator "bin" File/separator "java")
-        builder (ProcessBuilder. [java "-cp" "lib/*" "clojure.main"])]
+        builder (ProcessBuilder.
+                  [java "-cp" (str "lib/*" File/pathSeparatorChar "src") "clojure.main"])]
     (.redirectErrorStream builder true)
-    (.directory builder (File. project-path))
+    (.directory builder (File. (or project-path ".")))
     (let [proc (.start builder)
           input-writer  (-> proc .getOutputStream (PrintWriter. true))
           repl {:input-writer input-writer

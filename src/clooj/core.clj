@@ -415,7 +415,7 @@
         repl-input-label (JLabel. "Clojure REPL input \u2191")
         split-pane (make-split-pane doc-split-pane repl-panel true gap 0.5)
         app (merge {:file (atom nil)
-                    :repl (atom (create-clojure-repl repl-out-writer nil))
+                    :repl (atom (create-outside-repl repl-out-writer nil))
                     :changed false}
                    (gen-map
                      doc-text-area
@@ -716,13 +716,6 @@
 
 (defonce current-app (atom nil))
 
-(defn redirect-stdout-and-stderr [writer]
-  (dorun (map #(alter-var-root % (fn [_] writer))
-                 [(var *out*) (var *err*)]))
-  (let [stream (printstream-to-writer writer)]
-    (System/setOut stream)
-    (System/setErr stream)))
-
 (defn shutdown-agents-handler []
   (def original-shutdown-agents clojure.core/shutdown-agents)
   (intern 'clojure.core 'shutdown-agents
@@ -747,7 +740,6 @@
     (let [tree (app :docs-tree)]
       (load-expanded-paths tree)
       (load-tree-selection tree))
-    (redirect-stdout-and-stderr (app :repl-out-writer))
     (load-font app)))
 
 (defn -show []
