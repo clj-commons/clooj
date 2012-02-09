@@ -36,5 +36,8 @@ clooj is a work in progress. Please post any suggestions or criticisms to the [c
 
 All feedback is much appreciated. Code contributions in the form of github pull requests are also very welcome!
 
+If you want to start building and working on clooj then please read the [building clooj from source wiki
+page](https://github.com/arthuredelstein/clooj/wiki/Building-clooj).
+
 -- Arthur Edelstein
 
