@@ -19,7 +19,8 @@
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
         [clooj.project :only (get-temp-file)])
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [clojure.java.io :as io]))
 
 (use 'clojure.java.javadoc)
 
@@ -28,6 +29,18 @@
 (def repls (atom {}))
 
 (def ^:dynamic *printStackTrace-on-error* false)
+
+(def code-read-string-at
+  '(defn read-string-at [source-text start-line]
+     (let [sr (java.io.StringReader. source-text)
+           rdr (proxy [clojure.lang.LineNumberingPushbackReader] [sr]
+                 (getLineNumber []
+                                (+ start-line (proxy-super getLineNumber))))]
+       (take-while #(not= % :EOF_REACHED)
+                   (repeatedly #(try (read rdr)
+                                     (catch Exception e :EOF_REACHED)))))))
+
+(eval code-read-string-at)
 
 (defn is-eof-ex? [throwable]
   (and (instance? clojure.lang.LispReader$ReaderException throwable)
@@ -78,75 +91,33 @@
 
 (defn create-outside-repl
   "This function creates an outside process with a clojure repl."
-  [project-path classpath]
+  [result-writer project-path]
   (let [java (str (System/getProperty "java.home")
                   File/separator "bin" File/separator "java")
-        builder (ProcessBuilder. [java "-cp" classpath "clojure.main"])]
+        builder (ProcessBuilder. [java "-cp" "lib/*" "clojure.main"])]
     (.redirectErrorStream builder true)
-    (.directory builder project-path)
+    (.directory builder (File. project-path))
     (let [proc (.start builder)
-          reader #(-> % (InputStreamReader. "utf-8") BufferedReader.)]
-      {:in (-> proc .getOutputStream (PrintWriter. true))
-       :out (-> proc .getInputStream reader)
-       :err (-> proc .getErrorStream reader)})))
+          input-writer  (-> proc .getOutputStream (PrintWriter. true))
+          repl {:input-writer input-writer
+                :project-path project-path
+                :thread nil
+                :proc proc}
+          is (.getInputStream proc)]
+      (future (io/copy is result-writer :buffer-size 1))
+      (.println input-writer (pr-str '(ns clooj.repl)))
+      (.println input-writer (pr-str code-read-string-at))
+      (swap! repls assoc project-path repl)
+      repl)))
+
+(defn test-create-outside-repl [app]
+  (:input-writer
+    (create-outside-repl (app :repl-out-writer) ".")))
 
 (defn transmit [reader-in writer-out]
   (doto (Thread. (while true
                    (.println writer-out
                              (.readLine reader-in)))) .start))  
-
-(defn create-clojure-repl
-  "This function creates an instance of clojure repl, with output going to output-writer
-   Returns an input writer."
-  [result-writer project-path]
-  (let [classloader (create-class-loader project-path
-                                         (.getClassLoader clojure.lang.RT))
-        first-prompt (atom true)
-        input-writer (PipedWriter.)
-        piped-in (-> input-writer
-                     PipedReader.
-                     PushbackReader.)
-        repl-thread-fn #(binding [*printStackTrace-on-error* *printStackTrace-on-error*
-                                  *in* piped-in
-                                  *out* result-writer
-                                  *err* *out*]
-                          (try
-                            (clojure.main/repl
-                              :init (fn [] (in-ns 'user))
-                              :print (fn [& args]
-                                       (dorun (map repl-print args)))
-                              :read (fn [prompt exit]
-                                      (let [form (read)]
-                                        (if (= form 'EXIT-REPL) 
-                                          exit
-                                          form)))
-                              :caught (fn [e]
-                                        (when (is-eof-ex? e)
-                                          (throw e))
-                                        (if *printStackTrace-on-error*
-                                          (.printStackTrace e *out*)
-                                          (prn (clojure.main/repl-exception e))))
-                              :prompt (fn []
-                                        (printf "\n%s=>"
-                                                (ns-name *ns*)))
-                              :need-prompt (constantly true)
-                              :eval eval
-                              )
-                            (catch clojure.lang.LispReader$ReaderException ex
-                                   (prn (.getCause ex))
-                                   (prn "REPL closing"))
-                            (catch java.lang.InterruptedException ex)
-                            (catch java.nio.channels.ClosedByInterruptException ex)))
-        thread (Thread. repl-thread-fn)]
-    (when classloader
-      (doto thread
-        (.setContextClassLoader classloader)   
-        .start))
-    (let [repl {:thread thread
-                :input-writer input-writer
-                :project-path project-path}]
-      (swap! repls assoc project-path repl)
-      repl)))
 
 (defn replace-first [coll x]
   (cons x (next coll)))
@@ -163,21 +134,11 @@
            (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
            (catch Exception e false)))))
 
-(defn read-string-at [source-text start-line]
-  (let [sr (StringReader. source-text)
-        rdr (proxy [LineNumberingPushbackReader] [sr]
-              (getLineNumber []
-                (+ start-line (proxy-super getLineNumber))))]
-      (take-while #(not= % :EOF_REACHED)
-                  (repeatedly #(try (read rdr)
-                                    (catch Exception e :EOF_REACHED))))))
-
 (defn cmd-attach-file-and-line [cmd file line]
   (pr-str
     `(binding [*file* ~file]
        (last
-         (for [form# (clooj.repl/read-string-at ~cmd ~line)]
-           (eval form#))))))
+         (map eval (clooj.repl/read-string-at ~cmd ~line))))))
            
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 1))
@@ -254,10 +215,10 @@
       (proxy [Writer] []
         (write
           ([char-array offset length]
-            (send-off buf repl-writer-write char-array offset length))
-          ([t]          
-            (send-off buf repl-writer-write t)))
-        (flush [] (send-off buf repl-writer-flush ta-out))
+            (awt-event (append-text ta-out (apply str char-array))))
+          ([^Integer t]          
+            (awt-event (append-text ta-out (str (char t))))))
+        (flush [] nil)
         (close [] nil)))
     (PrintWriter. true)))
   
@@ -270,7 +231,7 @@
   (when (zero? @(:pos repl-history))
     (update-repl-history app))
   (swap! (:pos repl-history)
-         #(Math/min (dec (count @(:items repl-history))) (inc %)))
+         #(min (dec (count @(:items repl-history))) (inc %)))
   (update-repl-in app))
 
 (defn show-next-repl-entry [app]
@@ -305,10 +266,12 @@
     (.write input "EXIT-REPL\n")
     (.flush input))
   (Thread/sleep 100)
-  (let [thread (-> app :repl deref :thread)]
+  (when-let [thread (-> app :repl deref :thread)]
     (while (.isAlive thread)
       (.stop thread)))
-  (reset! (:repl app) (create-clojure-repl (app :repl-out-writer) project-path))
+  (when-let [proc (-> app :repl deref :proc)]
+    (.destroy proc))
+  (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path))
   (apply-namespace-to-repl app))
 
 (defn switch-repl [app project-path]
@@ -317,7 +280,7 @@
     (append-text (app :repl-out-text-area)
                  (str "\n\n=== Switching to " project-path " REPL ===\n"))
     (let [repl (or (get @repls project-path)
-                   (create-clojure-repl (app :repl-out-writer) project-path))]
+                   (create-outside-repl (app :repl-out-writer) project-path))]
       (reset! (:repl app) repl))))
 
 (defn add-repl-input-handler [app]
