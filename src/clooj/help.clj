@@ -10,11 +10,13 @@
            (java.awt Color Point)
            (java.util Vector)
            (javax.swing DefaultListCellRenderer ListSelectionModel)
-           (javax.swing.event ListSelectionListener))
+           (javax.swing.event ListSelectionListener)
+           (java.io File))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
         [clooj.repl :only (get-file-ns get-repl-ns)]
         [clooj.utils :only (attach-action-keys attach-child-action-keys
                             on-click awt-event when-lets get-text-str)]
+        [clooj.project :only (get-selected-projects)]
         [clojure.repl :only (source-fn)])
   (:require [clojure.string :as string]))
 
