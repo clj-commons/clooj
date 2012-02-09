@@ -136,10 +136,12 @@
            (catch Exception e false)))))
 
 (defn cmd-attach-file-and-line [cmd file line]
-  (pr-str
-    `(binding [*file* ~file]
-       (last
-         (map eval (clooj.repl/read-string-at ~cmd ~line))))))
+  (if-not (.endsWith file ".cljs")
+    (pr-str
+      `(binding [*file* ~file]
+         (last
+           (map eval (clooj.repl/read-string-at ~cmd ~line)))))
+    cmd))
            
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 1))
