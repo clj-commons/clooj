@@ -64,12 +64,16 @@
 
 (defn start-find [app]
   (let [sta (app :search-text-area)
-        arg (app :arglist-label)]
+        arg (app :arglist-label)
+        dta (:doc-text-area app)
+        sel-text (.getSelectedText dta)]
     (.setVisible arg false)
     (doto sta
       (.setVisible true)
       (.requestFocus)
-      (.selectAll))))
+      (.selectAll))
+    (if (not (empty? sel-text))
+      (.setText sta sel-text))))
 
 (defn stop-find [app]
   (let [sta (app :search-text-area)

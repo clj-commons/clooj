@@ -4,7 +4,8 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.utils
-  (:import (java.util UUID)
+  (:require [clojure.string :as string :only (join split)])
+	(:import (java.util UUID)
            (java.awt FileDialog Point Window)
            (java.awt.event ActionListener MouseAdapter)
            (java.util.prefs Preferences)
@@ -195,6 +196,12 @@
     (when r
       (.setViewPosition v
                         (Point. 0 (min (- l h) (max 0 (- (.y r) (/ h 2)))))))))
+
+(defn scroll-to-line [text-comp line]
+    (let [text (.getText text-comp)
+          pos (inc (.length (string/join "\n" (take (dec line) (string/split text #"\n")))))]
+      (.setCaretPosition text-comp pos)
+      (scroll-to-pos text-comp pos)))
 
 (defn scroll-to-caret [text-comp]
   (scroll-to-pos text-comp (.getCaretPosition text-comp)))
@@ -389,6 +396,11 @@
                (.setCurrentDirectory (if last-open-dir (File. last-open-dir) nil)))
        (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
          (.getSelectedFile fc)))))
+ 
+(defn get-directories [path]
+  (filter #(and (.isDirectory %)
+                (not (.startsWith (.getName %) ".")))
+          (.listFiles path)))
 
 ;; tree seq on widgets (awt or swing)
 
