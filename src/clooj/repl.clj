@@ -15,7 +15,7 @@
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event
                             get-line-of-offset get-line-start-offset
-                            append-text when-lets get-text-str)]
+                            append-text when-lets get-text-str get-directories)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
         [clooj.project :only (get-temp-file)])
@@ -61,12 +61,10 @@
   (when project-path
     (let [project-dir (File. project-path)]
       (when (and (.exists project-dir) (.isDirectory project-dir))
-        (let [sub-dirs (filter #(and (.isDirectory %)
-                                     (not (.startsWith (.getName %) ".")))
-                               (.listFiles project-dir))]
+        (let [sub-dirs (get-directories project-dir)]
           (concat sub-dirs
-                 (filter #(.endsWith (.getName %) ".jar")
-                         (mapcat #(.listFiles %) (file-seq project-dir)))))))))
+                  (filter #(.endsWith (.getName %) ".jar")
+                          (mapcat #(.listFiles %) (file-seq project-dir)))))))))
 
 (defn selfish-class-loader [url-array parent]
   (proxy [URLClassLoader] [url-array nil]
