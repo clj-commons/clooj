@@ -105,7 +105,7 @@
           is (.getInputStream proc)]
       (future (io/copy is result-writer :buffer-size 1))
       (.println input-writer (pr-str '(ns clooj.repl)))
-      ;(.println input-writer (pr-str code-read-string-at))
+      (.println input-writer (pr-str code-read-string-at))
       (swap! repls assoc project-path repl)
       repl)))
 
