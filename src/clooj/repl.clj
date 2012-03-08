@@ -87,7 +87,6 @@
                 :proc proc}
           is (.getInputStream proc)]
       (future (io/copy is result-writer :buffer-size 1))
-      (.println input-writer (pr-str '(ns clooj.repl)))
       (swap! repls assoc project-path repl)
       repl)))
 
@@ -106,20 +105,28 @@
            (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
            (catch Exception e false)))))
 
+(defn read-string-at [source-text start-line]
+  `(let [sr# (java.io.StringReader. ~source-text)
+         rdr# (proxy [clojure.lang.LineNumberingPushbackReader] [sr#]
+               (getLineNumber []
+                              (+ ~start-line (proxy-super getLineNumber))))]
+     (take-while #(not= % :EOF_REACHED)
+                 (repeatedly #(try (read rdr#)
+                                   (catch Exception e# :EOF_REACHED))))))
+
 (defn cmd-attach-file-and-line [cmd file line]
-  (if-not (.endsWith file ".cljs")
-    (let [empty-lines (apply str (repeat line "\n"))
-          fake-file (str empty-lines cmd)]
-      (pr-str
-        `(clojure.lang.Compiler/load
-           (java.io.StringReader. ~fake-file) ~file "")))
-      cmd))
+  (let [read-string-code (read-string-at cmd line)]
+    (pr-str
+      `(binding [*file* ~file]
+         (last
+           (map eval ~read-string-code))))))
            
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 0))
   ([app cmd file line]
     (awt-event
-      (let [cmd-ln (str \newline (.trim cmd) \newline)]
+      (let [cmd-ln (str \newline (.trim cmd) \newline)
+            cmd-trim (.trim cmd)]
         (append-text (app :repl-out-text-area) cmd-ln)
         (binding [*out* (:input-writer @(app :repl))]
           (println (cmd-attach-file-and-line cmd file line))
@@ -129,6 +136,9 @@
                  replace-first cmd-trim)
           (swap! (:items repl-history) conj ""))
         (reset! (:pos repl-history) 0)))))
+
+(defn x []
+  (java.lang.Exception. "Boo!"))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
