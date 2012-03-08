@@ -30,18 +30,6 @@
 
 (def ^:dynamic *printStackTrace-on-error* false)
 
-(def code-read-string-at
-  '(defn read-string-at [source-text start-line]
-     (let [sr (java.io.StringReader. source-text)
-           rdr (proxy [clojure.lang.LineNumberingPushbackReader] [sr]
-                 (getLineNumber []
-                                (+ start-line (proxy-super getLineNumber))))]
-       (take-while #(not= % :EOF_REACHED)
-                   (repeatedly #(try (read rdr)
-                                     (catch Exception e :EOF_REACHED)))))))
-
-(eval code-read-string-at)
-
 (defn is-eof-ex? [throwable]
   (and (instance? clojure.lang.LispReader$ReaderException throwable)
        (or
@@ -51,11 +39,6 @@
 (defn get-repl-ns [app]
   (let [repl-map @repls]
     (-> app :repl deref :project-path repl-map :ns)))
-
-(defn repl-print [x]
-  (if (var? x)
-    (print x)
-    (pprint x)))
 
 (defn setup-classpath [project-path]
   (when project-path
@@ -105,18 +88,8 @@
           is (.getInputStream proc)]
       (future (io/copy is result-writer :buffer-size 1))
       (.println input-writer (pr-str '(ns clooj.repl)))
-      (.println input-writer (pr-str code-read-string-at))
       (swap! repls assoc project-path repl)
       repl)))
-
-(defn test-create-outside-repl [app]
-  (:input-writer
-    (create-outside-repl (app :repl-out-writer) ".")))
-
-(defn transmit [reader-in writer-out]
-  (doto (Thread. (while true
-                   (.println writer-out
-                             (.readLine reader-in)))) .start))  
 
 (defn replace-first [coll x]
   (cons x (next coll)))
@@ -135,18 +108,18 @@
 
 (defn cmd-attach-file-and-line [cmd file line]
   (if-not (.endsWith file ".cljs")
-    (pr-str
-      `(binding [*file* ~file]
-         (last
-           (map eval (clooj.repl/read-string-at ~cmd ~line)))))
-    cmd))
+    (let [empty-lines (apply str (repeat line "\n"))
+          fake-file (str empty-lines cmd)]
+      (pr-str
+        `(clojure.lang.Compiler/load
+           (java.io.StringReader. ~fake-file) ~file "")))
+      cmd))
            
 (defn send-to-repl
-  ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 1))
+  ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 0))
   ([app cmd file line]
     (awt-event
-      (let [cmd-ln (str \newline (.trim cmd) \newline)
-            cmd-trim (.trim cmd)]
+      (let [cmd-ln (str \newline (.trim cmd) \newline)]
         (append-text (app :repl-out-text-area) cmd-ln)
         (binding [*out* (:input-writer @(app :repl))]
           (println (cmd-attach-file-and-line cmd file line))
@@ -190,7 +163,7 @@
 
 (defn send-doc-to-repl [app]
   (let [text (->> app :doc-text-area .getText)]
-    (send-to-repl app text (relative-file app) 1)))
+    (send-to-repl app text (relative-file app) 0)))
 
 (defn repl-writer-write
   ([buffer char-array offset length]
