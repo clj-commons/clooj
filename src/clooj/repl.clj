@@ -115,9 +115,11 @@
                                    (catch Exception e# :EOF_REACHED))))))
 
 (defn cmd-attach-file-and-line [cmd file line]
-  (let [read-string-code (read-string-at cmd line)]
+  (let [read-string-code (read-string-at cmd line)
+        short-file (last (.split file "/"))]
     (pr-str
-      `(binding [*file* ~file]
+      `(binding [*source-path* ~short-file
+                 *file* ~file]
          (last
            (map eval ~read-string-code))))))
            
@@ -138,7 +140,7 @@
         (reset! (:pos repl-history) 0)))))
 
 (defn x []
-  (java.lang.Exception. "Boo!"))
+  (throw (java.lang.Exception. "Boo!")))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
@@ -246,13 +248,6 @@
 (defn restart-repl [app project-path]
   (append-text (app :repl-out-text-area)
                (str "\n=== RESTARTING " project-path " REPL ===\n"))
-  (let [input (-> app :repl deref :input-writer)]
-    (.write input "EXIT-REPL\n")
-    (.flush input))
-  (Thread/sleep 100)
-  (when-let [thread (-> app :repl deref :thread)]
-    (while (.isAlive thread)
-      (.stop thread)))
   (when-let [proc (-> app :repl deref :proc)]
     (.destroy proc))
   (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path))
