@@ -17,7 +17,9 @@
         [clooj.utils :only (attach-action-keys attach-child-action-keys
                             on-click awt-event when-lets get-text-str)]
         [clooj.project :only (get-selected-projects)]
-        [clojure.repl :only (source-fn)])
+        [clojure.repl :only (source-fn)]
+        [clj-inspector.jars :only (clj-sources-from-jar jar-files)]
+        [clj-inspector.vars :only (analyze-clojure-source)])
   (:require [clojure.string :as string]))
 
 ; from http://clojure.org/special_forms
@@ -36,6 +38,8 @@
    "catch" "(catch classname name expr*)"
    "monitor-enter" "Avoid!"
    "monitor-exit"  "Avoid!"})
+
+(defonce var-maps (agent nil))
 
 (defn ns-item-name [item]
   (cond
@@ -57,6 +61,17 @@
   [ns & body]
   `(binding [*ns* (the-ns ~ns)]
      ~@(map (fn [form] `(eval '~form)) body)))
+
+(defn get-var-maps []
+  (->> (jar-files "./lib")
+       (mapcat clj-sources-from-jar)
+       merge
+       vals
+       (mapcat analyze-clojure-source)
+       doall))
+
+(defn load-var-maps []
+  (send-off var-maps #(concat % (get-var-maps))))
 
 (defn var-source [v]
   (when-let [filepath (:file (meta v))]
@@ -98,22 +113,16 @@
       (re-find #"(.*?)[\s|\)|$]"
                (str (.trim form-string) " ")))))
 
-(defn safe-resolve [ns string]
-  (try
-    (ns-resolve ns (symbol string))
-    (catch Exception e)))
-
 (defn string-to-var [ns string]
   (when-not (empty? string)
     (let [sym (symbol string)]
       (or (safe-resolve ns sym)
           (safe-resolve (find-ns 'clojure.core) sym)))))
 
-(defn arglist-from-var [v]
+(defn arglist-from-var-map [m]
   (or
-    (when-let [m (meta v)]
-      (when-let [args (:arglists m)]
-        (str (-> m :ns ns-name) "/" (:name m) ": " args)))
+    (when-let [args (:arglists m)]
+      (str (-> m :ns ns-name) "/" (:name m) ": " args))
     ""))
 
 (defn token-from-caret-pos [ns text pos]
@@ -132,28 +141,30 @@
 
 (defonce help-state (atom {:visible false :token nil :pos nil}))
 
-(defn var-help [v]
+(defn var-map [v]
   (when-let [m (meta v)]
-    (let [d (:doc m)
-          ns (:ns m)
-          name (:name m)
-          s (binding [*ns* ns]
-              (def q "test")
-                   (source-fn (symbol (str ns "/" name))))]
-       (str (:name m)
-            (if (:ns m) (str " [" (:ns m) "]") "") "\n"
-            (:arglists m)
-            "\n\n"
-            (if d
-              (str "Documentation:\n" d)
-              "No documentation found.")
-            "\n\n"
-            (if s
-              (str "Source:\n"
-                   (if d
-                     (.replace s d "...docs...")
-                     s))
-              "No source found.")))))
+    (let [ns (:ns m)]
+      (-> m
+          (select-keys [:doc :ns :name :arglists])
+          (assoc :source (binding [*ns* ns]
+                           (source-fn (symbol (str ns "/" name)))))))))
+
+(defn var-help [var-map]
+  (let [{:keys [doc ns name arglists source]} var-map]
+    (str name
+         (if ns (str " [" ns "]") "") "\n"
+         arglists
+         "\n\n"
+         (if doc
+           (str "Documentation:\n" doc)
+           "No documentation found.")
+         "\n\n"
+         (if source
+           (str "Source:\n"
+                (if doc
+                  (.replace source doc "...docs...")
+                  source))
+           "No source found."))))
 
 (defn create-param-list
   ([method-or-constructor static]
@@ -211,7 +222,7 @@
                           (field-help field)))))))
 
 (defn item-help [item]
-  (cond (var? item) (var-help item)
+  (cond (var? item) (var-help (var-map item))
         (class? item) (class-help item)))    
 
 (defn set-first-component [split-pane comp]

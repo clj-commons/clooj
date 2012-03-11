@@ -28,7 +28,7 @@
         [clooj.search]
         [clooj.help :only (arglist-from-caret-pos show-tab-help setup-tab-help
                            setup-completion-list help-handle-caret-move
-                           find-focused-text-pane safe-resolve 
+                           find-focused-text-pane  
                            token-from-caret-pos)]
         [clooj.project :only (add-project load-tree-selection
                               load-expanded-paths load-project-set
@@ -666,10 +666,10 @@
   (let [text-comp (:doc-text-area app)
         pos (.getCaretPosition text-comp)
         text (.getText text-comp)
-        src-file (:file (meta (safe-resolve (find-ns (symbol ns))
-                                            (token-from-caret-pos ns text pos))))
-        line (:line (meta (safe-resolve (find-ns (symbol ns))
-                                        (token-from-caret-pos ns text pos))))
+        src-file (:file (meta (do 
+                                            (token-from-caret-pos ns text pos) nil)))
+        line (:line (meta (do (find-ns (symbol ns))
+                                        (token-from-caret-pos ns text pos) nil)))
         project-path (first (get-selected-projects app))
         file (find-file project-path src-file)]
     (when (and file line)
@@ -721,8 +721,6 @@
       ["Go to REPL input" "R" "cmd1 3" #(.requestFocusInWindow (:repl-in-text-area app))]
       ["Go to Editor" "E" "cmd1 2" #(.requestFocusInWindow (:doc-text-area app))]
       ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
-      ["Send clooj window to back" "B" "cmd2 MINUS" #(.toBack (:frame app))]
-      ["Bring clooj window to front" "F" "cmd2 PLUS" #(.toFront (:frame app))]
       ["Increase font size" nil "cmd1 PLUS" #(grow-font app)]
       ["Decrease font size" nil "cmd1 MINUS" #(shrink-font app)]
       ["Choose font..." nil nil #(apply show-font-window
