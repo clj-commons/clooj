@@ -41,26 +41,8 @@
 
 (defonce var-maps (agent nil))
 
-(defn ns-item-name [item]
-  (cond
-    (var? item) (-> item meta :name str)
-    (class? item) (.getSimpleName item)))
-
-(defn ns-item-package [item]
-  (cond
-    (var? item) (-> item meta :ns)
-    (class? item) (.. item getPackage getName)))
-
-(defn present-ns-item [item]
-  (str (ns-item-name item) " [" (ns-item-package item) "]"))
-
-(defmacro with-ns
-  "Evaluates body in another namespace.  ns is either a namespace
-  object or a symbol.  This makes it possible to define functions in
-  namespaces other than the current one."
-  [ns & body]
-  `(binding [*ns* (the-ns ~ns)]
-     ~@(map (fn [form] `(eval '~form)) body)))
+(defn present-item [item]
+  (str (:name item) " [" (:ns item) "]"))
 
 (defn get-var-maps []
   (->> (jar-files "./lib")
@@ -72,19 +54,6 @@
 
 (defn load-var-maps []
   (send-off var-maps #(concat % (get-var-maps))))
-
-(defn var-source [v]
-  (when-let [filepath (:file (meta v))]
-    (when-let [strm (.getResourceAsStream (RT/baseLoader) filepath)]
-      (with-open [rdr (LineNumberReader. (InputStreamReader. strm))]
-        (dotimes [_ (dec (:line (meta v)))] (.readLine rdr))
-        (let [text (StringBuilder.)
-              pbr (proxy [PushbackReader] [rdr]
-                    (read [] (let [i (proxy-super read)]
-                               (.append text (char i))
-                               i)))]
-          (read (PushbackReader. pbr))
-          (str text))))))
 
 (defn find-form-string [text pos]
   (let [[left right] (find-enclosing-brackets text pos)]
@@ -113,12 +82,6 @@
       (re-find #"(.*?)[\s|\)|$]"
                (str (.trim form-string) " ")))))
 
-(defn string-to-var [ns string]
-  (when-not (empty? string)
-    (let [sym (symbol string)]
-      (or (safe-resolve ns sym)
-          (safe-resolve (find-ns 'clojure.core) sym)))))
-
 (defn arglist-from-var-map [m]
   (or
     (when-let [args (:arglists m)]
@@ -130,7 +93,7 @@
 
 (defn arglist-from-token [ns token]
   (or (special-forms token)
-      (arglist-from-var (string-to-var ns token))))
+      (arglist-from-var-map nil)))
 
 (defn arglist-from-caret-pos [ns text pos]
   (let [token (token-from-caret-pos ns text pos)]
@@ -204,7 +167,7 @@
 (defn class-help [c]
   (apply str
          (concat
-           [(present-ns-item c) "\n  java class"]
+           [(present-item c) "\n  java class"]
            ["\n\nCONSTRUCTORS\n"]
            (interpose "\n"
                       (sort
@@ -222,7 +185,7 @@
                           (field-help field)))))))
 
 (defn item-help [item]
-  (cond (var? item) (var-help (var-map item))
+  (cond (map? item) (var-help item)
         (class? item) (class-help item)))    
 
 (defn set-first-component [split-pane comp]
@@ -249,15 +212,15 @@
       (do
         (swap! help-state assoc :token token)
         (.setListData help-list (Vector.))
-        (when-lets [ns-items (vals (ns-map local-ns))
-                    best (sort-by #(.toLowerCase (ns-item-name %))
+        (when-lets [items @var-maps
+                    best (sort-by #(.toLowerCase (:name %))
                                 (filter
-                                  #(re-find token-pat1 (ns-item-name %))
-                                  ns-items))
-                    others (sort-by #(.toLowerCase (ns-item-name %))
+                                  #(re-find token-pat1 (:name %))
+                                  items))
+                    others (sort-by #(.toLowerCase (:name %))
                                  (filter 
-                                   #(re-find token-pat2 (.substring (ns-item-name %) 1))
-                                   ns-items))]
+                                   #(re-find token-pat2 (.substring (:name %) 1))
+                                   items))]
                    (.setListData help-list (Vector. (concat best others)))
                    (.setSelectedIndex help-list 0)
                    ))
@@ -278,7 +241,7 @@
                              (.getSelectedIndex help-list)))))
   
 (defn get-list-token [app]
-  (-> app :completion-list .getSelectedValue ns-item-name))
+  (-> app :completion-list .getSelectedValue :name))
 
 (defn show-help-text [app choice]
   (let [help-text (or (when choice (item-help choice)) "")]
@@ -355,7 +318,7 @@
       (proxy [DefaultListCellRenderer] []
         (getListCellRendererComponent [list item index isSelected cellHasFocus]
           (doto (proxy-super getListCellRendererComponent list item index isSelected cellHasFocus)
-            (.setText (present-ns-item item)))))) 
+            (.setText (present-item item)))))) 
     (.addListSelectionListener
       (reify ListSelectionListener
         (valueChanged [_ e]
