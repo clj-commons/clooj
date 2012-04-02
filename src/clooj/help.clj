@@ -19,7 +19,7 @@
         [clojure.repl :only (source-fn)]
         [clj-inspector.jars :only (clj-sources-from-jar jar-files)]
         [clj-inspector.vars :only (analyze-clojure-source
-                                    analyze-ns-form
+                                    parse-ns-form
                                    )])
   (:require [clojure.string :as string]))
 
@@ -88,9 +88,9 @@
       (re-find #"(.*?)[\s|\)|$]"
                (str (.trim form-string) " ")))))
 
-(defn ns-data [app]
+(defn ns-available-names [app]
   (-> app :doc-text-area .getText
-                    read-string analyze-ns-form))
+                    read-string parse-ns-form))
 
 (defn arglist-from-var-map [m]
   (or
@@ -105,16 +105,17 @@
   (into {} (filter #(= token (second (first %)))
                    (-> app :repl deref :var-maps deref))))
 
-(defn var-from-token [current-ns token]
+(defn var-from-token [app current-ns token]
   (if (.contains token "/")
     (vec (.split token "/"))
-    [current-ns token]))
+    (or ((ns-available-names app) token)
+    [current-ns token])))
 
 (defn arglist-from-token [app ns token]
   (println ns token)
   (or (special-forms token)
       (-> app :repl deref :var-maps
-          deref (get (var-from-token ns token))
+          deref (get (var-from-token app ns token))
           arglist-from-var-map)))
 
 (defn arglist-from-caret-pos [app ns text pos]
