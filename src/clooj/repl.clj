@@ -18,7 +18,8 @@
                             append-text when-lets get-text-str get-directories)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
-        [clooj.project :only (get-temp-file)])
+        [clooj.project :only (get-temp-file)]
+        [clooj.help :only (get-var-maps)])
   (:require [clojure.string :as string]
             [clojure.java.io :as io]))
 
@@ -84,8 +85,10 @@
           repl {:input-writer input-writer
                 :project-path project-path
                 :thread nil
-                :proc proc}
+                :proc proc
+                :var-maps (agent nil)}
           is (.getInputStream proc)]
+      (send-off (repl :var-maps) #(merge % (get-var-maps project-path)))
       (future (io/copy is result-writer :buffer-size 1))
       (swap! repls assoc project-path repl)
       repl)))
@@ -225,7 +228,7 @@
     (swap! (:pos repl-history)
            #(Math/max 0 (dec %)))
     (update-repl-in app)))
-  
+
 (defn get-file-ns [app]
   (try
     (when-let [sexpr (read-string (.getText (app :doc-text-area)))]

@@ -13,13 +13,14 @@
            (javax.swing.event ListSelectionListener)
            (java.io File))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
-        [clooj.repl :only (get-file-ns get-repl-ns)]
         [clooj.utils :only (attach-action-keys attach-child-action-keys
                             on-click awt-event when-lets get-text-str)]
         [clooj.project :only (get-selected-projects)]
         [clojure.repl :only (source-fn)]
         [clj-inspector.jars :only (clj-sources-from-jar jar-files)]
-        [clj-inspector.vars :only (analyze-clojure-source)])
+        [clj-inspector.vars :only (analyze-clojure-source
+                                    analyze-ns-form
+                                   )])
   (:require [clojure.string :as string]))
 
 ; from http://clojure.org/special_forms
@@ -44,16 +45,21 @@
 (defn present-item [item]
   (str (:name item) " [" (:ns item) "]"))
 
-(defn get-var-maps []
-  (->> (jar-files "./lib")
+(defn make-var-super-map [var-maps]
+  (into {}
+        (for [var-map var-maps]
+          [[(:ns var-map) (:name var-map)] var-map])))
+
+(defn get-var-maps [project-path]
+  (->> (jar-files (str project-path "/lib"))
        (mapcat clj-sources-from-jar)
        merge
        vals
        (mapcat analyze-clojure-source)
-       doall))
+       make-var-super-map))
 
-(defn load-var-maps []
-  (send-off var-maps #(concat % (get-var-maps))))
+(defn load-var-maps [var-map]
+  (send-off var-maps #(merge % (get-var-maps))))
 
 (defn find-form-string [text pos]
   (let [[left right] (find-enclosing-brackets text pos)]
@@ -82,22 +88,38 @@
       (re-find #"(.*?)[\s|\)|$]"
                (str (.trim form-string) " ")))))
 
+(defn ns-data [app]
+  (-> app :doc-text-area .getText
+                    read-string analyze-ns-form))
+
 (defn arglist-from-var-map [m]
   (or
     (when-let [args (:arglists m)]
-      (str (-> m :ns ns-name) "/" (:name m) ": " args))
+      (str (-> m :ns) "/" (:name m) ": " args))
     ""))
 
 (defn token-from-caret-pos [ns text pos]
   (head-token (find-form-string text pos)))
 
-(defn arglist-from-token [ns token]
-  (or (special-forms token)
-      (arglist-from-var-map nil)))
+(defn matching-vars [app token]
+  (into {} (filter #(= token (second (first %)))
+                   (-> app :repl deref :var-maps deref))))
 
-(defn arglist-from-caret-pos [ns text pos]
+(defn var-from-token [current-ns token]
+  (if (.contains token "/")
+    (vec (.split token "/"))
+    [current-ns token]))
+
+(defn arglist-from-token [app ns token]
+  (println ns token)
+  (or (special-forms token)
+      (-> app :repl deref :var-maps
+          deref (get (var-from-token ns token))
+          arglist-from-var-map)))
+
+(defn arglist-from-caret-pos [app ns text pos]
   (let [token (token-from-caret-pos ns text pos)]
-    (arglist-from-token ns token)))
+    (arglist-from-token app ns token)))
 
 ;; tab help
 
@@ -203,16 +225,15 @@
 (defn list-size [list]
   (-> list .getModel .getSize))
 
-(defn advance-help-list [app ns token index-change-fn]
-  (let [local-ns (when ns (symbol ns))
-        help-list (app :completion-list)
+(defn advance-help-list [app token index-change-fn]
+  (let [help-list (app :completion-list)
         token-pat1 (re-pattern (str "(?i)\\A\\Q" token "\\E"))
         token-pat2 (re-pattern (str "(?i)\\Q" token "\\E"))]
     (if (not= token (@help-state :token))
       (do
         (swap! help-state assoc :token token)
         (.setListData help-list (Vector.))
-        (when-lets [items @var-maps
+        (when-lets [items (-> app :repl deref :var-maps deref vals)
                     best (sort-by #(.toLowerCase (:name %))
                                 (filter
                                   #(re-find token-pat1 (:name %))
@@ -251,16 +272,12 @@
 
 (defn show-tab-help [app text-comp index-change-fn]
   (awt-event
-    (let [ns (condp = text-comp
-               (app :doc-text-area) (get-file-ns app)
-               (app :repl-in-text-area) (get-repl-ns app))
-          text (get-text-str text-comp)
+    (let [text (get-text-str text-comp)
           pos (.getCaretPosition text-comp)
           [start stop] (local-token-location text pos)]
       (when-let [token (.substring text start stop)]
         (swap! help-state assoc :pos start :visible true)
-        (when ns
-          (advance-help-list app ns token index-change-fn))))))
+        (advance-help-list app token index-change-fn)))))
 
 (defn hide-tab-help [app]
   (awt-event
