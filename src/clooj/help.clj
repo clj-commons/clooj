@@ -88,9 +88,11 @@
       (re-find #"(.*?)[\s|\)|$]"
                (str (.trim form-string) " ")))))
 
+(defn current-ns-form [app]
+  (-> app :doc-text-area .getText read-string))
+
 (defn ns-available-names [app]
-  (-> app :doc-text-area .getText
-                    read-string parse-ns-form))
+  (parse-ns-form (current-ns-form app)))
 
 (defn arglist-from-var-map [m]
   (or
@@ -112,7 +114,6 @@
     [current-ns token])))
 
 (defn arglist-from-token [app ns token]
-  (println ns token)
   (or (special-forms token)
       (-> app :repl deref :var-maps
           deref (get (var-from-token app ns token))
@@ -298,6 +299,9 @@
         (if-not (= start (@help-state :pos))
           (hide-tab-help app)
           (show-tab-help app text-comp identity))))))
+
+(defn update-ns-form [app]
+  (current-ns-form app))
 
 (defn update-token [app text-comp]
   (awt-event

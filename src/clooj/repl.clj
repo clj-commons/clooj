@@ -19,7 +19,8 @@
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
         [clooj.project :only (get-temp-file)]
-        [clooj.help :only (get-var-maps)])
+        [clooj.help :only (get-var-maps)]
+        [clj-inspector.jars :only (get-entries-in-jar jar-files)])
   (:require [clojure.string :as string]
             [clojure.java.io :as io]))
 
@@ -71,13 +72,37 @@
   (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
       (-> url .getFile URL. .getFile (.split "!/") first)))
 
+(defn clojure-jar-location
+  "Find the location of a clojure jar in a project."
+  [^String project-path]
+  (let [lib-dir (str project-path "/lib")
+        jars (filter #(.contains (.getName %) "clojure")
+                     (jar-files lib-dir))]
+    (first
+      (remove nil?
+              (for [jar jars]
+                (when-not
+                  (empty?
+                    (filter #(= "clojure/lang/RT.class" %)
+                            (map #(.getName %) (get-entries-in-jar jar))))
+                  jar))))))
+                       
+        
+(defn outside-repl-classpath [project-path]
+  (let [clojure-jar-term (when-not (clojure-jar-location project-path)
+                           (find-clojure-jar (.getClassLoader clojure.lang.RT)))]
+    (str "lib/*" File/pathSeparatorChar "src"
+         (when clojure-jar-term
+           (str File/pathSeparatorChar clojure-jar-term)))))
+
 (defn create-outside-repl
   "This function creates an outside process with a clojure repl."
   [result-writer project-path]
-  (let [java (str (System/getProperty "java.home")
+  (let [clojure-jar (clojure-jar-location project-path)
+        java (str (System/getProperty "java.home")
                   File/separator "bin" File/separator "java")
         builder (ProcessBuilder.
-                  [java "-cp" (str "lib/*" File/pathSeparatorChar "src") "clojure.main"])]
+                  [java "-cp" (outside-repl-classpath project-path) "clojure.main"])]
     (.redirectErrorStream builder true)
     (.directory builder (File. (or project-path ".")))
     (let [proc (.start builder)
