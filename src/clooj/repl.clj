@@ -217,24 +217,6 @@
   (let [text (->> app :doc-text-area .getText)]
     (send-to-repl app text (relative-file app) 0)))
 
-(defn repl-writer-write
-  ([buffer char-array offset length]
-    (.append buffer char-array offset length)
-    buffer)
-  ([buffer t]
-    (when (= Long (type t))
-      (.append buffer (char t)))
-    buffer))
-
-(defn repl-writer-flush [buf ta-out]
-  (when ta-out
-    (let [text (.toString buf)]
-      (.setLength buf 0)
-      (awt-event
-        (do (append-text ta-out text)
-            (scroll-to-last ta-out)))))
-  buf)
-
 (defn make-repl-writer [ta-out]
   (->
     (let [buf (agent (StringBuffer.))]
@@ -244,7 +226,7 @@
             (awt-event (append-text ta-out (apply str char-array))))
           ([^Integer t]          
             (awt-event (append-text ta-out (str (char t))))))
-        (flush [] nil)
+        (flush [] (awt-event (scroll-to-last ta-out)))
         (close [] nil)))
     (PrintWriter. true)))
   
