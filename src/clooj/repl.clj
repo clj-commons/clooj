@@ -42,7 +42,9 @@
   [text]
   (->> text tokens (filter #(.contains % "/"))
        (map #(.split % "/"))
-       (map first) (map symbol)))
+       (map first)
+       (map #(when-not (empty? %) (symbol %)))
+       (remove nil?)))
 
 (defn is-eof-ex? [throwable]
   (and (instance? clojure.lang.LispReader$ReaderException throwable)
@@ -158,6 +160,7 @@
   (let [read-string-code (read-string-at cmd line)
         short-file (last (.split file "/"))
         namespaces (namespaces-from-code cmd)]
+    ;(println namespaces)
     (pr-str
       `(do
          (dorun (map #(try (require %) (catch Exception _#)) '~namespaces))

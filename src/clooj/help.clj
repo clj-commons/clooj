@@ -40,8 +40,6 @@
    "monitor-enter" "Avoid!"
    "monitor-exit"  "Avoid!"})
 
-(defonce var-maps (agent nil))
-
 (defn present-item [item]
   (str (:name item) " [" (:ns item) "]"))
 
@@ -57,9 +55,6 @@
        vals
        (mapcat analyze-clojure-source)
        make-var-super-map))
-
-(defn load-var-maps []
-  (send-off var-maps #(merge % (get-var-maps))))
 
 (defn find-form-string [text pos]
   (let [[left right] (find-enclosing-brackets text pos)]
