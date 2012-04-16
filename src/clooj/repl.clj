@@ -32,6 +32,18 @@
 
 (def ^:dynamic *printStackTrace-on-error* false)
 
+(defn tokens
+  "Finds all the tokens in a given string."
+  [text]
+  (re-seq #"[\w/\.]+" text))
+
+(defn namespaces-from-code
+  "Take tokens from text and extract namespace symbols."
+  [text]
+  (->> text tokens (filter #(.contains % "/"))
+       (map #(.split % "/"))
+       (map first) (map symbol)))
+
 (defn is-eof-ex? [throwable]
   (and (instance? clojure.lang.LispReader$ReaderException throwable)
        (or
@@ -144,12 +156,14 @@
 
 (defn cmd-attach-file-and-line [cmd file line]
   (let [read-string-code (read-string-at cmd line)
-        short-file (last (.split file "/"))]
+        short-file (last (.split file "/"))
+        namespaces (namespaces-from-code cmd)]
     (pr-str
-      `(binding [*source-path* ~short-file
-                 *file* ~file]
-         (last
-           (map eval ~read-string-code))))))
+      `(do
+         (dorun (map #(try (require %) (catch Exception _#)) '~namespaces))
+         (binding [*source-path* ~short-file
+                   *file* ~file]
+           (last (map eval ~read-string-code)))))))
            
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 0))
@@ -158,17 +172,15 @@
       (let [cmd-ln (str \newline (.trim cmd) \newline)
             cmd-trim (.trim cmd)]
         (append-text (app :repl-out-text-area) cmd-ln)
-        (binding [*out* (:input-writer @(app :repl))]
-          (println (cmd-attach-file-and-line cmd file line))
-          (flush))
+        (let [cmd-str (cmd-attach-file-and-line cmd file line)]
+          (binding [*out* (:input-writer @(app :repl))]
+            (println cmd-str)
+            (flush)))
         (when (not= cmd-trim (second @(:items repl-history)))
           (swap! (:items repl-history)
                  replace-first cmd-trim)
           (swap! (:items repl-history) conj ""))
         (reset! (:pos repl-history) 0)))))
-
-(defn x []
-  (throw (java.lang.Exception. "Boo!")))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area

@@ -58,7 +58,7 @@
        (mapcat analyze-clojure-source)
        make-var-super-map))
 
-(defn load-var-maps [var-map]
+(defn load-var-maps []
   (send-off var-maps #(merge % (get-var-maps))))
 
 (defn find-form-string [text pos]
@@ -108,10 +108,11 @@
                    (-> app :repl deref :var-maps deref))))
 
 (defn var-from-token [app current-ns token]
-  (if (.contains token "/")
-    (vec (.split token "/"))
-    (or ((ns-available-names app) token)
-    [current-ns token])))
+  (when token
+    (if (.contains token "/")
+      (vec (.split token "/"))
+      (or ((ns-available-names app) token)
+          [current-ns token]))))
 
 (defn arglist-from-token [app ns token]
   (or (special-forms token)
@@ -264,7 +265,8 @@
                              (.getSelectedIndex help-list)))))
   
 (defn get-list-token [app]
-  (-> app :completion-list .getSelectedValue :name))
+  (let [val (-> app :completion-list .getSelectedValue)]
+    (str (:ns val) "/" (:name val))))
 
 (defn show-help-text [app choice]
   (let [help-text (or (when choice (item-help choice)) "")]
