@@ -704,7 +704,8 @@
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(indent (:doc-text-area app))]
       ["Name search/docs" "S" "TAB" #(show-tab-help app (find-focused-text-pane app) inc)]
-      ["Go to definition" "G" "cmd1 D" #(goto-definition (get-file-ns app) app)])
+      ;["Go to definition" "G" "cmd1 D" #(goto-definition (get-file-ns app) app)]
+      )
     (add-menu menu-bar "REPL" "R"
       ["Evaluate here" "E" "cmd1 ENTER" #(send-selected-to-repl app)]
       ["Evaluate entire file" "F" "cmd1 E" #(send-doc-to-repl app)]
