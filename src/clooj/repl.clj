@@ -226,8 +226,10 @@
       (proxy [Writer] []
         (write
           ([char-array offset length]
+            (println "char array:" (apply str char-array) (count char-array))
             (awt-event (append-text ta-out (apply str char-array))))
-          ([^Integer t]          
+          ([^Integer t]
+            (println "Integer: " t (type t))
             (awt-event (append-text ta-out (str (char t))))))
         (flush [] (awt-event (scroll-to-last ta-out)))
         (close [] nil)))

@@ -43,7 +43,9 @@
   (lazy-cat (take n s) (drop (inc n) s)))
 
 (defmacro awt-event [& body]
-  `(SwingUtilities/invokeLater (fn [] ~@body)))
+  `(SwingUtilities/invokeLater
+     (fn [] (try ~@body
+                 (catch Throwable t# (.printStackTrace t#))))))
 
 (defmacro gen-map [& args]
   (let [kw (map keyword args)]

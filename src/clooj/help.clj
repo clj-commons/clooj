@@ -16,6 +16,7 @@
         [clooj.utils :only (attach-action-keys attach-child-action-keys
                             on-click awt-event when-lets get-text-str)]
         [clooj.project :only (get-selected-projects)]
+        [clooj.collaj :only (raw-data)]
         [clojure.repl :only (source-fn)]
         [clj-inspector.jars :only (clj-sources-from-jar jar-files)]
         [clj-inspector.vars :only (analyze-clojure-source
@@ -239,8 +240,10 @@
                     others (sort-by #(.toLowerCase (:name %))
                                  (filter 
                                    #(re-find token-pat2 (.substring (:name %) 1))
-                                   items))]
-                   (.setListData help-list (Vector. (concat best others)))
+                                   items))
+                    collaj-items (raw-data token)]
+                   (.setListData help-list
+                                 (Vector. (concat best others collaj-items)))
                    (.setSelectedIndex help-list 0)
                    ))
       (let [n (list-size help-list)]

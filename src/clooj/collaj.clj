@@ -1,11 +1,15 @@
 (ns clooj.collaj
   (:import (java.net URLEncoder)))
 
-(defn url-encode [s]
+(defn url-encode
+  "URL-encode a string."
+  [s]
   (URLEncoder/encode s "UTF-8"))
   
-
-(defn raw-data [terms]
+(defn raw-data
+  "Get a clojure data collection of raw search
+   results from collaj.net"
+  [terms]
   (read-string (slurp (str "http://collaj.net/data/"
                            (url-encode terms)))))
 
