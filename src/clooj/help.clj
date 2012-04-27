@@ -239,20 +239,20 @@
       (do
         (swap! help-state assoc :token token)
         (.setListData help-list (Vector.))
-        (when-lets [items (-> app :repl deref :var-maps deref vals)
-                    best (sort-by #(.toLowerCase (:name %))
-                                (filter
-                                  #(re-find token-pat1 (:name %))
+        (when-let [items (-> app :repl deref :var-maps deref vals)]
+          (let [best (sort-by #(.toLowerCase (:name %))
+                              (filter
+                                #(re-find token-pat1 (:name %))
+                                items))
+                others (sort-by #(.toLowerCase (:name %))
+                                (filter 
+                                  #(re-find token-pat2 (.substring (:name %) 1))
                                   items))
-                    others (sort-by #(.toLowerCase (:name %))
-                                 (filter 
-                                   #(re-find token-pat2 (.substring (:name %) 1))
-                                   items))
-                    collaj-items (comment (raw-data token))]
-                   (.setListData help-list
-                                 (Vector. (concat best others collaj-items)))
-                   (.setSelectedIndex help-list 0)
-                   ))
+                collaj-items (or [] (raw-data token))]
+            (.setListData help-list
+                          (Vector. (concat best others collaj-items)))
+            (.setSelectedIndex help-list 0)
+                   )))
       (let [n (list-size help-list)]
         (when (pos? n)
           (.setSelectedIndex help-list
