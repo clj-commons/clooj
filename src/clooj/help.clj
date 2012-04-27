@@ -49,8 +49,16 @@
         (for [var-map var-maps]
           [[(:ns var-map) (:name var-map)] var-map])))
 
-(defn get-var-maps [project-path]
-  (->> (jar-files (str project-path "/lib"))
+(defn classpath-to-jars [project-path classpath]
+  (apply concat
+    (for [item classpath]
+      (cond (.endsWith item "*") (jar-files (apply str (butlast item)))
+            (.endsWith item ".jar") (list (File. project-path item))
+            :else (jar-files item)))))
+
+(defn get-var-maps [project-path classpath]
+  (println (classpath-to-jars project-path classpath))
+  (->> (classpath-to-jars project-path classpath)
        (mapcat clj-sources-from-jar)
        merge
        vals
@@ -96,7 +104,7 @@
       (str (-> m :ns) "/" (:name m) ": " args))
     ""))
 
-(defn token-from-caret-pos [ns text pos]
+(defn token-from-caret-pos [text pos]
   (head-token (find-form-string text pos)))
 
 (defn matching-vars [app token]
@@ -111,13 +119,14 @@
           [current-ns token]))))
 
 (defn arglist-from-token [app ns token]
+  (println (-> app :repl deref :var-maps deref count))
   (or (special-forms token)
       (-> app :repl deref :var-maps
           deref (get (var-from-token app ns token))
           arglist-from-var-map)))
 
 (defn arglist-from-caret-pos [app ns text pos]
-  (let [token (token-from-caret-pos ns text pos)]
+  (let [token (token-from-caret-pos text pos)]
     (arglist-from-token app ns token)))
 
 ;; tab help

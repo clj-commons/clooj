@@ -105,9 +105,10 @@
 (defn outside-repl-classpath [project-path]
   (let [clojure-jar-term (when-not (clojure-jar-location project-path)
                            (find-clojure-jar (.getClassLoader clojure.lang.RT)))]
-    (str "lib/*" File/pathSeparatorChar "src"
-         (when clojure-jar-term
-           (str File/pathSeparatorChar clojure-jar-term)))))
+    (filter identity [(str project-path "/lib/*")
+                      (str project-path "/src")
+                      (when clojure-jar-term
+                        clojure-jar-term)])))
 
 (defn create-outside-repl
   "This function creates an outside process with a clojure repl."
@@ -115,8 +116,11 @@
   (let [clojure-jar (clojure-jar-location project-path)
         java (str (System/getProperty "java.home")
                   File/separator "bin" File/separator "java")
+        classpath (outside-repl-classpath project-path)
+        classpath-str (apply str (interpose File/pathSeparatorChar classpath))
+        _ (println classpath-str)
         builder (ProcessBuilder.
-                  [java "-cp" (outside-repl-classpath project-path) "clojure.main"])]
+                  [java "-cp" classpath-str "clojure.main"])]
     (.redirectErrorStream builder true)
     (.directory builder (File. (or project-path ".")))
     (let [proc (.start builder)
@@ -127,7 +131,7 @@
                 :proc proc
                 :var-maps (agent nil)}
           is (.getInputStream proc)]
-      (send-off (repl :var-maps) #(merge % (get-var-maps project-path)))
+      (send-off (repl :var-maps) #(merge % (get-var-maps project-path classpath)))
       (future (io/copy is result-writer :buffer-size 1))
       (swap! repls assoc project-path repl)
       repl)))
@@ -226,10 +230,10 @@
       (proxy [Writer] []
         (write
           ([char-array offset length]
-            (println "char array:" (apply str char-array) (count char-array))
+            ;(println "char array:" (apply str char-array) (count char-array))
             (awt-event (append-text ta-out (apply str char-array))))
           ([^Integer t]
-            (println "Integer: " t (type t))
+            ;(println "Integer: " t (type t))
             (awt-event (append-text ta-out (str (char t))))))
         (flush [] (awt-event (scroll-to-last ta-out)))
         (close [] nil)))
