@@ -53,7 +53,7 @@
   (apply concat
     (for [item classpath]
       (cond (.endsWith item "*") (jar-files (apply str (butlast item)))
-            (.endsWith item ".jar") (list (File. project-path item))
+            (.endsWith item ".jar") (list (File. item))
             :else (jar-files item)))))
 
 (defn get-var-maps [project-path classpath]
