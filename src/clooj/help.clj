@@ -57,7 +57,6 @@
             :else (jar-files item)))))
 
 (defn get-var-maps [project-path classpath]
-  (println (classpath-to-jars project-path classpath))
   (->> (classpath-to-jars project-path classpath)
        (mapcat clj-sources-from-jar)
        merge
@@ -119,7 +118,6 @@
           [current-ns token]))))
 
 (defn arglist-from-token [app ns token]
-  (println (-> app :repl deref :var-maps deref count))
   (or (special-forms token)
       (-> app :repl deref :var-maps
           deref (get (var-from-token app ns token))
@@ -250,7 +248,7 @@
                                  (filter 
                                    #(re-find token-pat2 (.substring (:name %) 1))
                                    items))
-                    collaj-items (raw-data token)]
+                    collaj-items (comment (raw-data token))]
                    (.setListData help-list
                                  (Vector. (concat best others collaj-items)))
                    (.setSelectedIndex help-list 0)

@@ -118,7 +118,6 @@
                   File/separator "bin" File/separator "java")
         classpath (outside-repl-classpath project-path)
         classpath-str (apply str (interpose File/pathSeparatorChar classpath))
-        _ (println classpath-str)
         builder (ProcessBuilder.
                   [java "-cp" classpath-str "clojure.main"])]
     (.redirectErrorStream builder true)
