@@ -56,13 +56,27 @@
             (.endsWith item ".jar") (list (File. item))
             :else (jar-files item)))))
 
-(defn get-var-maps [project-path classpath]
-  (->> (classpath-to-jars project-path classpath)
+(defn get-sources-from-jars [project-path classpath]
+   (->> (classpath-to-jars project-path classpath)
        (mapcat clj-sources-from-jar)
        merge
-       vals
-       (mapcat analyze-clojure-source)
-       make-var-super-map))
+       vals))
+
+(defn get-sources-from-clj-files [classpath]
+  (map slurp
+       (apply concat
+              (for [item classpath]
+                (let [item-file (File. item)]
+                  (when (.isDirectory item-file)
+                    (filter #(.endsWith (.getName %) ".clj")
+                            (file-seq item-file))))))))
+
+(defn get-var-maps [project-path classpath]
+  (make-var-super-map
+      (mapcat analyze-clojure-source
+              (concat
+                (get-sources-from-jars project-path classpath)
+                (get-sources-from-clj-files classpath)))))
 
 (defn find-form-string [text pos]
   (let [[left right] (find-enclosing-brackets text pos)]
