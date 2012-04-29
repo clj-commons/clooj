@@ -75,6 +75,8 @@
   
 (defn make-text-area [wrap]
   (doto (RSyntaxTextArea.)
+    (.setAnimateBracketMatching false)
+    (.setBracketMatchingEnabled false)
     ))
 
 (def get-clooj-version
