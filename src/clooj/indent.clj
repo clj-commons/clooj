@@ -54,7 +54,7 @@
                                                     bracket-pos
                                                     (- offset bracket-pos))))
                \\ 0  \[ 1  \{ 1  \" 1
-               1)))))))
+               1))))))) ;"
 
 (defn fix-indent [text-comp line]
   (let [start (.getLineStartOffset text-comp line)

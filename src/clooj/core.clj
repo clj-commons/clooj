@@ -19,9 +19,10 @@
                            WindowAdapter KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
+           (java.util Map)
            (java.io File FileReader StringReader
                     BufferedWriter OutputStreamWriter FileOutputStream)
-           (org.fife.ui.rsyntaxtextarea RSyntaxTextArea SyntaxConstants)	
+           (org.fife.ui.rsyntaxtextarea RSyntaxTextArea SyntaxConstants TokenMakerFactory)	
            (org.fife.ui.rtextarea RTextScrollPane))
   (:use [clojure.pprint :only (pprint)]
         [clooj.brackets]
@@ -72,21 +73,42 @@
 (def embedded (atom false))
 
 (def changing-file (atom false))
+
+;(defprotocol DynamicWordHighlighter
+;  (addWordToHighlight [this word token-type]))
+;
+;(extend-type RSyntaxTextArea
+;  DynamicWordHighlighter
+;  (addWordToHighlight [word token-type]))
+;    
+;(defn make-rsyntax-text-area [style]
+;  (let [tmf (TokenMakerFactory/getDefaultInstance)
+;        token-maker (.getTokenMaker tmf style)
+;        token-map (.getWordsToHighlight token-maker)]
+;    (..    
+;      (proxy [RSyntaxTextArea] []
+;        (addWordToHighlight [word token-type]
+;          (do
+;            (.put token-map word token-type)
+;            token-type)))
+;      getDocument
+;      (setTokenMakerFactory tmf))))
   
 (defn make-text-area [wrap]
   (doto (RSyntaxTextArea.)
     (.setAnimateBracketMatching false)
     (.setBracketMatchingEnabled false)
+    (.setAutoIndentEnabled false)
     ))
 
 (def get-clooj-version
   (memoize
     (fn []
       (try
-      (-> (Thread/currentThread) .getContextClassLoader
-          (.getResource "clooj/core.class") .toString
-          (.replace "clooj/core.class" "project.clj")
-          URL. slurp read-string (nth 2))
+        (-> (Thread/currentThread) .getContextClassLoader
+            (.getResource "clooj/core.class") .toString
+            (.replace "clooj/core.class" "project.clj")
+            URL. slurp read-string (nth 2))
         (catch Exception _ nil)))))
 
 ;; font
@@ -386,7 +408,7 @@
         doc-split-pane (make-split-pane
                          docs-tree-panel
                          doc-text-panel true gap 0.25)
-        repl-out-scroll-pane (make-scroll-pane repl-out-text-area)
+        repl-out-scroll-pane (JScrollPane. repl-out-text-area)
         repl-split-pane (make-split-pane
                           repl-out-scroll-pane
                           (make-scroll-pane repl-in-text-area) false gap 0.75)
@@ -449,7 +471,6 @@
       (.add completion-label)
       (.add completion-scroll-pane))
     (doto doc-text-area
-      setup-autoindent
       attach-navigation-keys)
     (constrain-to-parent completion-label :n 0 :w 0 :n 15 :e 0)
     (constrain-to-parent completion-scroll-pane :n 16 :w 0 :s 0 :e 0)
