@@ -45,7 +45,7 @@
                             is-mac count-while add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
                             attach-child-action-keys attach-action-keys
-                            get-caret-coords add-menu make-undoable
+                            get-caret-coords add-menu
                             add-menu-item
                             choose-file choose-directory
                             comment-out uncomment-out
@@ -59,7 +59,8 @@
                             remove-text-change-listeners get-text-str 
                             scroll-to-line get-directories)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
-        [clooj.style :only (get-monospaced-fonts show-font-window)])
+        [clooj.style :only (get-monospaced-fonts show-font-window)]
+        [clooj.navigate :only (attach-navigation-keys)])
   (:require [clojure.main :only (repl repl-prompt)]
             [clojure.set])
   (:gen-class
@@ -73,7 +74,8 @@
 (def changing-file (atom false))
   
 (defn make-text-area [wrap]
-  (RSyntaxTextArea.))
+  (doto (RSyntaxTextArea.)
+    ))
 
 (def get-clooj-version
   (memoize
@@ -240,7 +242,6 @@
                      (catch Throwable t (awt-event (.printStackTrace t))))))))
   
 (defn setup-temp-writer [app]
-  (reset! changing-file false)
   (let [text-comp (:doc-text-area app)]
     (add-text-change-listener text-comp
       #(when-not @changing-file
@@ -445,6 +446,9 @@
       (.setLayout (SpringLayout.))
       (.add completion-label)
       (.add completion-scroll-pane))
+    (doto doc-text-area
+      setup-autoindent
+      attach-navigation-keys)
     (constrain-to-parent completion-label :n 0 :w 0 :n 15 :e 0)
     (constrain-to-parent completion-scroll-pane :n 16 :w 0 :s 0 :e 0)
     (constrain-to-parent repl-label :n 0 :w 0 :n 15 :e 0)
@@ -456,7 +460,11 @@
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
     (double-click-selector doc-text-area)
-    (double-click-selector repl-in-text-area)
+    (doto repl-in-text-area
+      double-click-selector
+      attach-navigation-keys)
+    (.setSyntaxEditingStyle repl-in-text-area
+                            SyntaxConstants/SYNTAX_STYLE_CLOJURE)
     (.setModel docs-tree (DefaultTreeModel. nil))
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
     (constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)
@@ -469,16 +477,17 @@
     (setup-search-text-area app)
     (add-caret-listener doc-text-area #(display-caret-position app))
     (activate-caret-highlighter app)
+    (setup-temp-writer app)
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
-    (make-undoable repl-in-text-area)
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)
     (attach-action-keys doc-text-area
       ["cmd1 shift O" #(open-project app)])
     (dorun (map #(attach-global-action-keys % app)
                 [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane frame)]))
+    (setup-autoindent doc-text-area)
     app))
 
 ;; clooj docs
@@ -515,13 +524,10 @@
           (.setText doc-label (str "Source Editor (No file selected)"))
           (.setEditable text-area false)))
     (update-caret-position text-area)
-    (make-undoable text-area)
     (setup-autoindent text-area)
     (reset! (app :file) file)
     (switch-repl app (first (get-selected-projects app)))
-    (apply-namespace-to-repl app)
-    (load-caret-position app)
-    (awt-event (setup-temp-writer app))))
+    (apply-namespace-to-repl app)))
 
 (defn save-file [app]
   (try
