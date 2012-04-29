@@ -507,7 +507,8 @@
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)
     (attach-action-keys doc-text-area
-      ["cmd1 shift O" #(open-project app)])
+      ["cmd1 shift O" #(open-project app)]
+      ["cmd1 ENTER" #(send-selected-to-repl app)])
     (dorun (map #(attach-global-action-keys % app)
                 [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane frame)]))
     (setup-autoindent doc-text-area)
