@@ -374,7 +374,9 @@
     ["cmd1 PLUS" #(grow-font app)]                  
     ["cmd2 MINUS" #(.toBack (:frame app))]
     ["cmd2 PLUS" #(.toFront (:frame app))]
-    ["cmd2 EQUALS" #(.toFront (:frame app))]))
+    ["cmd2 EQUALS" #(.toFront (:frame app))]
+    ["cmd1 shift O" #(open-project app)]
+    ["cmd1 K"#(.setText (app :repl-out-text-area) "")]))
   
 (defn on-window-activation [win fun]
   (.addWindowListener win
@@ -501,14 +503,13 @@
     (add-caret-listener doc-text-area #(display-caret-position app))
     (activate-caret-highlighter app)
     (setup-temp-writer app)
+    (attach-action-keys doc-text-area
+      ["cmd1 ENTER" #(send-selected-to-repl app)])
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
     (setup-autoindent repl-in-text-area)
     (setup-tab-help app doc-text-area)
-    (attach-action-keys doc-text-area
-      ["cmd1 shift O" #(open-project app)]
-      ["cmd1 ENTER" #(send-selected-to-repl app)])
     (dorun (map #(attach-global-action-keys % app)
                 [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane frame)]))
     (setup-autoindent doc-text-area)
