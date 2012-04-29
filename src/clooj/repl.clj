@@ -14,7 +14,6 @@
            (java.net URL URLClassLoader))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event
-                            get-line-of-offset get-line-start-offset
                             append-text when-lets get-text-str get-directories)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
@@ -216,7 +215,7 @@
         txt (:text region)]
     (if-not (and txt (correct-expression? txt))
       (.setText (app :arglist-label) "Malformed expression")
-      (let [line (get-line-of-offset ta (:start region))]
+      (let [line (.getLineOfOffset ta (:start region))]
         (send-to-repl app txt (relative-file app) line)))))
 
 (defn send-doc-to-repl [app]
@@ -310,9 +309,9 @@
                     (do (send-to-repl app txt)
                         (.setText ta-in ""))
                     (.setText (app :arglist-label) "Malformed expression")))
-        at-top #(zero? (get-line-of-offset ta-in (get-caret-pos)))
-        at-bottom #(= (get-line-of-offset ta-in (get-caret-pos))
-                      (get-line-of-offset ta-in (.. ta-in getText length)))
+        at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
+        at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
+                      (.getLineOfOffset ta-in (.. ta-in getText length)))
         prev-hist #(show-previous-repl-entry app)
         next-hist #(show-next-repl-entry app)]
     (attach-child-action-keys ta-in ["UP" at-top prev-hist]

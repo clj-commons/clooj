@@ -139,18 +139,9 @@
 
 ;; text components
 
-(defn get-line-of-offset [text-pane offset]
-  (.. text-pane getDocument getDefaultRootElement (getElementIndex offset)))
-  
-(defn get-line-start-offset [text-pane line]
-  (.. text-pane getDocument getDefaultRootElement (getElement line) getStartOffset))
-
-(defn get-line-end-offset [text-pane line]
-  (.. text-pane getDocument getDefaultRootElement (getElement line) getEndOffset))
-
 (defn get-line-text [text-pane line]
-  (let [start (get-line-start-offset text-pane line)
-        length (- (get-line-end-offset text-pane line) start)]
+  (let [start (.getLineStartOffset text-pane line)
+        length (- (.getLineEndOffset text-pane line) start)]
     (.. text-pane getDocument (getText start length))))
 
 (defn append-text [text-pane text]
@@ -158,8 +149,8 @@
     (.insertString doc (.getLength doc) text nil)))
 
 (defn get-coords [text-comp offset]
-  (let [row (get-line-of-offset text-comp offset)
-        col (- offset (get-line-start-offset text-comp row))]
+  (let [row (.getLineOfOffset text-comp offset)
+        col (- offset (.getLineStartOffset text-comp row))]
     {:row row :col col}))
 
 (defn get-caret-coords [text-comp]
@@ -213,12 +204,12 @@
   (scroll-to-caret text-comp))
 
 (defn get-selected-lines [text-comp]
-  (let [row1 (get-line-of-offset text-comp (.getSelectionStart text-comp))
-        row2 (inc (get-line-of-offset text-comp (.getSelectionEnd text-comp)))]
+  (let [row1 (.getLineOfOffset text-comp (.getSelectionStart text-comp))
+        row2 (inc (.getLineOfOffset text-comp (.getSelectionEnd text-comp)))]
     (doall (range row1 row2))))
 
 (defn get-selected-line-starts [text-comp]
-  (map #(get-line-start-offset text-comp %)
+  (map #(.getLineStartOffset text-comp %)
        (reverse (get-selected-lines text-comp))))
 
 (defn insert-in-selected-row-headers [text-comp txt]

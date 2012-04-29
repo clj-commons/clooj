@@ -20,7 +20,9 @@
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
            (java.io File FileReader StringReader
-                    BufferedWriter OutputStreamWriter FileOutputStream))
+                    BufferedWriter OutputStreamWriter FileOutputStream)
+           (org.fife.ui.rsyntaxtextarea RSyntaxTextArea SyntaxConstants)	
+           (org.fife.ui.rtextarea RTextScrollPane))
   (:use [clojure.pprint :only (pprint)]
         [clooj.brackets]
         [clooj.highlighting]
@@ -67,16 +69,11 @@
 (def gap 5)
 
 (def embedded (atom false))
+
+(def changing-file (atom false))
   
 (defn make-text-area [wrap]
-  (doto (proxy [JTextPane] []
-          (getScrollableTracksViewportWidth []
-            (if-not wrap
-              (if-let [parent (.getParent this)]
-                (<= (. this getWidth)
-                    (. parent getWidth))
-                false)
-              true)))))
+  (RSyntaxTextArea.))
 
 (def get-clooj-version
   (memoize
@@ -87,30 +84,6 @@
           (.replace "clooj/core.class" "project.clj")
           URL. slurp read-string (nth 2))
         (catch Exception _ nil)))))
-    
-;; line numbers
-
-(defn add-line-numbers [text-comp max-lines size]
-  (let [row-height (.. text-comp getGraphics
-                       (getFontMetrics (. text-comp getFont)) getHeight)
-        sp (.. text-comp getParent getParent)
-        jl (JList.
-             (proxy [AbstractListModel] []
-               (getSize [] max-lines)
-               (getElementAt [i] (str (inc i) " "))))
-        cr (. jl getCellRenderer)]
-    (.setMargin text-comp (Insets. 0 10 0 0))
-    (dorun (map #(.removeMouseListener jl %) (.getMouseListeners jl)))
-    (dorun (map #(.removeMouseMotionListener jl %) (.getMouseMotionListeners jl)))
-    (doto jl
-      (.setBackground (Color. 235 235 235))
-      (.setForeground (Color. 50 50 50))
-      (.setFixedCellHeight row-height)
-      (.setFont (Font. "Monaco" Font/PLAIN size)))
-    (doto cr
-      (.setHorizontalAlignment JLabel/RIGHT)
-      (.setVerticalAlignment JLabel/BOTTOM))
-    (.setRowHeaderView sp jl)))
 
 ;; font
 
@@ -135,7 +108,6 @@
                      :repl-out-text-area :arglist-label
                      :search-text-area :help-text-area
                      :completion-list]))
-        (add-line-numbers (app :doc-text-area) Short/MAX_VALUE (int (* 0.75 size)))
         (reset! current-font [font-name size]))))
   ([app font-name]
     (let [size (second @current-font)]
@@ -268,10 +240,12 @@
                      (catch Throwable t (awt-event (.printStackTrace t))))))))
   
 (defn setup-temp-writer [app]
+  (reset! changing-file false)
   (let [text-comp (:doc-text-area app)]
     (add-text-change-listener text-comp
-      #(do (update-caret-position text-comp)
-           (update-temp app)))))
+      #(when-not @changing-file
+         (update-caret-position text-comp)
+         (update-temp app)))))
 
 (declare restart-doc)
 
@@ -311,7 +285,7 @@
 ;; build gui
 
 (defn make-scroll-pane [text-area]
-  (JScrollPane. text-area))
+  (RTextScrollPane. text-area))
 
 (defn setup-search-text-area [app]
   (let [sta (doto (app :search-text-area)
@@ -391,11 +365,11 @@
         repl-out-writer (make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
         help-text-area (make-text-area true)
-        help-text-scroll-pane (make-scroll-pane help-text-area)
+        help-text-scroll-pane (JScrollPane. help-text-area)
         completion-panel (JPanel.)
         completion-label (JLabel. "Name search")
         completion-list (JList.)
-        completion-scroll-pane (make-scroll-pane completion-list)
+        completion-scroll-pane (JScrollPane. completion-list)
         search-text-area (JTextField.)
         arglist-label (create-arglist-label)
         pos-label (JLabel.)
@@ -403,7 +377,7 @@
         cp (.getContentPane frame)
         layout (SpringLayout.)
         docs-tree (JTree.)
-        docs-tree-scroll-pane (make-scroll-pane docs-tree)
+        docs-tree-scroll-pane (JScrollPane. docs-tree)
         docs-tree-panel (JPanel.)
         docs-tree-label (JLabel. "Projects")
         doc-split-pane (make-split-pane
@@ -523,7 +497,8 @@
         temp-file (get-temp-file file)
         file-to-open (if (and temp-file (.exists temp-file)) temp-file file)
         doc-label (app :doc-label)]
-    (remove-text-change-listeners text-area)
+    ;(remove-text-change-listeners text-area)
+    (reset! changing-file true)
     (save-caret-position app)
     (.. text-area getHighlighter removeAllHighlights)
     (if (and file-to-open (.exists file-to-open) (.isFile file-to-open))
@@ -531,7 +506,11 @@
                 rdr (StringReader. txt)]
             (.read text-area rdr nil))
           (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
-          (.setEditable text-area true))
+          (.setEditable text-area true)	
+          (.setSyntaxEditingStyle text-area
+            (if (.endsWith (.getName file-to-open) ".clj")
+              SyntaxConstants/SYNTAX_STYLE_CLOJURE
+              SyntaxConstants/SYNTAX_STYLE_NONE)))
       (do (.setText text-area no-project-txt)
           (.setText doc-label (str "Source Editor (No file selected)"))
           (.setEditable text-area false)))
@@ -542,7 +521,7 @@
     (switch-repl app (first (get-selected-projects app)))
     (apply-namespace-to-repl app)
     (load-caret-position app)
-    (setup-temp-writer app)))
+    (awt-event (setup-temp-writer app))))
 
 (defn save-file [app]
   (try
@@ -743,13 +722,11 @@
 
 (defonce current-app (atom nil))
 
-(defn shutdown-agents-handler []
-  (def original-shutdown-agents clojure.core/shutdown-agents)
-  (intern 'clojure.core 'shutdown-agents
-          #(println "Ignoring shutdown-agents call.")))
-
 (defn startup []
-  (shutdown-agents-handler)
+  (Thread/setDefaultUncaughtExceptionHandler
+    (proxy [Thread$UncaughtExceptionHandler] []
+      (uncaughtException [thread exception]
+                       (println thread) (.printStackTrace exception))))
   (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [app (create-app)]
     (reset! current-app app)
