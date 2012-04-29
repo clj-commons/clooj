@@ -5,7 +5,5 @@
                  [clj-inspector "0.0.12"]
                  [slamhound "1.2.0"]
                  [com.fifesoft/rsyntaxtextarea "2.0.2"]
-                 ;[leiningen-core "2.0.0-SNAPSHOT"]
                  ]
-  :dev-dependencies [[local-file "0.1.0"]]
 )
