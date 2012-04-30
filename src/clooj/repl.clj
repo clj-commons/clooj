@@ -83,7 +83,7 @@
     
 (defn find-clojure-jar [class-loader]
   (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
-      (-> url .getFile URL. .getFile URLDecoder/decode (.split "!/") first)))
+    (-> url .getFile URL. .getFile URLDecoder/decode (.split "!/") first)))
 
 (defn clojure-jar-location
   "Find the location of a clojure jar in a project."
