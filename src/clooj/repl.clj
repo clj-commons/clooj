@@ -11,7 +11,7 @@
                     StringReader PushbackReader)
            (clojure.lang LineNumberingPushbackReader)
            (java.awt Rectangle)
-           (java.net URL URLClassLoader))
+           (java.net URL URLClassLoader URLDecoder))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event
                             append-text when-lets get-text-str get-directories)]
@@ -83,7 +83,7 @@
     
 (defn find-clojure-jar [class-loader]
   (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
-      (-> url .getFile URL. .getFile (.split "!/") first)))
+      (-> url .getFile URL. .getFile URLDecoder/decode (.split "!/") first)))
 
 (defn clojure-jar-location
   "Find the location of a clojure jar in a project."
@@ -117,6 +117,7 @@
                   File/separator "bin" File/separator "java")
         classpath (outside-repl-classpath project-path)
         classpath-str (apply str (interpose File/pathSeparatorChar classpath))
+        _ (println classpath-str)
         builder (ProcessBuilder.
                   [java "-cp" classpath-str "clojure.main"])]
     (.redirectErrorStream builder true)
