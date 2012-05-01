@@ -22,7 +22,8 @@
         [clj-inspector.vars :only (analyze-clojure-source
                                     parse-ns-form
                                    )])
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [cemerick.pomegranate.aether :as aether]))
 
 ; from http://clojure.org/special_forms
 (def special-forms
@@ -286,8 +287,9 @@
 (defn get-list-item [app]
   (-> app :completion-list .getSelectedValue))
 
-(defn get-list-dependency [app]
-  (:artifact (get-list-item app)))
+(defn get-list-artifact [app]
+  (binding [*read-eval* false] 
+    (read-string (:artifact (get-list-item app)))))
 
 (defn get-list-token [app]
   (let [val (get-list-item app)]
@@ -330,9 +332,12 @@
 (defn update-ns-form [app]
   (current-ns-form app))
 
-(defn load-dependency [app dependency]
-  (println "Loading " dependency)
-  )
+(defn load-dependencies [app artifact]
+  (println "Loading " artifact)
+  (let [deps (cemerick.pomegranate.aether/resolve-dependencies
+               :coordinates [artifact]
+               :repositories {"clojars" "http://clojars.org/repo"})]
+    (aether/dependency-files deps)))
   
 (defn update-token [app text-comp new-token]
   (awt-event
@@ -353,7 +358,7 @@
   (attach-child-action-keys text-comp
     ["ENTER" #(@help-state :visible)
              #(do (hide-tab-help app)
-                    (load-dependency app (get-list-dependency app))
+                    (load-dependencies app (get-list-artifact app))
                     (update-token app text-comp (get-list-token app)))]))
 
 (defn find-focused-text-pane [app]
