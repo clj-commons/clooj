@@ -270,7 +270,12 @@
 
 (defn apply-namespace-to-repl [app]
   (when-let [current-ns (get-file-ns app)]
-    (send-to-repl app (str "(ns " current-ns ")"))
+    (let [ns-str (str "(ns " current-ns
+                      "(:use "
+                      "[clojure.repl :only (source apropos dir pst doc find-doc)] "
+                      "[clojure.java.javadoc :only (javadoc)] "
+                      "[clojure.pprint :only (pp pprint)]))")]
+      (send-to-repl app ns-str))
     (swap! repls assoc-in
            [(-> app :repl deref :project-path) :ns]
            current-ns)))
