@@ -74,25 +74,24 @@
 
 (def changing-file (atom false))
 
-;(defprotocol DynamicWordHighlighter
-;  (addWordToHighlight [this word token-type]))
-;
-;(extend-type RSyntaxTextArea
-;  DynamicWordHighlighter
-;  (addWordToHighlight [word token-type]))
-;    
-;(defn make-rsyntax-text-area [style]
-;  (let [tmf (TokenMakerFactory/getDefaultInstance)
-;        token-maker (.getTokenMaker tmf style)
-;        token-map (.getWordsToHighlight token-maker)]
-;    (..    
-;      (proxy [RSyntaxTextArea] []
-;        (addWordToHighlight [word token-type]
-;          (do
-;            (.put token-map word token-type)
-;            token-type)))
-;      getDocument
-;      (setTokenMakerFactory tmf))))
+(defprotocol DynamicWordHighlighter
+  (addWordToHighlight [this word token-type]))
+
+(extend-type RSyntaxTextArea
+  DynamicWordHighlighter
+  (addWordToHighlight [word token-type]))
+    
+(defn make-rsyntax-text-area []
+  (let [tmf (TokenMakerFactory/getDefaultInstance)
+        token-maker (.getTokenMaker tmf "text/clojure")
+        token-map (.getWordsToHighlight token-maker)
+        rsta (proxy [RSyntaxTextArea] []
+               (addWordToHighlight [word token-type]
+                                   (do
+                                     (.put token-map word token-type)
+                                     token-type)))]
+      (.. rsta getDocument (setTokenMakerFactory tmf))
+    rsta))
   
 (defn make-text-area [wrap]
   (doto (RSyntaxTextArea.)

@@ -262,7 +262,7 @@
                                 (filter 
                                   #(re-find token-pat2 (.substring (:name %) 1))
                                   items))
-                collaj-items (or [] (raw-data token))]
+                collaj-items (or (raw-data token))]
             (.setListData help-list
                           (Vector. (concat best others collaj-items)))
             (.setSelectedIndex help-list 0)
@@ -283,8 +283,14 @@
       (.ensureIndexIsVisible help-list
                              (.getSelectedIndex help-list)))))
   
+(defn get-list-item [app]
+  (-> app :completion-list .getSelectedValue))
+
+(defn get-list-dependency [app]
+  (:artifact (get-list-item app)))
+
 (defn get-list-token [app]
-  (let [val (-> app :completion-list .getSelectedValue)]
+  (let [val (get-list-item app)]
     (str (:ns val) "/" (:name val))))
 
 (defn show-help-text [app choice]
@@ -324,13 +330,16 @@
 (defn update-ns-form [app]
   (current-ns-form app))
 
-(defn update-token [app text-comp]
+(defn load-dependency [app dependency]
+  (println "Loading " dependency)
+  )
+  
+(defn update-token [app text-comp new-token]
   (awt-event
     (let [[start stop] (local-token-location
                          (get-text-str text-comp)
                          (.getCaretPosition text-comp))
-          len (- stop start)
-          new-token (get-list-token app)]
+          len (- stop start)]
       (when (and (not (empty? new-token)) (-> app :completion-list
                                               .getModel .getSize pos?))
         (.. text-comp getDocument
@@ -344,7 +353,8 @@
   (attach-child-action-keys text-comp
     ["ENTER" #(@help-state :visible)
              #(do (hide-tab-help app)
-                  (update-token app text-comp))]))
+                    (load-dependency app (get-list-dependency app))
+                    (update-token app text-comp (get-list-token app)))]))
 
 (defn find-focused-text-pane [app]
   (let [t1 (app :doc-text-area)
