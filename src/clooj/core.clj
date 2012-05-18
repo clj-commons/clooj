@@ -24,7 +24,10 @@
                     BufferedWriter OutputStreamWriter FileOutputStream)
            (org.fife.ui.rsyntaxtextarea RSyntaxTextArea SyntaxConstants TokenMakerFactory)	
            (org.fife.ui.rtextarea RTextScrollPane))
-  (:use [clojure.pprint :only (pprint)]
+  
+  (:use [seesaw core graphics]
+
+        [clojure.pprint :only (pprint)]
         [clooj.brackets]
         [clooj.highlighting]
         [clooj.repl]
@@ -308,6 +311,10 @@
   
 ;; build gui
 
+(defn make-tabbed-pane [text-area]
+  (doto (tabbed-panel :placement :top)
+    (.addTab "Tab Test" text-area)))
+
 (defn make-scroll-pane [text-area]
   (RTextScrollPane. text-area))
 
@@ -384,9 +391,15 @@
         (fun)))))
 
 (defn create-app []
-  (let [doc-text-area (make-text-area false)
-        doc-text-panel (JPanel.)
-        doc-label (JLabel. "Source Editor")
+  (let [
+        arglist-label (create-arglist-label)
+        search-text-area (text)
+        pos-label (label)
+        doc-text-area (make-text-area false)
+        doc-scroll-pane (make-scroll-pane doc-text-area)
+        doc-tabbed-pane (make-tabbed-pane doc-scroll-pane)
+        doc-label (label "Source Editor")
+        doc-text-panel (vertical-panel :items [doc-label doc-tabbed-pane pos-label search-text-area arglist-label])
         repl-out-text-area (make-text-area true)
         repl-out-writer (make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
@@ -396,16 +409,13 @@
         completion-label (JLabel. "Name search")
         completion-list (JList.)
         completion-scroll-pane (JScrollPane. completion-list)
-        search-text-area (JTextField.)
-        arglist-label (create-arglist-label)
-        pos-label (JLabel.)
         frame (JFrame.)
         cp (.getContentPane frame)
         layout (SpringLayout.)
-        docs-tree (JTree.)
+        docs-tree (tree)
         docs-tree-scroll-pane (JScrollPane. docs-tree)
-        docs-tree-panel (JPanel.)
-        docs-tree-label (JLabel. "Projects")
+        docs-tree-label (label "Projects")
+        docs-tree-panel (flow-panel)
         doc-split-pane (make-split-pane
                          docs-tree-panel
                          doc-text-panel true gap 0.25)
@@ -444,20 +454,19 @@
                      completion-list
                      completion-scroll-pane
                      completion-panel
-                     ))
-        doc-scroll-pane (make-scroll-pane doc-text-area)]
+                     ))]
     (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
       (.add split-pane)
       (.setTitle (str "clooj " (get-clooj-version))))
-    (doto doc-text-panel
-      (.setLayout (SpringLayout.))
-      (.add doc-scroll-pane)
-      (.add doc-label)
-      (.add pos-label)
-      (.add search-text-area)
-      (.add arglist-label))
+    ; (doto doc-text-panel
+    ;   (.setLayout (SpringLayout.))
+    ;   (.add doc-scroll-pane)
+    ;   (.add doc-label)
+    ;   (.add pos-label)
+    ;   (.add search-text-area)
+    ;   (.add arglist-label))
     (doto docs-tree-panel
       (.setLayout (SpringLayout.))
       (.add docs-tree-label)
@@ -491,11 +500,11 @@
                             SyntaxConstants/SYNTAX_STYLE_CLOJURE)
     (.setModel docs-tree (DefaultTreeModel. nil))
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
-    (constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)
-    (constrain-to-parent doc-scroll-pane :n 16 :w 0 :s -16 :e 0)
-    (constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
-    (constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
-    (constrain-to-parent arglist-label :s -14 :w 80 :s -1 :e -10)
+    ; (constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)
+    ; (constrain-to-parent doc-scroll-pane :n 16 :w 0 :s -16 :e 0)
+    ; (constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
+    ; (constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
+    ; (constrain-to-parent arglist-label :s -14 :w 80 :s -1 :e -10)
     (.layoutContainer layout frame)
     (exit-if-closed frame)
     (setup-search-text-area app)
@@ -538,7 +547,7 @@
       (do (let [txt (slurp file-to-open)
                 rdr (StringReader. txt)]
             (.read text-area rdr nil))
-          (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
+          (.setText doc-label (str "Source Editor \u2014 " (.getName file)))
           (.setEditable text-area true)	
           (.setSyntaxEditingStyle text-area
             (if (.endsWith (.getName file-to-open) ".clj")
