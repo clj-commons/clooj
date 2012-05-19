@@ -311,9 +311,8 @@
   
 ;; build gui
 
-(defn make-tabbed-pane [text-area]
-  (doto (tabbed-panel :placement :top)
-    (.addTab "Tab Test" text-area)))
+(defn make-tabbed-pane [text-area label]
+  (tabbed-panel :placement :top :tabs [{:title label :content text-area}]))
 
 (defn make-scroll-pane [text-area]
   (RTextScrollPane. text-area))
@@ -393,40 +392,60 @@
 (defn create-app []
   (let [
         arglist-label (create-arglist-label)
-        search-text-area (text)
+        
+        search-text-area (text :size [200 :by 15])
         pos-label (label)
+        position-search-panel (border-panel :hgap 15 :west pos-label :center search-text-area)
+
+        doc-label (label "Source Editor")        
         doc-text-area (make-text-area false)
         doc-scroll-pane (make-scroll-pane doc-text-area)
-        doc-tabbed-pane (make-tabbed-pane doc-scroll-pane)
-        doc-label (label "Source Editor")
-        doc-text-panel (vertical-panel :items [doc-label doc-tabbed-pane pos-label search-text-area arglist-label])
-        repl-out-text-area (make-text-area true)
-        repl-out-writer (make-repl-writer repl-out-text-area)
-        repl-in-text-area (make-text-area false)
+        doc-tabbed-pane (make-tabbed-pane doc-scroll-pane doc-label)
+        doc-text-panel (vertical-panel :items [doc-label doc-tabbed-pane position-search-panel arglist-label])
+        
         help-text-area (make-text-area true)
-        help-text-scroll-pane (JScrollPane. help-text-area)
-        completion-panel (JPanel.)
-        completion-label (JLabel. "Name search")
+        help-text-scroll-pane (scrollable help-text-area)
+
+        completion-label (label "Name search")
         completion-list (JList.)
-        completion-scroll-pane (JScrollPane. completion-list)
-        frame (JFrame.)
-        cp (.getContentPane frame)
+        completion-scroll-pane (scrollable completion-list)
+        completion-panel (vertical-panel :items [completion-label completion-scroll-pane])
+
+
+        cp (:content-pane frame)
         layout (SpringLayout.)
+
         docs-tree (tree)
-        docs-tree-scroll-pane (JScrollPane. docs-tree)
+        docs-tree-scroll-pane (scrollable docs-tree)
         docs-tree-label (label "Projects")
-        docs-tree-panel (flow-panel)
-        doc-split-pane (make-split-pane
+        docs-tree-panel (vertical-panel :items [docs-tree-label docs-tree-scroll-pane])
+
+        doc-split-pane (left-right-split
                          docs-tree-panel
-                         doc-text-panel true gap 0.25)
-        repl-out-scroll-pane (JScrollPane. repl-out-text-area)
-        repl-split-pane (make-split-pane
-                          repl-out-scroll-pane
-                          (make-scroll-pane repl-in-text-area) false gap 0.75)
-        repl-panel (JPanel.)
-        repl-label (JLabel. "Clojure REPL output")
-        repl-input-label (JLabel. "Clojure REPL input \u2191")
-        split-pane (make-split-pane doc-split-pane repl-panel true gap 0.5)
+                         doc-text-panel)
+
+        repl-out-text-area (make-text-area false)
+        repl-out-writer (make-repl-writer repl-out-text-area)
+        
+        repl-out-scroll-pane (scrollable repl-out-text-area)
+        repl-label (label "Clojure REPL output")
+        repl-output-vertical-panel (vertical-panel :items [repl-out-scroll-pane repl-label])
+
+        repl-in-text-area (make-text-area false)
+        repl-input-label (label "Clojure REPL input \u2191")
+        repl-input-vertical-panel (vertical-panel :items [repl-in-text-area repl-input-label])
+
+        repl-split-pane (top-bottom-split repl-output-vertical-panel repl-input-vertical-panel)
+                
+        split-pane (top-bottom-split doc-split-pane repl-split-pane)
+
+        frame (frame 
+                :title "Overtone sketch" 
+                :width 950 
+                :height 700 
+                :minimum-size [500 :by 350]
+                :content split-pane)
+
         app (merge {:file (atom nil)
                     :repl (atom (create-outside-repl repl-out-writer nil))
                     :changed false}
@@ -453,73 +472,54 @@
                      arglist-label
                      completion-list
                      completion-scroll-pane
-                     completion-panel
-                     ))]
-    (doto frame
-      (.setBounds 25 50 950 700)
-      (.setLayout layout)
-      (.add split-pane)
-      (.setTitle (str "clooj " (get-clooj-version))))
-    ; (doto doc-text-panel
-    ;   (.setLayout (SpringLayout.))
-    ;   (.add doc-scroll-pane)
-    ;   (.add doc-label)
-    ;   (.add pos-label)
-    ;   (.add search-text-area)
-    ;   (.add arglist-label))
-    (doto docs-tree-panel
-      (.setLayout (SpringLayout.))
-      (.add docs-tree-label)
-      (.add docs-tree-scroll-pane))
-    (doto repl-panel
-      (.setLayout (SpringLayout.))
-      (.add repl-label)
-      (.add repl-input-label)
-      (.add repl-split-pane))
-    (doto completion-panel
-      (.setLayout (SpringLayout.))
-      (.add completion-label)
-      (.add completion-scroll-pane))
+                     completion-panel))]
+
+
+    
     (doto doc-text-area
       attach-navigation-keys)
-    (constrain-to-parent completion-label :n 0 :w 0 :n 15 :e 0)
-    (constrain-to-parent completion-scroll-pane :n 16 :w 0 :s 0 :e 0)
-    (constrain-to-parent repl-label :n 0 :w 0 :n 15 :e 0)
-    (constrain-to-parent repl-input-label :s -15 :w 0 :s 0 :e 0)
-    (constrain-to-parent repl-split-pane :n 16 :w 0 :s -16 :e 0)
-    (constrain-to-parent docs-tree-label :n 0 :w 0 :n 15 :e 0)
-    (constrain-to-parent docs-tree-scroll-pane :n 16 :w 0 :s 0 :e 0)
+    
     (setup-completion-list completion-list app)
+    
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
+    
     (double-click-selector doc-text-area)
+    
     (doto repl-in-text-area
       double-click-selector
       attach-navigation-keys)
+
     (.setSyntaxEditingStyle repl-in-text-area
                             SyntaxConstants/SYNTAX_STYLE_CLOJURE)
+
     (.setModel docs-tree (DefaultTreeModel. nil))
-    (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
-    ; (constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)
-    ; (constrain-to-parent doc-scroll-pane :n 16 :w 0 :s -16 :e 0)
-    ; (constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
-    ; (constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
-    ; (constrain-to-parent arglist-label :s -14 :w 80 :s -1 :e -10)
-    (.layoutContainer layout frame)
+
     (exit-if-closed frame)
+
     (setup-search-text-area app)
+    
     (add-caret-listener doc-text-area #(display-caret-position app))
+    
     (activate-caret-highlighter app)
+    
     (setup-temp-writer app)
+    
     (attach-action-keys doc-text-area
       ["cmd1 ENTER" #(send-selected-to-repl app)])
+    
     (doto repl-out-text-area (.setEditable false))
+    
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
+    
     (setup-autoindent repl-in-text-area)
+    
     (setup-tab-help app doc-text-area)
+    
     (dorun (map #(attach-global-action-keys % app)
                 [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane frame)]))
+    
     (setup-autoindent doc-text-area)
     app))
 
