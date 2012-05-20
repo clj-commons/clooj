@@ -311,8 +311,8 @@
   
 ;; build gui
 
-(defn make-tabbed-pane [text-area label]
-  (tabbed-panel :placement :top :tabs [{:title label :content text-area}]))
+; (defn make-tabbed-pane [text-area label]
+;   (tabbed-panel :placement :top :tabs [{:title label :content text-area}]))
 
 (defn make-scroll-pane [text-area]
   (RTextScrollPane. text-area))
@@ -400,8 +400,8 @@
         doc-label (label "Source Editor")        
         doc-text-area (make-text-area false)
         doc-scroll-pane (make-scroll-pane doc-text-area)
-        doc-tabbed-pane (make-tabbed-pane doc-scroll-pane doc-label)
-        doc-text-panel (vertical-panel :items [doc-label doc-tabbed-pane position-search-panel arglist-label])
+        ; doc-tabbed-pane (vertical-panel doc-scroll-pane doc-label)
+        doc-text-panel (vertical-panel :items [doc-label doc-scroll-pane position-search-panel arglist-label])
         
         help-text-area (make-text-area true)
         help-text-scroll-pane (scrollable help-text-area)
@@ -411,13 +411,14 @@
         completion-scroll-pane (scrollable completion-list)
         completion-panel (vertical-panel :items [completion-label completion-scroll-pane])
 
-
         cp (:content-pane frame)
-        layout (SpringLayout.)
 
         docs-tree (tree)
         docs-tree-scroll-pane (scrollable docs-tree)
-        docs-tree-label (label "Projects")
+        docs-tree-label (border-panel 
+                          :west (label "Projects")
+                          :size [200 :by 15]
+                          :vgap 5)
         docs-tree-panel (vertical-panel :items [docs-tree-label docs-tree-scroll-pane])
 
         doc-split-pane (left-right-split
