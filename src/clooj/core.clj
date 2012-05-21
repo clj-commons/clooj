@@ -358,7 +358,6 @@
      (select menu <b>File > New...</b>)<br>
      &nbsp;2. edit an existing file by selecting one at left.</html>")
 
-
 (defn open-project [app]
   (when-let [dir (choose-directory (app :f) "Choose a project directory")]
     (let [project-dir (if (= (.getName dir) "src") (.getParentFile dir) dir)]
@@ -444,6 +443,7 @@
                 :title "Overtone sketch" 
                 :width 950 
                 :height 700 
+                :on-close :exit
                 :minimum-size [500 :by 350]
                 :content split-pane)
 
@@ -496,7 +496,7 @@
 
     (.setModel docs-tree (DefaultTreeModel. nil))
 
-    (exit-if-closed frame)
+    ; (exit-if-closed frame)
 
     (setup-search-text-area app)
     
