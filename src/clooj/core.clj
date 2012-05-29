@@ -51,6 +51,7 @@
                             choose-file choose-directory
                             comment-out uncomment-out
                             indent unindent awt-event persist-window-shape
+                            save-shape restore-shape widget-seq
                             confirmed? create-button is-win
                             get-keystroke printstream-to-writer
                             focus-in-text-component
@@ -73,6 +74,11 @@
 (def embedded (atom false))
 
 (def changing-file (atom false))
+
+;; Would these be better in the app?
+(def toggle-repl (atom false))
+(def toggle-docs (atom false))
+(def toggle-repl-layout (atom false))
 
 (defprotocol DynamicWordHighlighter
   (addWordToHighlight [this word token-type]))
@@ -416,7 +422,7 @@
         repl-panel (JPanel.)
         repl-label (JLabel. "Clojure REPL output")
         repl-input-label (JLabel. "Clojure REPL input \u2191")
-        split-pane (make-split-pane doc-split-pane repl-panel true gap 0.5)
+        split-pane (make-split-pane doc-split-pane repl-panel true gap 0.75)
         app (merge {:file (atom nil)
                     :repl (atom (create-outside-repl repl-out-writer nil))
                     :changed false}
@@ -425,6 +431,7 @@
                      doc-label
                      repl-out-text-area
                      repl-in-text-area
+                     repl-input-label
                      repl-label
                      frame
                      help-text-area
@@ -475,10 +482,10 @@
       attach-navigation-keys)
     (constrain-to-parent completion-label :n 0 :w 0 :n 15 :e 0)
     (constrain-to-parent completion-scroll-pane :n 16 :w 0 :s 0 :e 0)
-    (constrain-to-parent repl-label :n 0 :w 0 :n 15 :e 0)
-    (constrain-to-parent repl-input-label :s -15 :w 0 :s 0 :e 0)
+    (constrain-to-parent repl-label :n 0 :w 10 :n 15 :e 0)
+    (constrain-to-parent repl-input-label :s -15 :w 15 :s 0 :e 0)
     (constrain-to-parent repl-split-pane :n 16 :w 0 :s -16 :e 0)
-    (constrain-to-parent docs-tree-label :n 0 :w 0 :n 15 :e 0)
+    (constrain-to-parent docs-tree-label :n 0 :w 10 :n 15 :e 0)
     (constrain-to-parent docs-tree-scroll-pane :n 16 :w 0 :s 0 :e 0)
     (setup-completion-list completion-list app)
     (doto pos-label
@@ -491,7 +498,7 @@
                             SyntaxConstants/SYNTAX_STYLE_CLOJURE)
     (.setModel docs-tree (DefaultTreeModel. nil))
     (constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
-    (constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)
+    (constrain-to-parent doc-label :n 0 :w 10 :n 15 :e 0)
     (constrain-to-parent doc-scroll-pane :n 16 :w 0 :s -16 :e 0)
     (constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
     (constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
@@ -687,9 +694,70 @@
         (set-tree-selection (:docs-tree app) (.getAbsolutePath file)))
       (scroll-to-line text-comp line))))
 
+(defn pane-toggle [^javax.swing.JSplitPane pane pref-name toggle-atom size]
+  "toggle display of a pane."
+  (if (not @toggle-atom)
+    (do
+      (let [div  (.getDividerLocation pane)
+            ^int newdiv (* size  (.getMaximumDividerLocation pane))]
+        (write-value-to-prefs clooj-prefs pref-name div)
+        (.setDividerLocation pane newdiv)
+        ))
+      (do
+        (let [div (read-value-from-prefs clooj-prefs pref-name)]
+          (.setDividerLocation pane div))))
+    (swap! toggle-atom not))
+  
+(defn jump-to-pane [widget pane pref-name toggle-atom size]
+  (if @toggle-atom
+    (pane-toggle pane pref-name toggle-atom size))
+    (.requestFocusInWindow widget))
+
+(defn jump-to-repl [app]
+  (jump-to-pane (:repl-in-text-area app) (:split-pane app) "repl-pane" toggle-repl 1.0))
+
+(defn jump-to-editor [app]
+  (.requestFocusInWindow (:doc-text-area app)))
+  
+(defn jump-to-docs [app]
+  (jump-to-pane (:docs-tree app) (:doc-split-pane app) "doc-pane" toggle-docs 0.0))
+
+(defn repl-layout-toggle [app]
+  "Swap the location of the REPL to the bottom of the screen to maximize width."
+  (let [sp (:split-pane app)
+        rp (:repl-split-pane app)]
+  (if (not @toggle-repl-layout)
+    (do
+      ;; Need to re-layout the labels as well if we want to make this look
+      ;; correct
+      ;;(.setOrientation rp JSplitPane/HORIZONTAL_SPLIT)
+      (.setOrientation sp JSplitPane/VERTICAL_SPLIT)
+      )
+    (do
+      ;; Need to re-layout the labels as well if we want to make this look
+      ;; correct
+      ;;(.setOrientation rp JSplitPane/VERTICAL_SPLIT)
+      (.setOrientation sp JSplitPane/HORIZONTAL_SPLIT)
+      )))
+  (swap! toggle-repl-layout not))
+
+(defn restore-display [app]
+  "Restore the split pane layout to be that which was set when we created the UI"
+  (let [sp (:split-pane app)
+        dsp (:doc-split-pane app)
+        rp (:repl-split-pane app)]
+    (.setOrientation sp JSplitPane/HORIZONTAL_SPLIT)
+    (.resetToPreferredSizes  sp)
+    (.resetToPreferredSizes dsp)
+    (.resetToPreferredSizes rp))
+  (reset! toggle-docs false)
+  (reset! toggle-repl false)
+  (reset! toggle-repl-layout false))
+
 (defn make-menus [app]
   (when (is-mac)
-    (System/setProperty "apple.laf.useScreenMenuBar" "true"))
+        (System/setProperty "com.apple.mrj.application.apple.menu.about.name", "Clooj")
+        (System/setProperty "apple.laf.useScreenMenuBar" "true"))
   (let [menu-bar (JMenuBar.)]
     (. (app :frame) setJMenuBar menu-bar)
     (let [file-menu
@@ -728,9 +796,15 @@
       ["Find next" "N" "cmd1 G" #(highlight-step app false)]
       ["Find prev" "P" "cmd1 shift G" #(highlight-step app true)])
     (add-menu menu-bar "Window" "W"
-      ["Go to REPL input" "R" "cmd1 3" #(.requestFocusInWindow (:repl-in-text-area app))]
-      ["Go to Editor" "E" "cmd1 2" #(.requestFocusInWindow (:doc-text-area app))]
-      ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
+      ["Go to REPL input" "R" "cmd1 3" #(jump-to-repl app)]
+      ["Go to Editor" "E" "cmd1 2" #(jump-to-editor app)]
+      ["Go to Project Tree" "P" "cmd1 1" #(jump-to-docs app)]
+      [:sep]
+      ["Toggle Project Tree" "P" "cmd1 shift P" #(pane-toggle (:doc-split-pane app) "doc-pane" toggle-docs 0.0)]
+      ["Toggle REPL" "R" "cmd1 shift R" #(pane-toggle (:split-pane app) "repl-pane" toggle-repl 1.0)]
+      ["Toggle REPL Layout" "L" "cmd1 shift L" #(repl-layout-toggle app)]
+      ["Reset display" "D" "cmd1 shift D" #(restore-display app)]
+      [:sep]
       ["Increase font size" nil "cmd1 PLUS" #(grow-font app)]
       ["Decrease font size" nil "cmd1 MINUS" #(shrink-font app)]
       ["Choose font..." nil nil #(apply show-font-window
@@ -785,6 +859,7 @@
 (defn -main [& args]
   (reset! embedded false)
   (startup))
+
 
 ;; testing
 
