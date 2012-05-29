@@ -248,7 +248,6 @@
                       frame
                       doc-split-pane
                       split-pane))]
-    (add-behaviors app)
     app))
 
 (defonce current-app (atom nil))
