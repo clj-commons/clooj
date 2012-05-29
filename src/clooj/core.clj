@@ -25,7 +25,7 @@
     (:require [clooj.rsyntax :as rsyntax]))
 
 
-(defn make-text-editor-comp
+(defn text-editor
   [app-atom]
   (let [arglist-label         (label  :foreground     (color :blue)
                                       :id             :arglist-label
@@ -74,7 +74,7 @@
                             doc-text-panel))
     doc-text-panel))
 
-(defn make-file-tree-comp
+(defn file-tree
   [app-atom]
   (let [docs-tree             (tree   :model          (DefaultTreeModel. nil)
                                       :id             :file-tree
@@ -98,9 +98,9 @@
                             docs-tree-scroll-pane
                             docs-tree-label
                             docs-tree-panel))
-      docs-tree-panel))
+    docs-tree-panel))
 
-(defn make-repl-comp
+(defn repl
   [app-atom]
   (let [repl-out-text-area  (rsyntax/text-area 
                                       :wrap-lines?    false
@@ -136,9 +136,9 @@
                             repl-input-vertical-panel
                             repl-out-writer
                             repl-split-pane))
-      repl-split-pane))
+    repl-split-pane))
 
-(defn make-doc-nav-comp
+(defn doc-nav
   [app-atom]
   (let [completion-label (label       :text           "Name search"
                                       :id             :doc-nav-label
@@ -162,7 +162,7 @@
 
     completion-panel))
 
-(defn make-doc-view-comp
+(defn doc-view
   [app-atom]
   (let [help-text-area (rsyntax/text-area  
                                       :wrap-lines?    true
@@ -178,6 +178,42 @@
                             help-text-area
                             help-text-scroll-pane))  
     help-text-scroll-pane))
+    
+(defn create-app []
+  (let [app-init  (atom {})
+        editor    (text-editor app-init)
+        file-tree (file-tree app-init)
+        repl      (repl app-init)
+        doc-view  (doc-view app-init)
+        doc-nav   (doc-nav app-init)
+        doc-split-pane (left-right-split
+                         file-tree
+                         editor
+                         :divider-location 0.25
+                         :resize-weight 0.25
+                         :divider-size 5)
+        split-pane (left-right-split 
+                        doc-split-pane 
+                        repl
+                        :divider-location 0.66
+                        :resize-weight 0.66
+                        :divider-size 5)
+        frame (frame 
+                :title "Clooj" 
+                :width 950 
+                :height 700 
+                :on-close :exit
+                :minimum-size [500 :by 350]
+                :content split-pane)
+        app (merge {:file      (atom nil)
+                    :repl      (atom (create-outside-repl (@app-init :repl-out-writer) nil))
+                    :changed   false}
+                    @app-init
+                    (gen-map
+                      frame
+                      doc-split-pane
+                      split-pane))]
+    app))
 
 (defn add-behaviors
   [app]
@@ -206,49 +242,7 @@
                  (app :doc-text-area) 
                  (app :repl-in-text-area) 
                  (app :repl-out-text-area) 
-                 (.getContentPane (app :frame))]))
-    ;; frame
-    )
-    
-(defn create-app []
-  (let [app-init  (atom {})
-
-        editor    (make-text-editor-comp app-init)
-        file-tree (make-file-tree-comp app-init)
-        repl      (make-repl-comp app-init)
-
-        doc-view  (make-doc-view-comp app-init)
-        doc-nav   (make-doc-nav-comp app-init)
-
-        doc-split-pane (left-right-split
-                         file-tree
-                         editor
-                         :divider-location 0.25
-                         :resize-weight 0.25
-                         :divider-size 5)
-        split-pane (left-right-split 
-                        doc-split-pane 
-                        repl
-                        :divider-location 0.66
-                        :resize-weight 0.66
-                        :divider-size 5)
-        frame (frame 
-                :title "Clooj" 
-                :width 950 
-                :height 700 
-                :on-close :exit
-                :minimum-size [500 :by 350]
-                :content split-pane)
-
-        app (merge {:file      (atom nil)
-                    :repl      (atom (create-outside-repl (@app-init :repl-out-writer) nil))
-                    :changed   false}
-                    @app-init
-                    (gen-map
-                      frame
-                      doc-split-pane
-                      split-pane))]
-    app))
+                 (.getContentPane (app :frame))])))
 
 (defonce current-app (atom nil))
 

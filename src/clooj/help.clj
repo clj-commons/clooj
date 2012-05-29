@@ -111,7 +111,7 @@
 
 
 (defn ns-available-names [app]
-  (parse-ns-form (current-ns-form app)))
+    (parse-ns-form (current-ns-form app)))
 
 (defn arglist-from-var-map [m]
   (or

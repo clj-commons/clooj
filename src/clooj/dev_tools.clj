@@ -209,8 +209,7 @@
                   (let [pos (@caret-position text-comp)
                         text (get-text-str text-comp)]
                     (when-not (= pos old-pos)
-                      (let [arglist-text
-                            (arglist-from-caret-pos app ns text pos)]
+                      (let [arglist-text (arglist-from-caret-pos app ns text pos)]
                         (awt-event (.setText (:arglist-label app) arglist-text)))))
                   (catch Throwable t (.printStackTrace t)))))))
    
