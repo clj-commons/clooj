@@ -109,6 +109,7 @@
 (defn current-ns-form [app]
   (-> app :doc-text-area .getText read-string))
 
+
 (defn ns-available-names [app]
   (parse-ns-form (current-ns-form app)))
 

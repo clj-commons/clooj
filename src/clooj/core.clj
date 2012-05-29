@@ -5,44 +5,28 @@
 
 (ns clooj.core
     (:use [seesaw core graphics color border]
-        [clojure.pprint :only (pprint)]
-        [clooj.dev-tools]
-        [clooj.brackets]
-        [clooj.highlighting]
-        [clooj.repl]
-        [clooj.search]
-        [clooj.help]
-        [clooj.project]
-        [clooj.utils]
-        [clooj.indent]
-        [clooj.style]
-        [clooj.navigate])
-    (:import (javax.swing AbstractListModel BorderFactory JDialog
-                        JFrame JLabel JList JMenuBar JOptionPane
-                        JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree KeyStroke SpringLayout JTextPane
-                        ListSelectionModel
-                        UIManager)
+          [clojure.pprint :only (pprint)]
+          [clooj.dev-tools]
+          [clooj.brackets]
+          [clooj.highlighting]
+          [clooj.repl]
+          [clooj.search]
+          [clooj.help]
+          [clooj.project]
+          [clooj.utils]
+          [clooj.indent]
+          [clooj.style]
+          [clooj.navigate])
+    (:import 
            (javax.swing.event TreeSelectionListener
                               TreeExpansionListener)
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
-                             TreePath TreeSelectionModel)
-           (java.awt Insets Rectangle Window)
-           (java.awt.event AWTEventListener FocusAdapter MouseAdapter
-                           WindowAdapter KeyAdapter)
-           (java.awt AWTEvent Color Font GridLayout Toolkit)
-           (java.net URL)
-           (java.util Map)
-           (java.io File FileReader StringReader
-                    BufferedWriter OutputStreamWriter FileOutputStream)
-           (org.fife.ui.rsyntaxtextarea RSyntaxTextArea SyntaxConstants TokenMakerFactory)  
-           (org.fife.ui.rtextarea RTextScrollPane))
+                             TreePath TreeSelectionModel))
     (:require [clooj.rsyntax :as rsyntax]))
 
-(native!)
 
 (defn make-text-editor-comp
-  [app]
+  [app-atom]
   (let [arglist-label         (label  :foreground     (color :blue)
                                       :id             :arglist-label
                                       :class          :arg-response)
@@ -70,7 +54,7 @@
                                       :id             :doc-text-area
                                       :class          :text-editor-comp)
         doc-scroll-pane       (scrollable              doc-text-area
-                                      :id             :doc-scroll-pane
+                                      :id             :doc-scrollable
                                       :class          :text-editor-comp)
         doc-text-panel        (vertical-panel       
                                       :items         [doc-label 
@@ -78,140 +62,189 @@
                                                       position-search-panel]
                                       :id             :doc-text-panel
                                       :class          :text-editor-comp)]
-    [doc-text-panel
-      (merge 
-        app
-        (gen-map
-          arglist-label
-          search-text-area
-          arg-search-panel
-          pos-label
-          position-search-panel 
-          doc-label
-          doc-text-area
-          doc-scroll-pane
-          doc-text-panel))]))
+    (swap! app-atom conj (gen-map
+                            arglist-label
+                            search-text-area
+                            arg-search-panel
+                            pos-label
+                            position-search-panel 
+                            doc-label
+                            doc-text-area
+                            doc-scroll-pane
+                            doc-text-panel))
+    doc-text-panel))
 
-; (defn make-doc-tree-comp
-;   [app]
-;   (let [docs-tree             (tree   :model (DefaultTreeModel. nil))
-;         docs-tree-scroll-pane (scrollable docs-tree)
-;         docs-tree-label       (border-panel 
-;                                       :west (label "Projects")
-;                                       :size [200 :by 15]
-;                                       :vgap 5)
-;         docs-tree-panel (vertical-panel 
-;                             :items [docs-tree-label 
-;                                     docs-tree-scroll-pane])]))
-
-
-(defn create-app []
-  (let [
-        app-init (second (-> {} make-text-editor-comp))
-
-
-        help-text-area (rsyntax/text-area  :wrap-lines? true
-                                           :editable? false
-                                           :background (color 0xFF 0xFF 0xE8)
-                                           :border (compound-border "Documentation"))
-        help-text-scroll-pane (scrollable help-text-area)
-        completion-label (label "Name search")
-
-        completion-list (listbox :border (compound-border "Doc List"))
-        
-        completion-scroll-pane (scrollable completion-list)
-        completion-panel (vertical-panel :items [completion-label completion-scroll-pane])
-
-        docs-tree (tree :model (DefaultTreeModel. nil))
-        docs-tree-scroll-pane (scrollable docs-tree)
-        docs-tree-label (border-panel 
-                          :west (label "Projects")
-                          :size [200 :by 15]
-                          :vgap 5)
+(defn make-file-tree-comp
+  [app-atom]
+  (let [docs-tree             (tree   :model          (DefaultTreeModel. nil)
+                                      :id             :file-tree
+                                      :class          :file-tree)
+        docs-tree-scroll-pane (scrollable             docs-tree
+                                      :id             :file-tree-scrollable
+                                      :class          :file-tree)
+        docs-tree-label       (border-panel 
+                                      :west           (label "Projects")
+                                      :size           [200 :by 15]
+                                      :vgap           5
+                                      :id             :file-tree-label
+                                      :class          :file-tree)
         docs-tree-panel (vertical-panel 
-                            :items [docs-tree-label 
-                                    docs-tree-scroll-pane])
+                                      :items          [docs-tree-label 
+                                                      docs-tree-scroll-pane]
+                                      :id             :file-tree-panel
+                                      :class          :file-tree)]
+    (swap! app-atom conj (gen-map
+                            docs-tree
+                            docs-tree-scroll-pane
+                            docs-tree-label
+                            docs-tree-panel))
+      docs-tree-panel))
+
+(defn make-repl-comp
+  [app-atom]
+  (let [repl-out-text-area  (rsyntax/text-area 
+                                      :wrap-lines?    false
+                                      :editable?      false
+                                      :id             :repl-out-text-area
+                                      :class          :repl)
+        repl-out-writer   (make-repl-writer repl-out-text-area)
+        repl-out-scroll-pane (scrollable repl-out-text-area                                      
+                                      :id             :repl-out-scrollable
+                                      :class          :repl)
+        repl-output-vertical-panel (vertical-panel 
+                                      :items          [repl-out-scroll-pane]                                      
+                                      :id             :repl-output-vertical-panel
+                                      :class          :repl)
+        repl-in-text-area (rsyntax/text-area 
+                                      :wrap-lines?    false
+                                      :syntax         "clojure"                                      
+                                      :id             :repl-in-text-area
+                                      :class          :repl)
+        repl-input-vertical-panel (vertical-panel 
+                                      :items          [repl-in-text-area]                                      
+                                      :id             :repl-input-vertical-panel
+                                      :class          :repl)
+        repl-split-pane (top-bottom-split             repl-output-vertical-panel 
+                                                      repl-input-vertical-panel
+                                      :divider-location 0.66
+                                      :divider-size   5)]
+    (swap! app-atom conj (gen-map
+                            repl-out-scroll-pane
+                            repl-out-text-area
+                            repl-in-text-area
+                            repl-input-vertical-panel
+                            repl-out-writer
+                            repl-split-pane))
+      repl-split-pane))
+
+(defn make-doc-nav-comp
+  [app-atom]
+  (let [completion-label (label       :text           "Name search"
+                                      :id             :doc-nav-label
+                                      :class          :doc-nav-comp)
+        completion-list (listbox      :border         (compound-border "Doc List")
+                                      :id             :doc-nav-list
+                                      :class          :doc-nav-comp)
+        completion-scroll-pane (scrollable            completion-list
+                                      :id             :doc-nav-scrollable
+                                      :class          :doc-nav-comp)
+        completion-panel (vertical-panel 
+                                      :items          [completion-label 
+                                                      completion-scroll-pane]
+                                      :id             :doc-nav-panel
+                                      :class          :doc-nav-comp)]
+    (swap! app-atom conj (gen-map
+                            completion-label
+                            completion-list
+                            completion-scroll-pane
+                            completion-panel))
+
+    completion-panel))
+
+(defn make-doc-view-comp
+  [app-atom]
+  (let [help-text-area (rsyntax/text-area  
+                                      :wrap-lines?    true
+                                      :editable?      false
+                                      :background     (color 0xFF 0xFF 0xE8)
+                                      :border         (compound-border "Documentation")
+                                      :id             :doc-view-text-area
+                                      :class          :doc-view-comp)
+        help-text-scroll-pane (scrollable             help-text-area
+                                      :id             :doc-view-scrollable
+                                      :class          :doc-view-comp)]
+    (swap! app-atom conj (gen-map
+                            help-text-area
+                            help-text-scroll-pane))  
+    help-text-scroll-pane))
+
+(defn add-behaviors
+  [app]
+    ;; docs
+    (setup-completion-list (app :completion-list) app)    
+    (setup-tab-help app (app :doc-text-area))
+    ;;editor
+    (setup-autoindent (app :doc-text-area))
+    (doto (app :doc-text-area) attach-navigation-keys)
+    (double-click-selector (app :doc-text-area))
+    (add-caret-listener (app :doc-text-area) #(display-caret-position app))
+    (setup-search-text-area app)
+    (activate-caret-highlighter app)
+    (setup-temp-writer app)
+    (attach-action-keys (app :doc-text-area)
+      ["cmd1 ENTER" #(send-selected-to-repl app)])
+    ;; repl
+    (setup-autoindent (app :repl-in-text-area))
+    (doto (app :repl-in-text-area)
+            double-click-selector
+            attach-navigation-keys)
+    ;; global
+    (dorun (map #(attach-global-action-keys % app)
+                [(app :docs-tree) 
+                 (app :doc-text-area) 
+                 (app :repl-in-text-area) 
+                 (app :repl-out-text-area) 
+                 (.getContentPane (app :frame))])))
+    
+(defn create-app []
+  (let [app-init  (atom {})
+
+        editor    (make-text-editor-comp app-init)
+        file-tree (make-file-tree-comp app-init)
+        repl      (make-repl-comp app-init)
+
+        doc-view  (make-doc-view-comp app-init)
+        doc-nav   (make-doc-nav-comp app-init)
+
         doc-split-pane (left-right-split
-                         docs-tree-panel
-                         (app-init :doc-text-panel)
+                         file-tree
+                         editor
                          :divider-location 0.25
                          :resize-weight 0.25
                          :divider-size 5)
-
-
-        repl-out-text-area (rsyntax/text-area :wrap-lines? false
-                                              :editable? false
-                                              :id :repl-out-text-area
-                                              :class :repl)
-        repl-out-writer (make-repl-writer repl-out-text-area)
-        repl-out-scroll-pane (scrollable repl-out-text-area)
-        repl-output-vertical-panel (vertical-panel :items [repl-out-scroll-pane])
-        repl-in-text-area (rsyntax/text-area :wrap-lines? false
-                                             :syntax "clojure")
-        repl-input-vertical-panel (vertical-panel :items [repl-in-text-area])
-        repl-split-pane (top-bottom-split 
-                            repl-output-vertical-panel 
-                            repl-input-vertical-panel
-                            :divider-location 0.66
-                            :divider-size 5)
-
-
         split-pane (left-right-split 
                         doc-split-pane 
-                        repl-split-pane 
+                        repl
                         :divider-location 0.66
                         :resize-weight 0.66
                         :divider-size 5)
         frame (frame 
-                :title "Overtone sketch" 
+                :title "Clooj" 
                 :width 950 
                 :height 700 
                 :on-close :exit
                 :minimum-size [500 :by 350]
                 :content split-pane)
 
-        app (merge {:file (atom nil)
-                    :repl (atom (create-outside-repl repl-out-writer nil))
-                    :changed false}
-                    app-init
-                   (gen-map
-repl-out-text-area
-                     repl-in-text-area
-                     frame
-                     help-text-area
-                     help-text-scroll-pane
-                     repl-out-scroll-pane
-                     docs-tree
-                     docs-tree-scroll-pane
-                     docs-tree-panel
-                     docs-tree-label
-                     repl-out-writer
-                     doc-split-pane
-                     repl-split-pane
-                     split-pane
-                     completion-list
-                     completion-scroll-pane
-                     completion-panel))]
-
-    (doto (app :doc-text-area)
-      attach-navigation-keys)
-    (setup-completion-list completion-list app)
-    (double-click-selector (app :doc-text-area))
-    (doto repl-in-text-area
-      double-click-selector
-      attach-navigation-keys)
-    (setup-search-text-area app)
-    (add-caret-listener (app :doc-text-area) #(display-caret-position app))
-    (activate-caret-highlighter app)
-    (setup-temp-writer app)
-    (attach-action-keys (app :doc-text-area)
-      ["cmd1 ENTER" #(send-selected-to-repl app)])
-    (setup-autoindent repl-in-text-area)
-    (setup-tab-help app (app :doc-text-area))
-    (dorun (map #(attach-global-action-keys % app)
-                [docs-tree (app :doc-text-area) repl-in-text-area repl-out-text-area (.getContentPane frame)]))
-    
-    (setup-autoindent (app :doc-text-area))
+        app (merge {:file      (atom nil)
+                    :repl      (atom (create-outside-repl (@app-init :repl-out-writer) nil))
+                    :changed   false}
+                    @app-init
+                    (gen-map
+                      frame
+                      doc-split-pane
+                      split-pane))]
+    (add-behaviors app)
     app))
 
 (defonce current-app (atom nil))

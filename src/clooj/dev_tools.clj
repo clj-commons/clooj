@@ -70,6 +70,7 @@
   (:gen-class
    :methods [^{:static true} [show [] void]]))
 
+(native!)
 
 (def gap 5)
 
@@ -607,14 +608,11 @@
         AWTEvent/KEY_EVENT_MASK))))
 
 ;; startup
-
-
 (defn startup [create-app current-app]
   (Thread/setDefaultUncaughtExceptionHandler
     (proxy [Thread$UncaughtExceptionHandler] []
       (uncaughtException [thread exception]
                        (println thread) (.printStackTrace exception))))
-  (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
   (let [app (create-app)]
     (reset! current-app app)
     (make-menus app)
@@ -634,7 +632,6 @@
     (load-font app)))
 
 ;; testing
-
 (defn get-text [current-app]
   (get-text-str (@current-app :doc-text-area)))
 
