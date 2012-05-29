@@ -15,7 +15,7 @@
 
 ;; projects tree
 
-(declare restart-doc)
+; (declare restart-doc)
 
 (def project-set (atom (sorted-set)))
 

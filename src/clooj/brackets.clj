@@ -6,7 +6,12 @@
 (ns clooj.brackets
   (:import (javax.swing.text JTextComponent))
   (:require [clojure.string :as string])
-  (:use [clooj.utils :only (count-while get-text-str)]))
+  (:use [clooj.utils :only (count-while get-text-str)]
+        [seesaw.core :only (native!)]))
+
+;; as seesaw docs instruct, native! is called before any other seesaw calls
+(native!)
+
 
 (defn mismatched-brackets [a b]
   (and (or (nil? a) (some #{a} [\( \[ \{]))
