@@ -311,12 +311,6 @@
   
 ;; build gui
 
-; (defn make-tabbed-pane [text-area label]
-;   (tabbed-panel :placement :top :tabs [{:title label :content text-area}]))
-
-(defn make-scroll-pane [text-area]
-  (RTextScrollPane. text-area))
-
 (defn setup-search-text-area [app]
   (let [sta (doto (app :search-text-area)
       (.setVisible false)
@@ -326,18 +320,6 @@
     (attach-action-keys sta ["ENTER" #(highlight-step app false)]
                             ["shift ENTER" #(highlight-step app true)]
                             ["ESCAPE" #(escape-find app)])))
-
-(defn create-arglist-label []
-  (doto (JLabel.)
-    (.setVisible true)
-    ))
-
-(defn exit-if-closed [^java.awt.Window f]
-  (when-not @embedded
-    (.addWindowListener f
-      (proxy [WindowAdapter] []
-        (windowClosing [_]
-          (System/exit 0))))))
 
 (def no-project-txt
     "\n Welcome to clooj, a lightweight IDE for clojure\n
@@ -608,7 +590,9 @@
       ["Increase font size" nil "cmd1 PLUS" #(grow-font app)]
       ["Decrease font size" nil "cmd1 MINUS" #(shrink-font app)]
       ["Choose font..." nil nil #(apply show-font-window
-                                        app set-font @current-font)])))
+                                        app set-font @current-font)])
+    (when (is-mac) (add-menu menu-bar "Help" "H"))
+    ))
       
     
 (defn add-visibility-shortcut [app]

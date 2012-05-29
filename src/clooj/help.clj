@@ -280,7 +280,7 @@
                            (app :help-text-scroll-pane))
       (set-first-component (app :doc-split-pane)
                            (app :completion-panel))
-      (.setText (app :repl-label) "Documentation")
+      ; (.setText (app :repl-label) "Documentation")
       (.ensureIndexIsVisible help-list
                              (.getSelectedIndex help-list)))))
   
@@ -317,7 +317,8 @@
                            (app :repl-out-scroll-pane))
       (set-first-component (app :doc-split-pane)
                            (app :docs-tree-panel))
-      (.setText (app :repl-label) "Clojure REPL output"))
+      ; (.setText (app :repl-label) "Clojure REPL output")
+      )
     (swap! help-state assoc :visible false :pos nil)))
   
 (defn help-handle-caret-move [app text-comp]
