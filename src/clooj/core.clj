@@ -127,7 +127,8 @@
         repl-split-pane (top-bottom-split             repl-output-vertical-panel 
                                                       repl-input-vertical-panel
                                       :divider-location 0.66
-                                      :divider-size   5)]
+                                      :resize-weight 0.66
+                                      :divider-size   3)]
     (swap! app-atom conj (gen-map
                             repl-out-scroll-pane
                             repl-out-text-area
@@ -195,6 +196,7 @@
       ["cmd1 ENTER" #(send-selected-to-repl app)])
     ;; repl
     (setup-autoindent (app :repl-in-text-area))
+    (setup-tab-help app (app :repl-in-text-area))
     (doto (app :repl-in-text-area)
             double-click-selector
             attach-navigation-keys)
@@ -204,7 +206,9 @@
                  (app :doc-text-area) 
                  (app :repl-in-text-area) 
                  (app :repl-out-text-area) 
-                 (.getContentPane (app :frame))])))
+                 (.getContentPane (app :frame))]))
+    ;; frame
+    )
     
 (defn create-app []
   (let [app-init  (atom {})
@@ -257,7 +261,13 @@
 
 (defn -main [& args]
   (reset! embedded false)
-  (startup create-app current-app))
+  (reset! current-app (create-app))
+  (add-behaviors @current-app)
+  (invoke-later
+    (-> 
+      (startup @current-app) 
+      show!)))
+
 
 
 
