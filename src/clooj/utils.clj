@@ -251,6 +251,7 @@
         (.setBorder (BorderFactory/createEmptyBorder))
         (.setDividerSize divider-size)))
 
+
 ;; keys
 
 (defn get-keystroke [key-shortcut]

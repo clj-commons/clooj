@@ -31,6 +31,8 @@
 
 (def ^:dynamic *printStackTrace-on-error* false)
 
+(def repl-output-buffer (atom ""))
+
 (defn tokens
   "Finds all the tokens in a given string."
   [text]
@@ -229,12 +231,22 @@
       (proxy [Writer] []
         (write
           ([char-array offset length]
-            ;(println "char array:" (apply str char-array) (count char-array))
-            (awt-event (append-text ta-out (apply str char-array))))
+             ;; Buffer up the repl output so we can strip out the => since
+             ;; querying for input in a read only text area does no good.
+             (swap! repl-output-buffer str (apply str char-array))
+             (let [repl-str @repl-output-buffer
+                   re (re-pattern ".*=> .*")
+                   match (re-matches re repl-str)]
+               (if (not (nil? match))
+                 (reset! repl-output-buffer "")
+                 (if (re-matches (re-pattern "\n") (apply str char-array))
+                   (do
+                     (awt-event (append-text ta-out repl-str))
+                     (reset! repl-output-buffer ""))))))
           ([^Integer t]
-            ;(println "Integer: " t (type t))
-            (awt-event (append-text ta-out (str (char t))))))
+             (awt-event (append-text ta-out (str (char t))))))
         (flush [] (awt-event (scroll-to-last ta-out)))
+        
         (close [] nil)))
     (PrintWriter. true)))
   
@@ -271,6 +283,8 @@
 (defn apply-namespace-to-repl [app]
   (when-let [current-ns (get-file-ns app)]
     (send-to-repl app (str "(ns " current-ns ")"))
+    (doto (app :repl-label) 
+      (.setText (str "Clojure REPL Ouput (" current-ns ")")))
     (swap! repls assoc-in
            [(-> app :repl deref :project-path) :ns]
            current-ns)))
@@ -286,8 +300,6 @@
 (defn switch-repl [app project-path]
   (when (and project-path
              (not= project-path (-> app :repl deref :project-path)))
-    (append-text (app :repl-out-text-area)
-                 (str "\n\n=== Switching to " project-path " REPL ===\n"))
     (let [repl (or (get @repls project-path)
                    (create-outside-repl (app :repl-out-writer) project-path))]
       (reset! (:repl app) repl))))
