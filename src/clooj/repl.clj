@@ -284,7 +284,7 @@
   (when-let [proc (-> app :repl deref :proc)]
     (.destroy proc))
   (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path))
-  (load-pomegranate-stub appk)
+  (load-pomegranate-stub app)
   (apply-namespace-to-repl app))
 
 (defn switch-repl [app project-path]
