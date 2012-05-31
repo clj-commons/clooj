@@ -153,8 +153,14 @@
 (defn read-string-at [source-text start-line]
   `(let [sr# (java.io.StringReader. ~source-text)
          rdr# (proxy [clojure.lang.LineNumberingPushbackReader] [sr#]
-               (getLineNumber []
-                              (+ ~start-line (proxy-super getLineNumber))))]
+                (getLineNumber
+                  []
+                  (+ ~start-line
+                     (proxy-call-with-super
+                       #(.getLineNumber
+                          ^clojure.lang.LineNumberingPushbackReader this)
+                       ^clojure.lang.LineNumberingPushbackReader this
+                       "getLineNumber"))))]
      (take-while #(not= % :EOF_REACHED)
                  (repeatedly #(try (read rdr#)
                                    (catch Exception e# :EOF_REACHED))))))

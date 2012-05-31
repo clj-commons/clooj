@@ -81,7 +81,7 @@ unless you are extending a type to this protocol."
         (add-classpath jar-or-dir cl)
         (throw (IllegalStateException. "Could not find a suitable classloader to modify from " classloaders))))))
 
-;; removed add-dependencies so that we don't need to load aether stuff
+;; removed add-dependencies so that we don't need to load aether stuff -- @arthuredelstein
 
 (defn get-classpath
   "Returns the effective classpath (i.e. _not_ the value of

@@ -263,7 +263,7 @@
                                 (filter 
                                   #(re-find token-pat2 (.substring (:name %) 1))
                                   items))
-                collaj-items (or (raw-data token))]
+                collaj-items (or (try (raw-data token) (catch Throwable _)))]
             (.setListData help-list
                           (Vector. (concat best others collaj-items)))
             (.setSelectedIndex help-list 0)
@@ -288,8 +288,9 @@
   (-> app :completion-list .getSelectedValue))
 
 (defn get-list-artifact [app]
-  (binding [*read-eval* false] 
-    (read-string (:artifact (get-list-item app)))))
+  (when-let [artifact (:artifact (get-list-item app))]
+    (binding [*read-eval* false] 
+      (read-string artifact))))
 
 (defn get-list-token [app]
   (let [val (get-list-item app)]

@@ -541,9 +541,11 @@
           (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
           (.setEditable text-area true)	
           (.setSyntaxEditingStyle text-area
-            (if (.endsWith (.getName file-to-open) ".clj")
-              SyntaxConstants/SYNTAX_STYLE_CLOJURE
-              SyntaxConstants/SYNTAX_STYLE_NONE)))
+            (let [file-name (.getName file-to-open)]
+              (if (or (.endsWith file-name ".clj")
+                      (.endsWith file-name ".clj~"))
+                SyntaxConstants/SYNTAX_STYLE_CLOJURE
+                SyntaxConstants/SYNTAX_STYLE_NONE))))
       (do (.setText text-area no-project-txt)
           (.setText doc-label (str "Source Editor (No file selected)"))
           (.setEditable text-area false)))
@@ -630,7 +632,7 @@
                              "Rename a source file"
                              (get-selected-namespace tree))]
       (when file
-        (.renameTo @(app :file) file)
+        (.renameTo @(app :file) file)33
         (update-project-tree (:docs-tree app))
         (awt-event (set-tree-selection tree (.getAbsolutePath file)))))))
 
