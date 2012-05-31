@@ -98,6 +98,7 @@
     (.setAnimateBracketMatching false)
     (.setBracketMatchingEnabled false)
     (.setAutoIndentEnabled false)
+    (.setAntiAliasingEnabled true)
     ))
 
 (def get-clooj-version
