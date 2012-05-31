@@ -106,6 +106,7 @@
                            (find-clojure-jar (.getClassLoader clojure.lang.RT)))]
     (filter identity [(str project-path "/lib/*")
                       (str project-path "/src")
+                      (str project-path "/lib/dev/*")
                       (when clojure-jar-term
                         clojure-jar-term)])))
 
