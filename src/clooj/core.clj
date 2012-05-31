@@ -553,7 +553,8 @@
     (setup-autoindent text-area)
     (reset! (app :file) file)
     (switch-repl app (first (get-selected-projects app)))
-    (apply-namespace-to-repl app)))
+    (apply-namespace-to-repl app)
+    (reset! changing-file false)))
 
 (defn save-file [app]
   (try
