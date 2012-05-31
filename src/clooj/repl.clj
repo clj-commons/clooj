@@ -13,7 +13,7 @@
            (java.awt Rectangle)
            (java.net URL URLClassLoader URLDecoder))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
-                            awt-event
+                            awt-event local-clj-source
                             append-text when-lets get-text-str get-directories)]
         [clooj.brackets :only (find-line-group find-enclosing-brackets)]
         [clojure.pprint :only (pprint)]
@@ -275,12 +275,16 @@
            [(-> app :repl deref :project-path) :ns]
            current-ns)))
 
+(defn load-pomegranate-stub [app]
+  (send-to-repl app (local-clj-source "clooj/cemerick/pomegranate.clj")))
+  
 (defn restart-repl [app project-path]
   (append-text (app :repl-out-text-area)
                (str "\n=== RESTARTING " project-path " REPL ===\n"))
   (when-let [proc (-> app :repl deref :proc)]
     (.destroy proc))
   (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path))
+  (load-pomegranate-stub appk)
   (apply-namespace-to-repl app))
 
 (defn switch-repl [app project-path]

@@ -13,7 +13,8 @@
            (javax.swing.event ListSelectionListener)
            (java.io File))
   (:use [clooj.brackets :only (find-enclosing-brackets)]
-        [clooj.utils :only (attach-action-keys attach-child-action-keys
+        [clooj.utils :only (append-text
+                            attach-action-keys attach-child-action-keys
                             on-click awt-event when-lets get-text-str)]
         [clooj.project :only (get-selected-projects)]
         [clooj.collaj :only (raw-data)]
@@ -334,11 +335,14 @@
   (current-ns-form app))
 
 (defn load-dependencies [app artifact]
-  (println "Loading " artifact)
+  (append-text (app :repl-out-text-area)
+               (str "\nLoading " artifact " ... "))
   (let [deps (cemerick.pomegranate.aether/resolve-dependencies
                :coordinates [artifact]
                :repositories {"clojars" "http://clojars.org/repo"})]
-    (aether/dependency-files deps)))
+    (aether/dependency-files deps))
+  (append-text (app :repl-out-text-area)
+               (str "done.")))
   
 (defn update-token [app text-comp new-token]
   (awt-event

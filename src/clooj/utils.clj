@@ -490,3 +490,19 @@
       (close [] (.close writer)))
     (PrintStream. true)))
 
+;; .clj file in current jar
+
+(defn local-clj-source
+  [clj-file]
+  (try
+    (-> (Thread/currentThread) .getContextClassLoader
+        (.getResource clj-file) .toString
+        java.net.URL. slurp)
+    (catch Exception _ nil)))
+
+
+
+
+
+
+
