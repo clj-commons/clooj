@@ -171,6 +171,13 @@
                    *file* ~file]
            (last (map eval ~read-string-code)))))))
            
+(defn print-to-repl
+  [app cmd-str]
+  (println "print to repl"); (.substring cmd-str 0 100))
+  (binding [*out* (:input-writer @(app :repl))]
+    (println cmd-str)
+    (flush)))
+
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 0))
   ([app cmd file line]
@@ -179,9 +186,7 @@
             cmd-trim (.trim cmd)]
         (append-text (app :repl-out-text-area) cmd-ln)
         (let [cmd-str (cmd-attach-file-and-line cmd file line)]
-          (binding [*out* (:input-writer @(app :repl))]
-            (println cmd-str)
-            (flush)))
+          (print-to-repl app cmd-str))
         (when (not= cmd-trim (second @(:items repl-history)))
           (swap! (:items repl-history)
                  replace-first cmd-trim)
@@ -270,13 +275,13 @@
 
 (defn apply-namespace-to-repl [app]
   (when-let [current-ns (get-file-ns app)]
-    (send-to-repl app (str "(ns " current-ns ")"))
+    (print-to-repl app (str "(ns " current-ns ")"))
     (swap! repls assoc-in
            [(-> app :repl deref :project-path) :ns]
            current-ns)))
 
 (defn load-pomegranate-stub [app]
-  (send-to-repl app (local-clj-source "clooj/cemerick/pomegranate.clj")))
+  (print-to-repl app (local-clj-source "clooj/cemerick/pomegranate.clj")))
   
 (defn restart-repl [app project-path]
   (append-text (app :repl-out-text-area)
@@ -284,8 +289,11 @@
   (when-let [proc (-> app :repl deref :proc)]
     (.destroy proc))
   (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path))
+  (print-to-repl app "(do ")
   (load-pomegranate-stub app)
-  (apply-namespace-to-repl app))
+  (apply-namespace-to-repl app)
+  (print-to-repl app ")")
+  )
 
 (defn switch-repl [app project-path]
   (when (and project-path

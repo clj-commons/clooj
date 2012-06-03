@@ -493,11 +493,15 @@
 ;; .clj file in current jar
 
 (defn local-clj-source
+  "Reads a clj source file inside a jar from the current classpath."
   [clj-file]
   (try
-    (-> (Thread/currentThread) .getContextClassLoader
-        (.getResource clj-file) .toString
-        java.net.URL. slurp)
+    (-> (Thread/currentThread)
+        .getContextClassLoader
+        (.getResource clj-file)
+        .toString
+        java.net.URL.
+        slurp)
     (catch Exception _ nil)))
 
 
