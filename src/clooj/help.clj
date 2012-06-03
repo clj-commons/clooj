@@ -334,13 +334,19 @@
 (defn update-ns-form [app]
   (current-ns-form app))
 
+(defn add-classpath-to-repl
+  [app files]
+  (let [project-path (-> app :repl deref :project-path)
+        classpath-queue (-> app :repl deref :classpath-queue)]
+    (.addAll classpath-queue files)))
+
 (defn load-dependencies [app artifact]
   (append-text (app :repl-out-text-area)
                (str "\nLoading " artifact " ... "))
   (let [deps (cemerick.pomegranate.aether/resolve-dependencies
                :coordinates [artifact]
                :repositories {"clojars" "http://clojars.org/repo"})]
-    (aether/dependency-files deps))
+    (add-classpath-to-repl app (aether/dependency-files deps)))
   (append-text (app :repl-out-text-area)
                (str "done.")))
   

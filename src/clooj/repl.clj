@@ -11,7 +11,8 @@
                     StringReader PushbackReader)
            (clojure.lang LineNumberingPushbackReader)
            (java.awt Rectangle)
-           (java.net URL URLClassLoader URLDecoder))
+           (java.net URL URLClassLoader URLDecoder)
+           (java.util.concurrent LinkedBlockingQueue))
   (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
                             awt-event local-clj-source
                             append-text when-lets get-text-str get-directories)]
@@ -34,7 +35,7 @@
 (defn tokens
   "Finds all the tokens in a given string."
   [text]
-  (re-seq #"[\w/\.]+" text))
+  (re-seq #"[\w\d/\-\.\?\+\!\*\$\>\<]+" text))
 
 (defn namespaces-from-code
   "Take tokens from text and extract namespace symbols."
@@ -128,7 +129,8 @@
                 :project-path project-path
                 :thread nil
                 :proc proc
-                :var-maps (agent nil)}
+                :var-maps (agent nil)
+                :classpath-queue (LinkedBlockingQueue.)}
           is (.getInputStream proc)]
       (send-off (repl :var-maps) #(merge % (get-var-maps project-path classpath)))
       (future (io/copy is result-writer :buffer-size 1))
@@ -159,13 +161,15 @@
                  (repeatedly #(try (read rdr#)
                                    (catch Exception e# :EOF_REACHED))))))
 
-(defn cmd-attach-file-and-line [cmd file line]
+(defn cmd-attach-file-and-line [cmd file line classpaths]
   (let [read-string-code (read-string-at cmd line)
         short-file (last (.split file "/"))
         namespaces (namespaces-from-code cmd)]
     ;(println namespaces)
     (pr-str
       `(do
+         (dorun (map #(try (clooj.cemerick.pomegranate/add-classpath %)
+                           (catch Exception _#)) '~classpaths))
          (dorun (map #(try (require %) (catch Exception _#)) '~namespaces))
          (binding [*source-path* ~short-file
                    *file* ~file]
@@ -173,19 +177,28 @@
            
 (defn print-to-repl
   [app cmd-str]
-  (println "print to repl"); (.substring cmd-str 0 100))
+  ;(println "print to repl"); (.substring cmd-str 0 100))
   (binding [*out* (:input-writer @(app :repl))]
     (println cmd-str)
     (flush)))
+
+(defn drain-queue 
+  [queue]
+  (let [array-list (java.util.ArrayList.)]
+    (.drainTo queue array-list)
+    (seq array-list)))
 
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 0))
   ([app cmd file line]
     (awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
-            cmd-trim (.trim cmd)]
+            cmd-trim (.trim cmd)
+            classpaths (filter identity
+                               (map #(.getAbsolutePath %)
+                                    (-> app :repl deref :classpath-queue drain-queue)))]
         (append-text (app :repl-out-text-area) cmd-ln)
-        (let [cmd-str (cmd-attach-file-and-line cmd file line)]
+        (let [cmd-str (cmd-attach-file-and-line cmd file line classpaths)]
           (print-to-repl app cmd-str))
         (when (not= cmd-trim (second @(:items repl-history)))
           (swap! (:items repl-history)
@@ -336,3 +349,6 @@
 
 (defn print-stack-trace [app]
     (send-to-repl app "(.printStackTrace *e)"))
+
+    
+  
