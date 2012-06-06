@@ -169,7 +169,7 @@
     (pr-str
       `(do
          (dorun (map #(try (clooj.cemerick.pomegranate/add-classpath %)
-                           (catch Exception _#)) '~classpaths))
+                           (catch Exception e# (println e#))) '~classpaths))
          (dorun (map #(try (require %) (catch Exception _#)) '~namespaces))
          (binding [*source-path* ~short-file
                    *file* ~file]
@@ -305,8 +305,8 @@
   (print-to-repl app "(do ")
   (load-pomegranate-stub app)
   (apply-namespace-to-repl app)
-  (print-to-repl app ")")
-  )
+  (print-to-repl app "(clojure.main/repl :print clojure.pprint/pprint)")
+  (print-to-repl app ")"))
 
 (defn switch-repl [app project-path]
   (when (and project-path
