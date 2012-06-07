@@ -10,7 +10,7 @@
   "Get a clojure data collection of raw search
    results from collaj.net"
   [terms]
-  (read-string (slurp (str "http://collaj.net/data/"
+  (read-string (slurp (str "http://collaj.net/?format=raw&q="
                            (url-encode terms)))))
 
 
