@@ -418,7 +418,7 @@
         repl-input-label (JLabel. "Clojure REPL input \u2191")
         split-pane (make-split-pane doc-split-pane repl-panel true gap 0.5)
         app (merge {:file (atom nil)
-                    :repl (atom (create-outside-repl repl-out-writer nil))
+                    :repl (atom (create-outside-repl repl-out-writer nil "user"))
                     :changed false}
                    (gen-map
                      doc-text-area

@@ -110,9 +110,23 @@
                       (when clojure-jar-term
                         clojure-jar-term)])))
 
+(defn load-pomegranate-stub []
+  (local-clj-source "clooj/cemerick/pomegranate.clj"))
+
+(defn initialize-repl [repl-input-writer current-ns]
+  (binding [*out* repl-input-writer]
+    (print "(clojure.main/repl
+            :print clojure.pprint/pprint
+            :prompt #(do (clojure.main/repl-prompt) (.flush *out*)))"
+           "(do
+             (set! *print-length* 20)"
+             (load-pomegranate-stub) 
+           "(ns " current-ns "))"
+           )))
+
 (defn create-outside-repl
   "This function creates an outside process with a clojure repl."
-  [result-writer project-path]
+  [result-writer project-path ns]
   (let [clojure-jar (clojure-jar-location project-path)
         java (str (System/getProperty "java.home")
                   File/separator "bin" File/separator "java")
@@ -135,6 +149,7 @@
       (send-off (repl :var-maps) #(merge % (get-var-maps project-path classpath)))
       (future (io/copy is result-writer :buffer-size 1))
       (swap! repls assoc project-path repl)
+      (initialize-repl input-writer ns)
       repl)))
 
 (defn replace-first [coll x]
@@ -288,28 +303,18 @@
 
 (defn apply-namespace-to-repl [app]
   (when-let [current-ns (get-file-ns app)]
-    (print-to-repl app (str "(ns " current-ns ")"))
+    (send-to-repl app (str "(ns " current-ns ")"))
     (swap! repls assoc-in
            [(-> app :repl deref :project-path) :ns]
            current-ns)))
-
-(defn load-pomegranate-stub [app]
-  (print-to-repl app (local-clj-source "clooj/cemerick/pomegranate.clj")))
   
 (defn restart-repl [app project-path]
   (append-text (app :repl-out-text-area)
                (str "\n=== RESTARTING " project-path " REPL ===\n"))
   (when-let [proc (-> app :repl deref :proc)]
     (.destroy proc))
-  (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path))
-  (print-to-repl app "(do ")
-  (load-pomegranate-stub app)
-  (apply-namespace-to-repl app)
-  (print-to-repl app "(set! *print-length* 20)
-                      (clojure.main/repl
-                        :print clojure.pprint/pprint
-                        :prompt #(do (clojure.main/repl-prompt) (.flush *out*)))")
-  (print-to-repl app ")"))
+  (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))
+  (apply-namespace-to-repl app))
 
 (defn switch-repl [app project-path]
   (when (and project-path
@@ -317,8 +322,9 @@
     (append-text (app :repl-out-text-area)
                  (str "\n\n=== Switching to " project-path " REPL ===\n"))
     (let [repl (or (get @repls project-path)
-                   (create-outside-repl (app :repl-out-writer) project-path))]
-      (reset! (:repl app) repl))))
+                   (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))]
+      (reset! (:repl app) repl)
+      (apply-namespace-to-repl app))))
 
 (defn add-repl-input-handler [app]
   (let [ta-in (app :repl-in-text-area)
