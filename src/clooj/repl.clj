@@ -324,7 +324,8 @@
     (let [repl (or (get @repls project-path)
                    (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))]
       (reset! (:repl app) repl)
-      (apply-namespace-to-repl app))))
+      ;(apply-namespace-to-repl app)
+      )))
 
 (defn add-repl-input-handler [app]
   (let [ta-in (app :repl-in-text-area)
