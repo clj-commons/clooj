@@ -369,7 +369,7 @@
   (attach-child-action-keys text-comp
     ["ENTER" #(@help-state :visible)
              #(do (hide-tab-help app)
-                  (load-dependencies app (get-list-artifact app))
+                  (.start (Thread. (fn [] (load-dependencies app (get-list-artifact app)))))
                   (update-token app text-comp (get-list-token app)))]))
 
 (defn find-focused-text-pane [app]

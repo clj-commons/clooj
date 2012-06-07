@@ -177,7 +177,7 @@
            
 (defn print-to-repl
   [app cmd-str]
-  ;(println "print to repl"); (.substring cmd-str 0 100))
+  ;(println @(app :repl))
   (binding [*out* (:input-writer @(app :repl))]
     (println cmd-str)
     (flush)))
