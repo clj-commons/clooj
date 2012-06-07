@@ -208,7 +208,7 @@
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
-                        (Rectangle. 0 (.getHeight text-area) 1 1)))
+                        (Rectangle. 0 (dec (.getHeight text-area)) 1 1)))
 
 (defn relative-file [app]
   (let [prefix (str (-> app :repl deref :project-path) File/separator
@@ -305,7 +305,10 @@
   (print-to-repl app "(do ")
   (load-pomegranate-stub app)
   (apply-namespace-to-repl app)
-  (print-to-repl app "(clojure.main/repl :print clojure.pprint/pprint)")
+  (print-to-repl app "(set! *print-length* 20)
+                      (clojure.main/repl
+                        :print clojure.pprint/pprint
+                        :prompt #(do (clojure.main/repl-prompt) (.flush *out*)))")
   (print-to-repl app ")"))
 
 (defn switch-repl [app project-path]
