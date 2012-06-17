@@ -345,7 +345,9 @@
                (str "\nLoading " artifact " ... "))
   (let [deps (cemerick.pomegranate.aether/resolve-dependencies
                :coordinates [artifact]
-               :repositories {"clojars" "http://clojars.org/repo"})]
+               :repositories
+                 (merge cemerick.pomegranate.aether/maven-central
+                        {"clojars" "http://clojars.org/repo"}))]
     (add-classpath-to-repl app (aether/dependency-files deps)))
   (append-text (app :repl-out-text-area)
                (str "done.")))
