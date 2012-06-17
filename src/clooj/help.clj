@@ -346,7 +346,7 @@
   (let [deps (cemerick.pomegranate.aether/resolve-dependencies
                :coordinates [artifact]
                :repositories
-                 (merge cemerick.pomegranate.aether/maven-central
+                 (merge aether/maven-central
                         {"clojars" "http://clojars.org/repo"}))]
     (add-classpath-to-repl app (aether/dependency-files deps)))
   (append-text (app :repl-out-text-area)
