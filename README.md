@@ -21,7 +21,7 @@ The source code editor offers a few simple things to make writing clojure code e
  *  Press ctrl-ENTER to send either the nearest root form or the selected text to the REPL.
  *  Double-click a paren to highlight a form
  *  Source files are continuously saved in the background to prevent accidental loss of your work in the event of a crash.
- *  Syntax highlighting (using the [RSyntaxTextArea](http://fifesoft.com/rsyntaxtextarea/) library)
+ *  Customizable syntax highlighting (using the [RSyntaxTextArea](http://fifesoft.com/rsyntaxtextarea/) library)
 
 ### clojure projects
 Each clojure project corresponds to a project directory somewhere in the file system, containing a src directory. Inside the src directory is the source code hierarchy, composed of directories and .clj files. Note this directory structure is completely compatible with the lein and cake clojure build programs and you are encouraged to use one of these from the command line in conjunction with the clooj editor. Clicking different source files in the projects tree will automatically change the source file currently being edited, as well as switch the REPL to the appropriate namespace.

@@ -5,14 +5,18 @@
 
 (ns clooj.style
   (:import 
+    (java.io FileInputStream)
     (javax.swing JComboBox JFrame JList JScrollPane JSplitPane
-                 ListSelectionModel SpringLayout)
+                 ListSelectionModel SpringLayout JOptionPane)
     (javax.swing.text SimpleAttributeSet StyleConstants)
     (java.awt Color Font FontMetrics GraphicsEnvironment)
     (java.awt.image BufferedImage)
     (javax.swing.event ListSelectionListener)
+    (org.fife.ui.rsyntaxtextarea Theme)
     (java.util Vector))
-  (:use [clooj.utils :only (constrain-to-parent make-split-pane)]))
+  (:use [clooj.utils :only (constrain-to-parent make-split-pane choose-file 
+                            awt-event write-value-to-prefs clooj-prefs
+                            read-value-from-prefs)]))
 
 (def graphics-object
   (memoize (fn [] (.createGraphics
@@ -89,4 +93,43 @@
   (when-not @font-window
     (reset! font-window (create-font-window app set-font init-name init-size)))
   (.show @font-window))
-  
+
+;; theme (optional)
+(defonce current-theme (atom nil))
+
+(defn set-theme [app apply-to]
+    (if @current-theme (.apply @current-theme (get app apply-to))))
+
+(defn refresh-theme [app]
+    (do
+        (set-theme app :doc-text-area)
+        (set-theme app :repl-out-text-area)
+        (set-theme app :repl-in-text-area)
+        (set-theme app :help-text-area)))
+
+(defn swap-theme [input-stream]
+    (swap! current-theme
+           (fn [old-value new-value]
+               (let [new-theme (Theme/load (FileInputStream. new-value))]
+                   (write-value-to-prefs clooj-prefs "app-theme" new-value)
+                   new-theme))
+           input-stream))
+
+(defn load-theme [app]
+    (try
+        (let [theme-file (read-value-from-prefs clooj-prefs "app-theme")]
+            (swap-theme theme-file)
+            (refresh-theme app))
+        (catch Exception e (println "pref not set, this is ok"))))
+
+(defn show-theme-window [app]
+    (try
+        (when-let [dir (choose-file (app :frame) "Select a theme file" "" true)]
+            (awt-event
+                 (let [path (.getAbsolutePath dir)]
+                     (swap-theme path)
+                     (refresh-theme app))))
+        (catch Exception e (do (JOptionPane/showMessageDialog nil
+                               "Invalid theme file."
+                               "Oops" JOptionPane/ERROR_MESSAGE)
+                           (.printStackTrace e)))))
