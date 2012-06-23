@@ -60,7 +60,7 @@
                             remove-text-change-listeners get-text-str 
                             scroll-to-line get-directories)]
         [clooj.indent :only (setup-autoindent fix-indent-selected-lines)]
-        [clooj.style :only (get-monospaced-fonts show-font-window)]
+        [clooj.style :only (get-monospaced-fonts show-font-window show-theme-window load-theme)]
         [clooj.navigate :only (attach-navigation-keys)])
   (:require [clojure.main :only (repl repl-prompt)]
             [clojure.set])
@@ -92,7 +92,7 @@
                                      token-type)))]
       (.. rsta getDocument (setTokenMakerFactory tmf))
     rsta))
-  
+
 (defn make-text-area [wrap]
   (doto (RSyntaxTextArea.)
     (.setAnimateBracketMatching false)
@@ -737,7 +737,8 @@
       ["Increase font size" nil "cmd1 PLUS" #(grow-font app)]
       ["Decrease font size" nil "cmd1 MINUS" #(shrink-font app)]
       ["Choose font..." nil nil #(apply show-font-window
-                                        app set-font @current-font)])))
+                                        app set-font @current-font)]
+      ["Choose theme..." nil nil #(show-theme-window app)])))
       
     
 (defn add-visibility-shortcut [app]
@@ -777,7 +778,8 @@
     (let [tree (app :docs-tree)]
       (load-expanded-paths tree)
       (load-tree-selection tree))
-    (load-font app)))
+    (load-font app)
+    (load-theme app)))
 
 (defn -show []
   (reset! embedded true)
