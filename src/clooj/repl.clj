@@ -118,8 +118,8 @@
     (print "(clojure.main/repl
             :print clojure.pprint/pprint
             :prompt #(do (clojure.main/repl-prompt) (.flush *out*)))"
-           "(do
-             (set! *print-length* 20)"
+           "(do "
+             ;(set! *print-length* 20)"
              (load-pomegranate-stub) 
            "(ns " current-ns "))"
            )))
