@@ -341,8 +341,8 @@
     (.addAll classpath-queue files)))
 
 (defn load-dependencies [app artifact]
-  (append-text (app :repl-out-text-area)
-               (str "\nLoading " artifact " ... "))
+  (awt-event (append-text (app :repl-out-text-area)
+               (str "\nLoading " artifact " ... ")))
   (let [deps (cemerick.pomegranate.aether/resolve-dependencies
                :coordinates [artifact]
                :repositories
