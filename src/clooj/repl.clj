@@ -309,8 +309,8 @@
            current-ns)))
   
 (defn restart-repl [app project-path]
-  (append-text (app :repl-out-text-area)
-               (str "\n=== RESTARTING " project-path " REPL ===\n"))
+  (awt-event (append-text (app :repl-out-text-area)
+                          (str "\n=== RESTARTING " project-path " REPL ===\n")))
   (when-let [proc (-> app :repl deref :proc)]
     (.destroy proc))
   (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))
@@ -319,8 +319,9 @@
 (defn switch-repl [app project-path]
   (when (and project-path
              (not= project-path (-> app :repl deref :project-path)))
-    (append-text (app :repl-out-text-area)
-                 (str "\n\n=== Switching to " project-path " REPL ===\n"))
+    (awt-event
+      (append-text (app :repl-out-text-area)
+                   (str "\n\n=== Switching to " project-path " REPL ===\n")))
     (let [repl (or (get @repls project-path)
                    (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))]
       (reset! (:repl app) repl)

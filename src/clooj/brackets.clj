@@ -25,7 +25,7 @@
       \" (condp = c, \" p, \\ j, s)
       \; (if (= c \newline) p s)
       (condp = c
-        \" j \\ j \; j
+        \" j \\ j \; j ;"
         \( j \[ j \{ j
         \) p \] p \} p
         s))))
