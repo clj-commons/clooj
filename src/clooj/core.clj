@@ -187,30 +187,29 @@
 (defn handle-caret-move [app text-comp ns]
   (update-caret-position text-comp)
   (help-handle-caret-move app text-comp)
-  (send-off highlight-agent
-            (fn [old-pos]
-              (try
-                (let [pos (@caret-position text-comp)
-                      text (get-text-str text-comp)]
-                  (when-not (= pos old-pos)
-                    (let [enclosing-brackets (find-enclosing-brackets text pos)
-                          bad-brackets (find-bad-brackets text)
-                          good-enclosures (clojure.set/difference
-                                            (set enclosing-brackets) (set bad-brackets))]
-                      (awt-event
-                        (highlight-brackets text-comp good-enclosures bad-brackets)))))
-                (catch Throwable t (.printStackTrace t)))))
-  (when ns
-    (send-off arglist-agent 
+  (let [text (get-text-str text-comp)]
+    (send-off highlight-agent
               (fn [old-pos]
                 (try
-                  (let [pos (@caret-position text-comp)
-                        text (get-text-str text-comp)]
+                  (let [pos (@caret-position text-comp)]
                     (when-not (= pos old-pos)
-                      (let [arglist-text
-                            (arglist-from-caret-pos app ns text pos)]
-                        (awt-event (.setText (:arglist-label app) arglist-text)))))
-                  (catch Throwable t (.printStackTrace t)))))))
+                      (let [enclosing-brackets (find-enclosing-brackets text pos)
+                            bad-brackets (find-bad-brackets text)
+                            good-enclosures (clojure.set/difference
+                                              (set enclosing-brackets) (set bad-brackets))]
+                        (awt-event
+                          (highlight-brackets text-comp good-enclosures bad-brackets)))))
+                  (catch Throwable t (.printStackTrace t)))))
+    (when ns
+      (send-off arglist-agent 
+                (fn [old-pos]
+                  (try
+                    (let [pos (@caret-position text-comp)]
+                      (when-not (= pos old-pos)
+                        (let [arglist-text
+                              (arglist-from-caret-pos app ns text pos)]
+                          (awt-event (.setText (:arglist-label app) arglist-text)))))
+                    (catch Throwable t (.printStackTrace t))))))))
    
 ;; highlighting
 
@@ -517,9 +516,9 @@
 ;; clooj docs
 
 (defn restart-doc [app ^File file]
-  (send-off temp-file-manager
-            (let [f @(:file app)
-                  txt (get-text-str (:doc-text-area app))]
+  (let [f @(:file app)
+        txt (get-text-str (:doc-text-area app))]
+    (send-off temp-file-manager
               (let [temp-file (get-temp-file f)]
                 (fn [_] (when (and f temp-file (.exists temp-file))
                           (dump-temp-doc app f txt))
@@ -541,7 +540,7 @@
           (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
           (.setEditable text-area true)	
           (.setSyntaxEditingStyle text-area
-            (let [file-name (.getName file-to-open)]
+                                  (let [file-name (.getName file-to-open)]
               (if (or (.endsWith file-name ".clj")
                       (.endsWith file-name ".clj~"))
                 SyntaxConstants/SYNTAX_STYLE_CLOJURE
