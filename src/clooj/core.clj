@@ -199,7 +199,7 @@
                                               (set enclosing-brackets) (set bad-brackets))]
                         (awt-event
                           (highlight-brackets text-comp good-enclosures bad-brackets)))))
-                  (catch Throwable t (.printStackTrace t)))))
+                  (catch Throwable t (awt-event (.printStackTrace t))))))
     (when ns
       (send-off arglist-agent 
                 (fn [old-pos]
@@ -209,7 +209,7 @@
                         (let [arglist-text
                               (arglist-from-caret-pos app ns text pos)]
                           (awt-event (.setText (:arglist-label app) arglist-text)))))
-                    (catch Throwable t (.printStackTrace t))))))))
+                    (catch Throwable t (awt-event (.printStackTrace t)))))))))
    
 ;; highlighting
 
@@ -799,4 +799,3 @@
 ;   []
 ;  (.setVisible (@current-app :frame) false)
 ;  (startup))
-

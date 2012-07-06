@@ -144,9 +144,17 @@
         length (- (.getLineEndOffset text-pane line) start)]
     (.. text-pane getDocument (getText start length))))
 
-(defn append-text [text-pane text]
-  (when-let [doc (.getDocument text-pane)]
-    (.insertString doc (.getLength doc) text nil)))
+(defn append-text
+  ([text-pane text scroll-to-end?]
+    (when-let [doc (.getDocument text-pane)]
+      (let [length (.getLength doc)]
+        (when scroll-to-end?
+          (let [caret-pos (.getCaretPosition text-pane)]
+            (when (< caret-pos length)
+              (.setCaretPosition text-pane length))))
+        (.insertString doc (.getLength doc) text nil))))
+  ([text-pane text]
+    (append-text text-pane text true)))
 
 (defn get-coords [text-comp offset]
   (let [row (.getLineOfOffset text-comp offset)
