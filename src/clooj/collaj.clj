@@ -13,4 +13,3 @@
   (read-string (slurp (str "http://collaj.net/?format=raw&q="
                            (url-encode terms)))))
 
-
