@@ -713,7 +713,7 @@
       ["Uncomment-out" "U" "cmd1 shift SEMICOLON" #(uncomment-out (:doc-text-area app))]
       ["Fix indentation" "F" "cmd1 BACK_SLASH" #(fix-indent-selected-lines (:doc-text-area app))]
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(indent (:doc-text-area app))]
-      ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(indent (:doc-text-area app))]
+      ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(unindent (:doc-text-area app))]
       ["Name search/docs" "S" "TAB" #(show-tab-help app (find-focused-text-pane app) inc)]
       ;["Go to definition" "G" "cmd1 D" #(goto-definition (get-file-ns app) app)]
       )
