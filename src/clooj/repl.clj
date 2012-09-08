@@ -116,7 +116,12 @@
 (defn initialize-repl [repl-input-writer current-ns]
   (binding [*out* repl-input-writer]
     (print "(clojure.main/repl
-            :print clojure.pprint/pprint
+            :print (fn [x]
+                     (if (var? x)
+                       (binding [*print-length* 5
+                                 *print-level* 2]
+                         (clojure.pprint/pprint x))
+                       (clojure.pprint/pprint x)))
             :prompt #(do (clojure.main/repl-prompt) (.flush *out*)))"
            "(do "
              ;(set! *print-length* 20)"
