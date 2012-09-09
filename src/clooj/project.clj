@@ -6,7 +6,7 @@
 (ns clooj.project
   (:import (java.io File)
            (java.awt GridLayout)
-           (javax.swing JButton JTree JOptionPane JWindow)
+           (javax.swing JButton JOptionPane JWindow)
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel))
   (:use [clooj.utils :only (clooj-prefs read-value-from-prefs
