@@ -189,6 +189,7 @@
         (JOptionPane/showMessageDialog nil "Unable to move project.")))))
 
 (defn remove-selected-project [app]
-  (apply swap! project-set disj (get-selected-projects app))
+  (apply swap! project-set disj (map #(.getAbsolutePath %)
+                                     (get-selected-projects app)))
   (update-project-tree (app :docs-tree)))     
       
