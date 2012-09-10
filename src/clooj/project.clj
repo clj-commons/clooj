@@ -115,13 +115,18 @@
       (sort-by #(.toLowerCase (.getName (file %))))
       vec))
 
-(defn visible-children [file]
+(defn visible-children
+  "Get a vector of a directory's children, if there are any.
+   Omits hidden and temporary files."
+  [file]
   (->> (.listFiles file)
        (remove #(.startsWith (.getName %) "."))
        (remove #(.endsWith (.getName %) "~"))
        vec))
 
-(defn file-text [file]
+(defn file-name-text
+  "Show a file's name, with stars if it is the temp file."
+  [file]
   (if (.exists (get-temp-file file))
     (str "*" (.getName file) "*")
     (.getName file)))
