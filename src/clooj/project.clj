@@ -125,7 +125,7 @@
        vec))
 
 (defn file-name-text
-  "Show a file's name, with stars if it is the temp file."
+  "Show a file's name, with *stars* if it is the temp file."
   [file]
   (if (.exists (get-temp-file file))
     (str "*" (.getName file) "*")
@@ -138,7 +138,7 @@
     (proxy [DefaultMutableTreeNode] [file]
       (getChildAt [i] (file-node (children i)))
       (getChildCount [] (count children))
-      (toString [] (file-text file))
+      (toString [] (file-name-text file))
       (isLeaf [] (not (.isDirectory file))))))
 
 (defn root-node
