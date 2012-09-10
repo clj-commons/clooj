@@ -9,6 +9,8 @@
           [clojure.java.io :only (file)]))
 
 (defn get-projects
+  "Load projects from preferences, and return
+   a sorted vector."
   []
   (->> (read-value-from-prefs clooj-prefs "project-set")
       set
@@ -33,11 +35,12 @@
     (getChildCount [] (count projects))
     (toString [] "root")))
 
-(defn file-tree []
+(defn file-tree-model [projects]
   (doto
-    (JTree. (DefaultTreeModel. (root-node (get-projects)) false))
+    (JTree. (DefaultTreeModel. (root-node projects) false))
     (.setRootVisible false)
-    (.setShowsRootHandles true)))
+    (.setShowsRootHandles true)
+    (.. getSelectionModel (setSelectionMode TreeSelectionModel/SINGLE_TREE_SELECTION))))
 
 ;; test
 

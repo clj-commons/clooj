@@ -58,7 +58,7 @@
 
 (defn setup-classpath [project-path]
   (when project-path
-    (let [project-dir (File. project-path)]
+    (let [project-dir (io/file project-path)]
       (when (and (.exists project-dir) (.isDirectory project-dir))
         (let [sub-dirs (get-directories project-dir)]
           (concat sub-dirs
@@ -139,7 +139,7 @@
         builder (ProcessBuilder.
                   [java "-cp" classpath-str "clojure.main"])]
     (.redirectErrorStream builder true)
-    (.directory builder (File. (or project-path ".")))
+    (.directory builder (io/file (or project-path ".")))
     (let [proc (.start builder)
           input-writer  (-> proc .getOutputStream (PrintWriter. true))
           repl {:input-writer input-writer

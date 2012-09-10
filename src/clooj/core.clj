@@ -300,6 +300,7 @@
               (save-tree-selection tree (.getNewLeadSelectionPath e))
               (let [f (.. e getPath getLastPathComponent
                             getUserObject)]
+                (println "userObject:" f (type f))
                 (when (and
                         (not= f @(app :file))
                         (text-file? f))
