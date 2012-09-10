@@ -43,7 +43,7 @@
                               rename-project set-tree-selection
                               get-code-files get-selected-namespace)]
         [clooj.utils :only (clooj-prefs write-value-to-prefs read-value-from-prefs
-                            is-mac count-while add-text-change-listener
+                            is-mac add-text-change-listener
                             set-selection scroll-to-pos add-caret-listener
                             attach-child-action-keys attach-action-keys
                             get-caret-coords add-menu
