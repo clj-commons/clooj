@@ -115,14 +115,25 @@
       (sort-by #(.toLowerCase (.getName (file %))))
       vec))
 
+(defn visible-children [file]
+  (->> (.listFiles file)
+       (remove #(.startsWith (.getName %) "."))
+       (remove #(.endsWith (.getName %) "~"))
+       vec))
+
+(defn file-text [file]
+  (if (.exists (get-temp-file file))
+    (str "*" (.getName file) "*")
+    (.getName file)))
+
 (defn file-node
   "Tree node representing a file (possibly a directory)."
   [^File file]
-  (let [children (vec (.listFiles file))]
+  (let [children (visible-children file)]
     (proxy [DefaultMutableTreeNode] [file]
       (getChildAt [i] (file-node (children i)))
-      (getChildCount [] (count (.listFiles file)))
-      (toString [] (.getName file))
+      (getChildCount [] (count children))
+      (toString [] (file-text file))
       (isLeaf [] (not (.isDirectory file))))))
 
 (defn root-node

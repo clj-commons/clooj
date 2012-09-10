@@ -76,7 +76,7 @@
 (defn auto-indent-str [text-comp offset]
   (let [indent-size (or (compute-indent-size text-comp offset) 0)]
     (apply str "\n" (repeat indent-size " "))))
-   
+
 (defn setup-autoindent [text-comp]
   (attach-action-keys text-comp                 
     ["cmd1 BACK_SLASH" #(fix-indent-selected-lines text-comp)] ; "cmd1 \"
