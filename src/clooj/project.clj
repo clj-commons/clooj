@@ -129,7 +129,7 @@
   [file]
   (if (.exists (get-temp-file file))
     (str "*" (.getName file) "*")
-    (.getName file)))
+    (str (.getName file) "    ")))
 
 (defn file-node
   "Tree node representing a file (possibly a directory)."
@@ -174,7 +174,7 @@
         selections (.getSelectionPaths tree)]
     (for [selection selections]
       (-> selection .getPath second .getUserObject))))
-
+ 
 (defn add-project [app project-path]
   (swap! project-set conj project-path))
 

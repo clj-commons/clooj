@@ -190,6 +190,7 @@
   (let [text (get-text-str text-comp)]
     (send-off highlight-agent
               (fn [old-pos]
+                (println "highlight-agent")
                 (try
                   (let [pos (@caret-position text-comp)]
                     (when-not (= pos old-pos)
@@ -203,6 +204,7 @@
     (when ns
       (send-off arglist-agent 
                 (fn [old-pos]
+                  (println "arglist-agent")
                   (try
                     (let [pos (@caret-position text-comp)]
                       (when-not (= pos old-pos)
@@ -245,7 +247,8 @@
       (let [orig (.getAbsolutePath orig-f)
             f (.getAbsolutePath (get-temp-file orig-f))]
         (spit f txt)
-        (awt-event (.updateUI (app :docs-tree)))))
+        (awt-event (.repaint (app :docs-tree)))
+        ))
        (catch Exception e nil)))
 
 (def temp-file-manager (agent 0))
@@ -256,6 +259,7 @@
         f @(app :file)]
     (send-off temp-file-manager
               (fn [old-pos]
+                (println "temp-file-manager")
                 (try
                   (when-let [pos (get @caret-position text-comp)]
                     (when-not (= old-pos pos)
@@ -566,7 +570,8 @@
         (.write (app :doc-text-area) writer))
       (send-off temp-file-manager (fn [_] 0))
       (.delete ft)
-      (.updateUI (app :docs-tree)))
+      (.repaint (app :docs-tree))
+      )
     (catch Exception e (JOptionPane/showMessageDialog
                          nil "Unable to save file."
                          "Oops" JOptionPane/ERROR_MESSAGE))))
@@ -777,7 +782,6 @@
       (load-expanded-paths tree)
       (load-tree-selection tree))
     (load-font app)))
- 
 (defn -show []
   (reset! embedded true)
   (if (not @current-app)
