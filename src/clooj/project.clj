@@ -134,10 +134,10 @@
 (defn file-node
   "Tree node representing a file (possibly a directory)."
   [^File file]
-  (let [get-children (memoize #(visible-children file))]
+  (let [children (delay (visible-children file))]
     (proxy [DefaultMutableTreeNode] [file]
-      (getChildAt [i] (file-node ((get-children) i)))
-      (getChildCount [] (count (get-children)))
+      (getChildAt [i] (file-node (@children i)))
+      (getChildCount [] (count @children))
       (toString [] (file-name-text file))
       (isLeaf [] (not (.isDirectory file))))))
 
