@@ -60,19 +60,49 @@
   (write-value-to-prefs
     clooj-prefs "tree-selection"
     (tree-path-to-file path)))
-  
-(defn tree-nodes [tree]
-  (when-let [root (.. tree getModel getRoot)]
-    (tree-seq (complement #(.isLeaf %))
-              #(for [i (range (.getChildCount %))] (.getChildAt % i))
-              root)))
 
-(defn path-to-node [tree path]
-  (first
-    (for [node (rest (tree-nodes tree))
-      :when (= path (try (.. node getUserObject getAbsolutePath)
-                      (catch Exception e)))]
-      node)))
+(defn path-components
+  "Generates a sequence of the components in a file path."
+  [the-file]
+  (->>
+    (-> the-file
+        file
+        .getAbsolutePath
+        (.split File/separator))
+    (remove empty?)
+    (remove #(= % "."))))
+      
+(defn file-ancestor?
+  "In the file tree, returns true if descendant-file
+   is a direct descendant of ancestor-file.
+   Also returns true if the files are the same."
+  [ancestor-file descendant-file]
+  (let [ancestor (path-components ancestor-file)
+        descendant (path-components descendant-file)]
+    (and (every? true? (map = ancestor descendant))
+         (<= (count ancestor) (count descendant)))))
+    
+(defn node-children [node]
+  (when-not (.isLeaf node)
+    (for [i (range (.getChildCount node))]
+      (.getChildAt node i))))
+
+(defn path-to-node
+  "Find the tree node corresponding to a particular file path."
+  [tree path]
+  (let [root-node (.. tree getModel getRoot)]
+    (loop [node root-node]
+      (when-not (.isLeaf node)
+        (when-let [children (node-children node)]
+                   (let [closer-node (first
+                            (filter #(file-ancestor?
+                                       (.getUserObject %) path)
+                                    children))]
+          (when closer-node
+            (if (= (file path)
+                   (.getUserObject closer-node))
+              closer-node
+              (recur closer-node)))))))))
 
 (defn row-for-path [tree path]
   (first
@@ -155,11 +185,13 @@
 (defn update-project-tree [tree]
   (let [model (file-tree-model (vec @project-set))]
     (awt-event
+      ;(time (do
       (.setModel tree model)
       (save-project-set)
       (load-expanded-paths tree)
       (load-tree-selection tree)
       (save-expanded-paths tree))))
+    ;))
 
 (defn get-selected-file-path [app]
   (when-let [tree-path (-> app :docs-tree .getSelectionPaths first)]
