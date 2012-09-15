@@ -190,7 +190,6 @@
   (let [text (get-text-str text-comp)]
     (send-off highlight-agent
               (fn [old-pos]
-                (println "highlight-agent")
                 (try
                   (let [pos (@caret-position text-comp)]
                     (when-not (= pos old-pos)
@@ -204,7 +203,6 @@
     (when ns
       (send-off arglist-agent 
                 (fn [old-pos]
-                  (println "arglist-agent")
                   (try
                     (let [pos (@caret-position text-comp)]
                       (when-not (= pos old-pos)
@@ -541,6 +539,7 @@
       (do (let [txt (slurp file-to-open)
                 rdr (StringReader. txt)]
             (.read text-area rdr nil))
+          (.discardAllEdits text-area)
           (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
           (.setEditable text-area true)	
           (.setSyntaxEditingStyle text-area
