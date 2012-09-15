@@ -92,7 +92,7 @@
   [tree path]
   (let [root-node (.. tree getModel getRoot)]
     (loop [node root-node]
-      (when-not (.isLeaf node)
+      (when (and node (not (.isLeaf node)))
         (when-let [children (node-children node)]
                    (let [closer-node (first
                             (filter #(file-ancestor?
