@@ -98,6 +98,7 @@
     (.setAnimateBracketMatching false)
     (.setBracketMatchingEnabled false)
     (.setAutoIndentEnabled false)
+    (.setAntiAliasingEnabled true)
     ))
 
 (def get-clooj-version
@@ -257,7 +258,6 @@
         f @(app :file)]
     (send-off temp-file-manager
               (fn [old-pos]
-                (println "temp-file-manager")
                 (try
                   (when-let [pos (get @caret-position text-comp)]
                     (when-not (= old-pos pos)
