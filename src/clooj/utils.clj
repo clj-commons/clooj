@@ -45,7 +45,8 @@
 (defmacro awt-event [& body]
   `(SwingUtilities/invokeLater
      (fn [] (try ~@body
-                 (catch Throwable t# (.printStackTrace t#))))))
+                 (catch Throwable t# 
+                        (.printStackTrace t#))))))
 
 (defmacro gen-map [& args]
   (let [kw (map keyword args)]

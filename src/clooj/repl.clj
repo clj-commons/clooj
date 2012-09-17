@@ -127,6 +127,13 @@
            "(ns " current-ns "))"
            )))
 
+(defn copy-input-stream-to-writer [input-stream writer]
+  (loop []
+    (let [c (.read input-stream)]
+      (when (not= c -1)
+        (.write writer c)
+        (recur)))))
+  
 (defn create-outside-repl
   "This function creates an outside process with a clojure repl."
   [result-writer project-path ns]
@@ -150,7 +157,7 @@
                 :classpath-queue (LinkedBlockingQueue.)}
           is (.getInputStream proc)]
       (send-off (repl :var-maps) #(merge % (get-var-maps project-path classpath)))
-      (future (io/copy is result-writer :buffer-size 1))
+      (future (copy-input-stream-to-writer is result-writer)); :buffer-size 10))
       (swap! repls assoc project-path repl)
       (initialize-repl input-writer ns)
       repl)))
@@ -265,9 +272,11 @@
         ([char-array offset length]
           ;(println "char array:" (apply str char-array) (count char-array))
           (awt-event (append-text ta-out (apply str char-array))))
-        ([^Integer t]
-          ;(println "Integer: " t (type t))
-          (awt-event (append-text ta-out (str (char t))))))
+        ([t]
+          (if (= Integer (type t))
+            (awt-event (append-text ta-out (str (char t))))
+            (awt-event (append-text ta-out (apply str t))))))
+      (flush [])
       (close [] nil))
     (PrintWriter. true)))
   
