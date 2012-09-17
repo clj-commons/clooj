@@ -64,24 +64,7 @@
           (concat sub-dirs
                   (filter #(.endsWith (.getName %) ".jar")
                           (mapcat #(.listFiles %) (file-seq project-dir)))))))))
-
-(defn selfish-class-loader [url-array parent]
-  (proxy [URLClassLoader] [url-array nil]
-    (findClass [classname]
-      (try (proxy-super findClass classname)
-           (catch ClassNotFoundException e
-                  (.findClass parent classname))))))
-
-(defn create-class-loader [project-path parent]
-  (when project-path
-    (let [files (setup-classpath project-path)
-          urls (map #(.toURL %) files)]
-      (println " Classpath:")
-      (dorun (map #(println " " (.getAbsolutePath %)) files))
-      (URLClassLoader.
-        (into-array URL urls) parent
-        ))))
-    
+   
 (defn find-clojure-jar [class-loader]
   (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
     (-> url .getFile URL. .getFile URLDecoder/decode (.split "!/") first)))
@@ -142,7 +125,7 @@
                   File/separator "bin" File/separator "java")
         classpath (outside-repl-classpath project-path)
         classpath-str (apply str (interpose File/pathSeparatorChar classpath))
-        _ (println classpath-str)
+        ;_ (println classpath-str)
         builder (ProcessBuilder.
                   [java "-cp" classpath-str "clojure.main"])]
     (.redirectErrorStream builder true)
