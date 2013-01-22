@@ -68,7 +68,7 @@
     (-> the-file
         file
         .getAbsolutePath
-        (.split File/separator))
+        (.split (cond (.equals File/separator "\\") "\\\\" :else File/separator)))
     (remove empty?)
     (remove #(= % "."))))
       
