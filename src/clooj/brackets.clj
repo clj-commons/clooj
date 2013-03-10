@@ -5,8 +5,8 @@
 
 (ns clooj.brackets
   (:import (javax.swing.text JTextComponent))
-  (:require [clojure.string :as string])
-  (:use [clooj.utils :only (count-while get-text-str)]))
+  (:require [clojure.string :as string]
+            [clooj.utils :as utils]))
 
 (defn mismatched-brackets [a b]
   (and (or (nil? a) (some #{a} [\( \[ \{]))
@@ -34,7 +34,7 @@
   (let [process #(process-bracket-stack %1 %2 nil)
         reckon-dist (fn [stacks]
                       (let [scores (map count stacks)]
-                        (count-while #(<= (first scores) %) scores)))
+                        (utils/count-while #(<= (first scores) %) scores)))
         before (.substring text 0 (Math/min (.length text) pos))
         stacks-before (reverse (reductions process nil before))
         left (- pos (reckon-dist stacks-before))
@@ -75,6 +75,6 @@
       (.length text))))
 
 (defn find-line-group [text-comp]
-  (let [text (get-text-str text-comp)
+  (let [text (utils/get-text-str text-comp)
         pos (.getCaretPosition text-comp)]
     [(find-left-gap text pos) (find-right-gap text pos)]))

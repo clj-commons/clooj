@@ -9,10 +9,8 @@
            (javax.swing JButton JOptionPane JWindow)
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel))
-  (:use [clooj.utils :only (clooj-prefs read-value-from-prefs
-                            write-value-to-prefs awt-event
-                            choose-file)]
-        [clojure.java.io :only (file)]))
+  (:require [clooj.utils :as utils]
+            [clojure.java.io :as io]))
 
 ;; projects tree
 
@@ -21,11 +19,11 @@
 (def project-set (atom (sorted-set)))
 
 (defn save-project-set []
-  (write-value-to-prefs clooj-prefs "project-set" @project-set))
+  (utils/write-value-to-prefs utils/clooj-prefs "project-set" @project-set))
     
 (defn load-project-set []
   (reset! project-set (into (sorted-set)
-                            (read-value-from-prefs clooj-prefs "project-set"))))
+                            (utils/read-value-from-prefs utils/clooj-prefs "project-set"))))
 
 (defn tree-path-to-file [^TreePath tree-path]
   (when tree-path
@@ -42,7 +40,7 @@
     (get-row-path tree i)))
 
 (defn save-expanded-paths [tree]
-  (write-value-to-prefs clooj-prefs "expanded-paths" (get-expanded-paths tree)))
+  (utils/write-value-to-prefs utils/clooj-prefs "expanded-paths" (get-expanded-paths tree)))
 
 (defn expand-paths [tree paths]
   (doseq [i (range) :while (< i (.getRowCount tree))]
@@ -50,15 +48,15 @@
       (.expandPath tree (. tree getPathForRow i)))))
 
 (defn load-expanded-paths [tree]
-  (let [paths (read-value-from-prefs clooj-prefs "expanded-paths")]
+  (let [paths (utils/read-value-from-prefs utils/clooj-prefs "expanded-paths")]
     (when paths
       (expand-paths tree paths))))
 
 ;; loading and saving tree selection
 
 (defn save-tree-selection [tree path]
-  (write-value-to-prefs
-    clooj-prefs "tree-selection"
+  (utils/write-value-to-prefs
+    utils/clooj-prefs "tree-selection"
     (tree-path-to-file path)))
 
 (defn path-components
@@ -66,7 +64,7 @@
   [the-file]
   (->>
     (-> the-file
-        file
+        io/file
         .getAbsolutePath
         (.split File/separator))
     (remove empty?)
@@ -99,7 +97,7 @@
                                        (.getUserObject %) path)
                                     children))]
           (when closer-node
-            (if (= (file path)
+            (if (= (io/file path)
                    (.getUserObject closer-node))
               closer-node
               (recur closer-node)))))))))
@@ -113,7 +111,7 @@
       i)))
 
 (defn set-tree-selection [tree path]
-  (awt-event
+  (utils/awt-event
     (when-let [node (path-to-node tree path)]
       (let [node-path (.getPath node)
             paths (map #(.. % getUserObject getAbsolutePath) (rest node-path))]
@@ -122,27 +120,27 @@
           (.setSelectionRow tree row))))))
 
 (defn load-tree-selection [tree]
-  (let [path (read-value-from-prefs clooj-prefs "tree-selection")]
+  (let [path (utils/read-value-from-prefs utils/clooj-prefs "tree-selection")]
     (set-tree-selection tree path)))
 
 ;;;;;;;;;;;;;;;;;;;
 
 (defn get-code-files [dir suffix]
-  (let [dir (File. dir)]
+  (let [dir (io/file dir)]
     (sort (filter #(.endsWith (.getName %) suffix)
                   (file-seq dir)))))
 
 (defn get-temp-file [^File orig]
   (when orig
-    (File. (str (.getAbsolutePath orig) "~"))))
+    (io/file (str (.getAbsolutePath orig) "~"))))
 
 (defn get-projects
   "Load projects from preferences, and return
    a sorted vector."
   []
-  (->> (read-value-from-prefs clooj-prefs "project-set")
+  (->> (utils/read-value-from-prefs utils/clooj-prefs "project-set")
       set
-      (sort-by #(.toLowerCase (.getName (file %))))
+      (sort-by #(.toLowerCase (.getName (io/file %))))
       vec))
 
 (defn visible-children
@@ -175,7 +173,7 @@
   "The root tree node, given a vector of project locations."
   [projects]
   (proxy [DefaultMutableTreeNode] []
-    (getChildAt [i] (file-node (File. (nth projects i))))
+    (getChildAt [i] (file-node (io/file (nth projects i))))
     (getChildCount [] (count projects))
     (toString [] "root")))
 
@@ -184,7 +182,7 @@
     
 (defn update-project-tree [tree]
   (let [model (file-tree-model (vec @project-set))]
-    (awt-event
+    (utils/awt-event
       ;(time (do
       (.setModel tree model)
       (save-project-set)
@@ -211,9 +209,9 @@
   (swap! project-set conj project-path))
 
 (defn rename-project [app]
-  (when-let [dir (choose-file (app :frame) "Move/rename project directory" "" false)]
+  (when-let [dir (utils/choose-file (app :frame) "Move/rename project directory" "" false)]
     (let [old-project (first (get-selected-projects app))]
-      (if (.renameTo (File. old-project) dir)
+      (if (.renameTo (io/file old-project) dir)
         (do
           (swap! project-set
                  #(-> % (disj old-project) (conj (.getAbsolutePath dir))))

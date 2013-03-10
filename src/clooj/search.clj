@@ -6,8 +6,8 @@
 (ns clooj.search
   (:import (java.awt Color)
            (java.util.regex Pattern Matcher))
-  (:use [clooj.highlighting :only (highlight remove-highlights)]
-        [clooj.utils :only (scroll-to-pos set-selection get-text-str)]))
+  (:require [clooj.highlighting :as highlighting]
+            [clooj.utils :as utils]))
 
 (def case-insensitive-search
   (reduce bit-or
@@ -29,7 +29,7 @@
 (defn highlight-found [text-comp posns length]
   (when (pos? length)
     (doall
-      (map #(highlight text-comp % (+ % length) Color/YELLOW)
+      (map #(highlighting/highlight text-comp % (+ % length) Color/YELLOW)
         posns))))
 
 (defn next-item [cur-pos posns]
@@ -43,9 +43,9 @@
 (defn update-find-highlight [app back]
   (let [sta (:search-text-area app)
         dta (:doc-text-area app)
-        length (.length (get-text-str sta))
-        posns (find-all-in-string (get-text-str dta) (get-text-str sta))]
-    (remove-highlights dta @search-highlights)
+        length (.length (utils/get-text-str sta))
+        posns (find-all-in-string (utils/get-text-str dta) (utils/get-text-str sta))]
+    (highlighting/remove-highlights dta @search-highlights)
     (if (pos? (count posns))
       (let [selected-pos
              (if back (prev-item (dec (.getSelectionStart dta)) posns)
@@ -55,10 +55,10 @@
         (when (pos? length)
           (reset! search-highlights
             (conj (highlight-found dta posns length)
-                  (highlight dta selected-pos
+                  (highlighting/highlight dta selected-pos
                              (+ selected-pos length) (.getSelectionColor dta))))
-          (do (scroll-to-pos dta selected-pos)
-              (set-selection dta selected-pos (+ selected-pos length)))))
+          (do (utils/scroll-to-pos dta selected-pos)
+              (utils/set-selection dta selected-pos (+ selected-pos length)))))
       (do (.setSelectionEnd dta (.getSelectionStart dta))
           (.setBackground sta (if (pos? length) Color/PINK Color/WHITE))))))
 
@@ -81,7 +81,7 @@
         arg (app :arglist-label)]
     (.setVisible arg true)
     (.setVisible sta false)
-    (remove-highlights dta @search-highlights)
+    (highlighting/remove-highlights dta @search-highlights)
     (reset! search-highlights nil)))
 
 (defn escape-find [app]

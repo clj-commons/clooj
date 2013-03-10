@@ -4,13 +4,9 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.indent
-  (:use [clooj.utils :only (attach-action-keys indent unindent
-                            get-coords
-                            awt-event
-                            get-selected-lines
-                            get-text-str)]
-        [clooj.brackets :only (find-enclosing-brackets)]
-        [clojure.string :only (triml trimr)])
+  (:require [clooj.utils :as utils]
+            [clooj.brackets :as brackets]
+            [clojure.string :as string])
   (:import  (javax.swing.text DocumentFilter)))
 
 ;(defn t [] (@clooj.core/current-app :doc-text-area))
@@ -28,7 +24,7 @@
   (second (re-find #"\((.+?)\s" txt)))
           
 (defn second-token-pos [txt]
-  (when-let [x (re-find #".+?\s" (trimr (first (.split #"\r?\n" txt))))]
+  (when-let [x (re-find #".+?\s" (string/trimr (first (.split #"\r?\n" txt))))]
     (.length x)))
 
 (defn left-paren-indent-size [txt]
@@ -36,16 +32,16 @@
     (or
       (when (and token1
                  (not (or (some #{token1} special-tokens)
-                          (.startsWith (triml token1) "["))))
+                          (.startsWith (string/triml token1) "["))))
         (second-token-pos txt))
       2)))
 
 (defn compute-indent-size [text-comp offset]
-  (let [bracket-pos (first (find-enclosing-brackets
-                             (get-text-str text-comp) offset))]
+  (let [bracket-pos (first (brackets/find-enclosing-brackets
+                             (utils/get-text-str text-comp) offset))]
     (when (<= 0 bracket-pos)
       (let [bracket (.. text-comp getText (charAt bracket-pos))
-            col (:col (get-coords text-comp bracket-pos))]
+            col (:col (utils/get-coords text-comp bracket-pos))]
         (if (= bracket \;)
           (compute-indent-size text-comp bracket-pos)
           (+ col
@@ -69,19 +65,19 @@
             (.remove document start (- delta))))))))
 
 (defn fix-indent-selected-lines [text-comp]
-  (awt-event 
+  (utils/awt-event 
     (dorun (map #(fix-indent text-comp %)
-                (get-selected-lines text-comp)))))
+                (utils/get-selected-lines text-comp)))))
 
 (defn auto-indent-str [text-comp offset]
   (let [indent-size (or (compute-indent-size text-comp offset) 0)]
     (apply str "\n" (repeat indent-size " "))))
 
 (defn setup-autoindent [text-comp]
-  (attach-action-keys text-comp                 
+  (utils/attach-action-keys text-comp                 
     ["cmd1 BACK_SLASH" #(fix-indent-selected-lines text-comp)] ; "cmd1 \"
-    ["cmd1 CLOSE_BRACKET" #(indent text-comp)]   ; "cmd1 ]"
-    ["cmd1 OPEN_BRACKET" #(unindent text-comp)]) ; "cmd1 ["
+    ["cmd1 CLOSE_BRACKET" #(utils/indent text-comp)]   ; "cmd1 ]"
+    ["cmd1 OPEN_BRACKET" #(utils/unindent text-comp)]) ; "cmd1 ["
   (.. text-comp getDocument
     (setDocumentFilter
       (proxy [DocumentFilter] []

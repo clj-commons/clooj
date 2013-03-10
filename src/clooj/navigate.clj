@@ -5,7 +5,7 @@
 
 (ns clooj.navigate
   (:import (org.fife.ui.rsyntaxtextarea RSyntaxTextArea))
-  (:use [clooj.utils :only (attach-action-keys)]))
+  (:require [clooj.utils :as utils]))
 
 (defn get-caret-line-number [comp]
   (.getLineOfOffset comp (.getCaretPosition comp)))
@@ -31,7 +31,7 @@
         (dec p)))))
            
 (defn attach-navigation-keys [comp]
-  (attach-action-keys comp
+  (utils/attach-action-keys comp
     ["cmd1 LEFT" #(move-to-line-start comp)]
     ["cmd1 RIGHT" #(move-to-line-end comp)]
     ["cmd1 UP" #(move-to-doc-start comp)]

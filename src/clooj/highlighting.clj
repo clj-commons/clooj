@@ -8,8 +8,7 @@
                              DefaultHighlighter$DefaultHighlightPainter)
            (java.awt Color)
            (javax.swing.event CaretListener))
-  (:use [clooj.utils :only (awt-event)]
-        [clooj.brackets :only (find-bad-brackets find-enclosing-brackets)]))
+  (:require [clooj.utils :as utils]))
  
 (defn highlight
   ([text-comp start stop color]
@@ -31,7 +30,7 @@
 (def highlights (atom {}))
 
 (defn highlight-brackets [text-comp good-enclosures bad-brackets]
-  (awt-event
+  (utils/awt-event
     (remove-highlights text-comp (get @highlights text-comp))
     (swap! highlights assoc text-comp
            (doall (concat

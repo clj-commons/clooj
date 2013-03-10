@@ -5,7 +5,7 @@
 
 (ns clooj.utils
   (:require [clojure.string :as string :only (join split)])
-	(:import (java.util UUID)
+  (:import (java.util UUID)
            (java.awt FileDialog Point Window)
            (java.awt.event ActionListener MouseAdapter)
            (java.util.prefs Preferences)

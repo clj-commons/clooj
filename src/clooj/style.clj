@@ -12,7 +12,7 @@
     (java.awt.image BufferedImage)
     (javax.swing.event ListSelectionListener)
     (java.util Vector))
-  (:use [clooj.utils :only (constrain-to-parent make-split-pane)]))
+  (:require [clooj.utils :as utils]))
 
 (def graphics-object
   (memoize (fn [] (.createGraphics
@@ -70,7 +70,7 @@
                                (get-monospaced-fonts) init-name)
         size-list (simple-list #(set-font app @name (reset! size%))
                                (concat (range 5 49)) init-size)
-        split (make-split-pane font-list size-list true 5 0.5)
+        split (utils/make-split-pane font-list size-list true 5 0.5)
         frame (doto (JFrame. "Choose Font")
                 (.setBounds (- x 250) (- y 250) 500 500)
                 (.setLayout layout)
@@ -80,7 +80,7 @@
       (doto split
         (.setLeftComponent font-list)
         (.setRightComponent size-list))
-      (constrain-to-parent split :n 5 :w 5 :s -5 :e -5)
+      (utils/constrain-to-parent split :n 5 :w 5 :s -5 :e -5)
       (.show font-list)
       (.show size-list)
     frame))

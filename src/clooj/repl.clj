@@ -13,16 +13,14 @@
            (java.awt Rectangle)
            (java.net URL URLClassLoader URLDecoder)
            (java.util.concurrent LinkedBlockingQueue))
-  (:use [clooj.utils :only (attach-child-action-keys attach-action-keys
-                            awt-event local-clj-source
-                            append-text when-lets get-text-str get-directories)]
-        [clooj.brackets :only (find-line-group find-enclosing-brackets)]
-        [clojure.pprint :only (pprint)]
-        [clooj.project :only (get-temp-file)]
-        [clooj.help :only (get-var-maps)]
-        [clj-inspector.jars :only (get-entries-in-jar jar-files)])
-  (:require [clojure.string :as string]
-            [clojure.java.io :as io]))
+  (:require [clj-inspector.jars :as jars]
+            [clojure.string :as string]
+            [clojure.pprint :as pprint]
+            [clojure.java.io :as io]
+            [clooj.brackets :as brackets]
+            [clooj.help :as help]
+            [clooj.project :as project]
+            [clooj.utils :as utils]))
 
 (use 'clojure.java.javadoc)
 
@@ -60,7 +58,7 @@
   (when project-path
     (let [project-dir (io/file project-path)]
       (when (and (.exists project-dir) (.isDirectory project-dir))
-        (let [sub-dirs (get-directories project-dir)]
+        (let [sub-dirs (utils/get-directories project-dir)]
           (concat sub-dirs
                   (filter #(.endsWith (.getName %) ".jar")
                           (mapcat #(.listFiles %) (file-seq project-dir)))))))))
@@ -74,14 +72,14 @@
   [^String project-path]
   (let [lib-dir (str project-path "/lib")
         jars (filter #(.contains (.getName %) "clojure")
-                     (jar-files lib-dir))]
+                     (jars/jar-files lib-dir))]
     (first
       (remove nil?
               (for [jar jars]
                 (when-not
                   (empty?
                     (filter #(= "clojure/lang/RT.class" %)
-                            (map #(.getName %) (get-entries-in-jar jar))))
+                            (map #(.getName %) (jars/get-entries-in-jar jar))))
                   jar))))))
                        
         
@@ -94,7 +92,7 @@
                         clojure-jar-term)])))
 
 (defn load-pomegranate-stub []
-  (local-clj-source "clooj/cemerick/pomegranate.clj"))
+  (utils/local-clj-source "clooj/cemerick/pomegranate.clj"))
 
 (defn initialize-repl [repl-input-writer current-ns]
   (binding [*out* repl-input-writer]
@@ -102,7 +100,7 @@
             :print (fn [x]
                      (if (var? x)
                        (println x)
-                       (clojure.pprint/pprint x)))
+                       (pprint/pprint x)))
             :prompt #(do (clojure.main/repl-prompt) (.flush *out*)))"
            "(do "
              ;(set! *print-length* 20)"
@@ -117,40 +115,44 @@
         (.write writer c)
         (recur)))))
   
+(defn java-binary []
+  (str (System/getProperty "java.home")
+       File/separator "bin" File/separator "java"))
+
+(defn repl-process [project-path classpath]
+  (let [classpath-str (apply str (interpose File/pathSeparatorChar classpath))
+        command [(java-binary) "-cp" classpath-str "clojure.main"]]
+    (println command)
+    (.start
+      (doto (ProcessBuilder. command)
+        (.redirectErrorStream true)
+        (.directory (io/file (or project-path ".")))))))
+
 (defn create-outside-repl
   "This function creates an outside process with a clojure repl."
   [result-writer project-path ns]
-  (let [clojure-jar (clojure-jar-location project-path)
-        java (str (System/getProperty "java.home")
-                  File/separator "bin" File/separator "java")
-        classpath (outside-repl-classpath project-path)
-        classpath-str (apply str (interpose File/pathSeparatorChar classpath))
-        ;_ (println classpath-str)
-        builder (ProcessBuilder.
-                  [java "-cp" classpath-str "clojure.main"])]
-    (.redirectErrorStream builder true)
-    (.directory builder (io/file (or project-path ".")))
-    (let [proc (.start builder)
-          input-writer  (-> proc .getOutputStream (PrintWriter. true))
-          repl {:input-writer input-writer
-                :project-path project-path
-                :thread nil
-                :proc proc
-                :var-maps (agent nil)
-                :classpath-queue (LinkedBlockingQueue.)}
-          is (.getInputStream proc)]
-      (send-off (repl :var-maps) #(merge % (get-var-maps project-path classpath)))
-      (future (copy-input-stream-to-writer is result-writer)); :buffer-size 10))
-      (swap! repls assoc project-path repl)
-      (initialize-repl input-writer ns)
-      repl)))
+  (let [classpath (outside-repl-classpath project-path)
+        proc (repl-process project-path classpath)
+        input-writer  (-> proc .getOutputStream (PrintWriter. true))
+        repl {:input-writer input-writer
+              :project-path project-path
+              :thread nil
+              :proc proc
+              :var-maps (agent nil)
+              :classpath-queue (LinkedBlockingQueue.)}
+        is (.getInputStream proc)]
+    (send-off (repl :var-maps) #(merge % (help/get-var-maps project-path classpath)))
+    (future (copy-input-stream-to-writer is result-writer)); :buffer-size 10))
+    (swap! repls assoc project-path repl)
+    (initialize-repl input-writer ns)
+    repl))
 
 (defn replace-first [coll x]
   (cons x (next coll)))
 
 (defn update-repl-history [app]
   (swap! (:items repl-history) replace-first
-         (get-text-str (app :repl-in-text-area))))
+         (utils/get-text-str (app :repl-in-text-area))))
 
 (defn correct-expression? [cmd]
   (when-not (empty? (.trim cmd))
@@ -198,13 +200,13 @@
 (defn send-to-repl
   ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 0))
   ([app cmd file line]
-    (awt-event
+    (utils/awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
             cmd-trim (.trim cmd)
             classpaths (filter identity
                                (map #(.getAbsolutePath %)
                                     (-> app :repl deref :classpath-queue drain-queue)))]
-        (append-text (app :repl-out-text-area) cmd-ln)
+        (utils/append-text (app :repl-out-text-area) cmd-ln)
         (let [cmd-str (cmd-attach-file-and-line cmd file line classpaths)]
           (print-to-repl app cmd-str))
         (when (not= cmd-trim (second @(:items repl-history)))
@@ -220,8 +222,8 @@
 (defn relative-file [app]
   (let [prefix (str (-> app :repl deref :project-path) File/separator
                     "src"  File/separator)]
-    (when-lets [f @(app :file)
-                path (.getAbsolutePath f)]
+    (utils/when-lets [f @(app :file)
+                      path (.getAbsolutePath f)]
       (subs path (count prefix)))))
 
 (defn selected-region [ta]
@@ -229,7 +231,7 @@
     {:text text
      :start (.getSelectionStart ta)
      :end   (.getSelectionEnd ta)}
-    (let [[a b] (find-line-group ta)]
+    (let [[a b] (brackets/find-line-group ta)]
       (when (and a b (< a b))
         {:text (.. ta getDocument (getText a (- b a)))
          :start a
@@ -254,11 +256,11 @@
       (write
         ([char-array offset length]
           ;(println "char array:" (apply str char-array) (count char-array))
-          (awt-event (append-text ta-out (apply str char-array))))
+          (utils/awt-event (utils/append-text ta-out (apply str char-array))))
         ([t]
           (if (= Integer (type t))
-            (awt-event (append-text ta-out (str (char t))))
-            (awt-event (append-text ta-out (apply str t))))))
+            (utils/awt-event (utils/append-text ta-out (str (char t))))
+            (utils/awt-event (utils/append-text ta-out (apply str t))))))
       (flush [])
       (close [] nil))
     (PrintWriter. true)))
@@ -289,8 +291,8 @@
     (catch Exception e)))
 
 (defn load-file-in-repl [app]
-  (when-lets [f0 @(:file app)
-              f (or (get-temp-file f0) f0)]
+  (utils/when-lets [f0 @(:file app)
+                    f (or (project/get-temp-file f0) f0)]
     (send-to-repl app (str "(load-file \"" (.getAbsolutePath f) "\")"))))
 
 (defn apply-namespace-to-repl [app]
@@ -301,8 +303,8 @@
            current-ns)))
   
 (defn restart-repl [app project-path]
-  (awt-event (append-text (app :repl-out-text-area)
-                          (str "\n=== RESTARTING " project-path " REPL ===\n")))
+  (utils/awt-event (utils/append-text (app :repl-out-text-area)
+                                (str "\n=== RESTARTING " project-path " REPL ===\n")))
   (when-let [proc (-> app :repl deref :proc)]
     (.destroy proc))
   (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))
@@ -311,8 +313,8 @@
 (defn switch-repl [app project-path]
   (when (and project-path
              (not= project-path (-> app :repl deref :project-path)))
-    (awt-event
-      (append-text (app :repl-out-text-area)
+    (utils/awt-event
+      (utils/append-text (app :repl-out-text-area)
                    (str "\n\n=== Switching to " project-path " REPL ===\n")))
     (let [repl (or (get @repls project-path)
                    (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))]
@@ -330,7 +332,7 @@
                    (pos? (.length trim-txt))
                    (<= (.length trim-txt)
                        caret-pos)
-                   (= -1 (first (find-enclosing-brackets
+                   (= -1 (first (brackets/find-enclosing-brackets
                                   txt
                                   caret-pos)))))
         submit #(when-let [txt (.getText ta-in)]
@@ -343,10 +345,10 @@
                       (.getLineOfOffset ta-in (.. ta-in getText length)))
         prev-hist #(show-previous-repl-entry app)
         next-hist #(show-next-repl-entry app)]
-    (attach-child-action-keys ta-in ["UP" at-top prev-hist]
+    (utils/attach-child-action-keys ta-in ["UP" at-top prev-hist]
                               ["DOWN" at-bottom next-hist]
                               ["ENTER" ready submit])
-    (attach-action-keys ta-in ["cmd1 UP" prev-hist]
+    (utils/attach-action-keys ta-in ["cmd1 UP" prev-hist]
                         ["cmd1 DOWN" next-hist]
                         ["cmd1 ENTER" submit])))
 

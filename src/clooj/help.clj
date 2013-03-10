@@ -12,19 +12,14 @@
            (javax.swing DefaultListCellRenderer ListSelectionModel)
            (javax.swing.event ListSelectionListener)
            (java.io File))
-  (:use [clooj.brackets :only (find-enclosing-brackets)]
-        [clooj.utils :only (append-text
-                            attach-action-keys attach-child-action-keys
-                            on-click awt-event when-lets get-text-str)]
-        [clooj.project :only (get-selected-projects)]
-        [clooj.collaj :only (raw-data)]
-        [clojure.repl :only (source-fn)]
-        [clj-inspector.jars :only (clj-sources-from-jar jar-files)]
-        [clj-inspector.vars :only (analyze-clojure-source
-                                    parse-ns-form
-                                   )])
   (:require [clojure.string :as string]
-            [cemerick.pomegranate.aether :as aether]))
+            [clojure.repl]
+            [clooj.collaj :as collaj]
+            [clooj.utils :as utils]
+            [clooj.brackets :as brackets]
+            [cemerick.pomegranate.aether :as aether]
+            [clj-inspector.jars :as jars]
+            [clj-inspector.vars :as vars]))
 
 ; from http://clojure.org/special_forms
 (def special-forms
@@ -54,13 +49,13 @@
 (defn classpath-to-jars [project-path classpath]
   (apply concat
     (for [item classpath]
-      (cond (.endsWith item "*") (jar-files (apply str (butlast item)))
+      (cond (.endsWith item "*") (jars/jar-files (apply str (butlast item)))
             (.endsWith item ".jar") (list (File. item))
-            :else (jar-files item)))))
+            :else (jars/jar-files item)))))
 
 (defn get-sources-from-jars [project-path classpath]
    (->> (classpath-to-jars project-path classpath)
-       (mapcat clj-sources-from-jar)
+       (mapcat jars/clj-sources-from-jar)
        merge
        vals))
 
@@ -75,13 +70,13 @@
 
 (defn get-var-maps [project-path classpath]
   (make-var-super-map
-      (mapcat analyze-clojure-source
+      (mapcat vars/analyze-clojure-source
               (concat
                 (get-sources-from-jars project-path classpath)
                 (get-sources-from-clj-files classpath)))))
 
 (defn find-form-string [text pos]
-  (let [[left right] (find-enclosing-brackets text pos)]
+  (let [[left right] (brackets/find-enclosing-brackets text pos)]
     (when (> (.length text) left)
       (.substring text (inc left)))))
 
@@ -111,7 +106,7 @@
   (-> app :doc-text-area .getText read-string))
 
 (defn ns-available-names [app]
-  (parse-ns-form (current-ns-form app)))
+  (vars/parse-ns-form (current-ns-form app)))
 
 (defn arglist-from-var-map [m]
   (or
@@ -154,7 +149,7 @@
       (-> m
           (select-keys [:doc :ns :name :arglists])
           (assoc :source (binding [*ns* ns]
-                           (source-fn (symbol (str ns "/" name)))))))))
+                           (clojure.repl/source-fn (symbol (str ns "/" name)))))))))
 
 (defn var-help [var-map]
   (let [{:keys [doc ns name arglists source]} var-map]
@@ -264,7 +259,7 @@
                                 (filter 
                                   #(re-find token-pat2 (.substring (:name %) 1))
                                   items))
-                collaj-items (or (try (raw-data token) (catch Throwable _)))]
+                collaj-items (or (try (collaj/raw-data token) (catch Throwable _)))]
             (.setListData help-list
                           (Vector. (concat best others collaj-items)))
             (.setSelectedIndex help-list 0)
@@ -304,8 +299,8 @@
       (.setViewPosition (Point. (int 0) (int 0)))))
 
 (defn show-tab-help [app text-comp index-change-fn]
-  (awt-event
-    (let [text (get-text-str text-comp)
+  (utils/awt-event
+    (let [text (utils/get-text-str text-comp)
           pos (.getCaretPosition text-comp)
           [start stop] (local-token-location text pos)]
       (when-let [token (.substring text start stop)]
@@ -313,7 +308,7 @@
         (advance-help-list app token index-change-fn)))))
 
 (defn hide-tab-help [app]
-  (awt-event
+  (utils/awt-event
     (when (@help-state :visible)
       (set-first-component (app :repl-split-pane)
                            (app :repl-out-scroll-pane))
@@ -323,9 +318,9 @@
     (swap! help-state assoc :visible false :pos nil)))
   
 (defn help-handle-caret-move [app text-comp]
-  (awt-event
+  (utils/awt-event
     (when (@help-state :visible)
-      (let [[start _] (local-token-location (get-text-str text-comp) 
+      (let [[start _] (local-token-location (utils/get-text-str text-comp) 
                                             (.getCaretPosition text-comp))]
         (if-not (= start (@help-state :pos))
           (hide-tab-help app)
@@ -341,7 +336,7 @@
     (.addAll classpath-queue files)))
 
 (defn load-dependencies [app artifact]
-  (awt-event (append-text (app :repl-out-text-area)
+  (utils/awt-event (utils/append-text (app :repl-out-text-area)
                (str "\nLoading " artifact " ... ")))
   (let [deps (cemerick.pomegranate.aether/resolve-dependencies
                :coordinates [artifact]
@@ -349,13 +344,13 @@
                  (merge aether/maven-central
                         {"clojars" "http://clojars.org/repo"}))]
     (add-classpath-to-repl app (aether/dependency-files deps)))
-  (append-text (app :repl-out-text-area)
-               (str "done.")))
+  (utils/append-text (app :repl-out-text-area)
+                     (str "done.")))
   
 (defn update-token [app text-comp new-token]
-  (awt-event
+  (utils/awt-event
     (let [[start stop] (local-token-location
-                         (get-text-str text-comp)
+                         (utils/get-text-str text-comp)
                          (.getCaretPosition text-comp))
           len (- stop start)]
       (when (and (not (empty? new-token)) (-> app :completion-list
@@ -364,11 +359,11 @@
             (replace start len new-token nil))))))
 
 (defn setup-tab-help [app text-comp]
-  (attach-action-keys text-comp
+  (utils/attach-action-keys text-comp
     ["TAB" #(show-tab-help app text-comp inc)]
     ["shift TAB" #(show-tab-help app text-comp dec)]
     ["ESCAPE" #(hide-tab-help app)])
-  (attach-child-action-keys text-comp
+  (utils/attach-child-action-keys text-comp
     ["ENTER" #(@help-state :visible)
              #(do (hide-tab-help app)
                   (.start (Thread. (fn [] (load-dependencies app (get-list-artifact app)))))
@@ -396,5 +391,5 @@
           (when-not (.getValueIsAdjusting e)
             (.ensureIndexIsVisible l (.getSelectedIndex l))
             (show-help-text app (.getSelectedValue l))))))
-    (on-click 2 #(when-let [text-pane (find-focused-text-pane app)]
+    (utils/on-click 2 #(when-let [text-pane (find-focused-text-pane app)]
                         (update-token app text-pane)))))
