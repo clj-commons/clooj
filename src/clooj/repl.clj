@@ -360,7 +360,7 @@
    at a particular line number."
   [text line]
    (read (proxy [clojure.lang.LineNumberingPushbackReader]
-           [(StringReader. text)]
+           [(StringReader. (str "(do " text ")"))]
            (getLineNumber []
              (+ -1 line (proxy-super getLineNumber))))))
     
