@@ -354,5 +354,22 @@
 (defn print-stack-trace [app]
     (send-to-repl app "(.printStackTrace *e)"))
 
+
+(defn read-code-at
+  "Read some text as code, as though it were located
+   at a particular line number."
+  [text line]
+   (read (proxy [clojure.lang.LineNumberingPushbackReader]
+           [(StringReader. text)]
+           (getLineNumber []
+             (+ -1 line (proxy-super getLineNumber))))))
+    
+(defn eval-code-at
+  "Evaluate some text as code, as though it were located
+   in a given file at a particular line number."
+  [text file line]
+  (binding [*file* file]
+    (eval (read-code-at text line))))
+ 
     
   
