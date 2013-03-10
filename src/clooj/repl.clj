@@ -15,7 +15,6 @@
            (java.util.concurrent LinkedBlockingQueue))
   (:require [clj-inspector.jars :as jars]
             [clojure.string :as string]
-            [clojure.pprint :as pprint]
             [clojure.java.io :as io]
             [clooj.brackets :as brackets]
             [clooj.help :as help]
@@ -100,7 +99,7 @@
             :print (fn [x]
                      (if (var? x)
                        (println x)
-                       (pprint/pprint x)))
+                       (clojure.pprint/pprint x)))
             :prompt #(do (clojure.main/repl-prompt) (.flush *out*)))"
            "(do "
              ;(set! *print-length* 20)"
