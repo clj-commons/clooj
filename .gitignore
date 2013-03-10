@@ -1,0 +1,3 @@
+/target/
+/lib/
+/*.lein-deps-sum

@@ -107,7 +107,7 @@
            "(do "
              ;(set! *print-length* 20)"
              (load-pomegranate-stub) 
-           "(ns " current-ns "))"
+           "(in-ns '" current-ns "))"
            )))
 
 (defn copy-input-stream-to-writer [input-stream writer]
@@ -295,7 +295,7 @@
 
 (defn apply-namespace-to-repl [app]
   (when-let [current-ns (get-file-ns app)]
-    (send-to-repl app (str "(ns " current-ns ")"))
+    (send-to-repl app (str "(in-ns '" current-ns ")"))
     (swap! repls assoc-in
            [(-> app :repl deref :project-path) :ns]
            current-ns)))
