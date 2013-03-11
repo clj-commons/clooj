@@ -20,67 +20,13 @@
             [clooj.brackets :as brackets]
             [clooj.help :as help]
             [clooj.project :as project]
-            [clooj.utils :as utils]
-            ))
+            [clooj.utils :as utils]))
 
 (use 'clojure.java.javadoc)
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
 
 (def repls (atom {}))
-
-;; nrepl handling
-
-(defn lein-repl-process
-  "Start an external lein repl process."
-  [project-path]
-  (let [command ["lein" "repl"]]
-    (->
-      (doto (ProcessBuilder. command)
-        (.redirectErrorStream true)
-        (.directory (io/file (or project-path "."))))
-      .start)))
-
-(defn process-reader
-  "Create a buffered reader from the output of a process."
-  [process]
-  (-> process
-      .getInputStream
-      InputStreamReader.
-      BufferedReader.))
-
-(defn lein-nrepl-port-number
-  "Takes the first line printed to stdout from a lein repl process
-   and returns the nrepl port number."
-  [first-line]
-  (Long/parseLong (second (re-find #"port\s(\d+)" first-line))))
-
-(defn connect-nrepl
-  "Connect to an nrepl port. Return a user session and
-   a control session."
-  [port]
-  (let [conn (nrepl/connect :port port)
-        client (nrepl/client conn 1000)]
-    {:connection conn
-     :user (nrepl/new-session client)
-     :control (nrepl/new-session client)}))
-
-(defn lein-repl-start
-  "Start an external lein repl process, and connect
-   to it via nrepl."
-  [project-path]
-  (let [process (lein-repl-process project-path)
-        first-line (.readLine (process-reader process))
-        port (lein-nrepl-port-number first-line)]
-    (-> 
-      (connect-nrepl port)
-      (assoc :process process))))
-    
-(defn lein-repl-stop
-  "Disconnect from the nrepl connection and destroy the lein repl process."
-  [{:keys [connection process]}]
-  (.close connection)
-  (.destroy process))
 
 ;; utils
 
