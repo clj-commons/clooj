@@ -96,17 +96,32 @@
 
 (defn initialize-repl [repl-input-writer current-ns]
   (binding [*out* repl-input-writer]
-    (print "(clojure.main/repl
-            :print (fn [x]
+    (print    
+      "(do"
+      (load-pomegranate-stub)
+     "(ns clooj.repl)
+      (def silence (atom false))
+      (defmacro silent [& body]
+        `(do
+           (reset! clooj.repl/silence true)
+           ~@body
+           (let [last-val# *1]
+             (set! *1 *2)
+             (set! *2 *3)
+             last-val#)))"
+      "(ns" current-ns ")"
+       " (clojure.main/repl
+          :print (fn [x]
+                   (if @clooj.repl/silence
+                     (do
+                       (reset! clooj.repl/silence false)
+                       (println))
                      (if (var? x)
                        (println x)
-                       (clojure.pprint/pprint x)))
-            :prompt #(do (clojure.main/repl-prompt) (.flush *out*)))"
-           "(do "
-             ;(set! *print-length* 20)"
-             (load-pomegranate-stub) 
-           "(ns " current-ns "))"
-           )))
+                       (clojure.pprint/pprint x))))
+          :prompt #(do (clojure.main/repl-prompt) (.flush *out*))) "
+      ")"
+      )))
 
 (defn copy-input-stream-to-writer [input-stream writer]
   (loop []
@@ -122,7 +137,7 @@
 (defn repl-process [project-path classpath]
   (let [classpath-str (apply str (interpose File/pathSeparatorChar classpath))
         command [(java-binary) "-cp" classpath-str "clojure.main"]]
-    (println command)
+    ;(println command)
     (.start
       (doto (ProcessBuilder. command)
         (.redirectErrorStream true)
@@ -142,9 +157,10 @@
               :classpath-queue (LinkedBlockingQueue.)}
         is (.getInputStream proc)]
     (send-off (repl :var-maps) #(merge % (help/get-var-maps project-path classpath)))
-    (future (copy-input-stream-to-writer is result-writer)); :buffer-size 10))
     (swap! repls assoc project-path repl)
     (initialize-repl input-writer ns)
+    (Thread/sleep 1000)
+    (future (copy-input-stream-to-writer is result-writer)); :buffer-size 10))
     repl))
 
 (defn replace-first [coll x]
@@ -185,10 +201,10 @@
            (last (map eval ~read-string-code)))))))
            
 (defn print-to-repl
-  [app cmd-str]
+  [app cmd-str silent?]
   ;(println @(app :repl))
   (binding [*out* (:input-writer @(app :repl))]
-    (println cmd-str)
+    (println (if silent? "(clooj.repl/silent" "(do") cmd-str ")")
     (flush)))
 
 (defn drain-queue 
@@ -198,22 +214,24 @@
     (seq array-list)))
 
 (defn send-to-repl
-  ([app cmd] (send-to-repl app cmd "NO_SOURCE_PATH" 0))
-  ([app cmd file line]
+  ([app cmd silent?] (send-to-repl app cmd "NO_SOURCE_PATH" 0 silent?))
+  ([app cmd file line silent?]
     (utils/awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
             cmd-trim (.trim cmd)
             classpaths (filter identity
                                (map #(.getAbsolutePath %)
                                     (-> app :repl deref :classpath-queue drain-queue)))]
-        (utils/append-text (app :repl-out-text-area) cmd-ln)
+        (when-not silent?
+          (utils/append-text (app :repl-out-text-area) cmd-ln))
         (let [cmd-str (cmd-attach-file-and-line cmd file line classpaths)]
-          (print-to-repl app cmd-str))
-        (when (not= cmd-trim (second @(:items repl-history)))
-          (swap! (:items repl-history)
-                 replace-first cmd-trim)
-          (swap! (:items repl-history) conj ""))
-        (reset! (:pos repl-history) 0)))))
+          (print-to-repl app cmd-str silent?))
+        (when-not silent?
+          (when (not= cmd-trim (second @(:items repl-history)))
+            (swap! (:items repl-history)
+                   replace-first cmd-trim)
+            (swap! (:items repl-history) conj ""))
+          (reset! (:pos repl-history) 0))))))
 
 (defn scroll-to-last [text-area]
   (.scrollRectToVisible text-area
@@ -244,11 +262,12 @@
     (if-not (and txt (correct-expression? txt))
       (.setText (app :arglist-label) "Malformed expression")
       (let [line (.getLineOfOffset ta (:start region))]
-        (send-to-repl app txt (relative-file app) line)))))
+        (send-to-repl app txt (relative-file app) line false)))))
 
 (defn send-doc-to-repl [app]
   (let [text (->> app :doc-text-area .getText)]
-    (send-to-repl app text (relative-file app) 0)))
+    (utils/append-text (app :repl-out-text-area) "Evaluating file...")
+    (send-to-repl app text (relative-file app) 0 true)))
 
 (defn make-repl-writer [ta-out]
   (->
@@ -290,14 +309,9 @@
         (str (second sexpr))))
     (catch Exception e)))
 
-(defn load-file-in-repl [app]
-  (utils/when-lets [f0 @(:file app)
-                    f (or (project/get-temp-file f0) f0)]
-    (send-to-repl app (str "(load-file \"" (.getAbsolutePath f) "\")"))))
-
 (defn apply-namespace-to-repl [app]
   (when-let [current-ns (get-file-ns app)]
-    (send-to-repl app (str "(ns " current-ns ")"))
+    (send-to-repl app (str "(ns " current-ns ")") true)
     (swap! repls assoc-in
            [(-> app :repl deref :project-path) :ns]
            current-ns)))
@@ -337,7 +351,7 @@
                                   caret-pos)))))
         submit #(when-let [txt (.getText ta-in)]
                   (if (correct-expression? txt)
-                    (do (send-to-repl app txt)
+                    (do (send-to-repl app txt false)
                         (.setText ta-in ""))
                     (.setText (app :arglist-label) "Malformed expression")))
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
@@ -353,8 +367,7 @@
                         ["cmd1 ENTER" submit])))
 
 (defn print-stack-trace [app]
-    (send-to-repl app "(.printStackTrace *e)"))
-
+  (send-to-repl app "(when *e (.printStackTrace *e))" true))
 
 (defn read-code-at
   "Read some text as code, as though it were located
@@ -371,9 +384,5 @@
   [text file line]
   (binding [*file* file]
     (eval (read-code-at text line))))
-
-    
-    
- 
 
   
