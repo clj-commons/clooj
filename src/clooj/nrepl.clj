@@ -16,14 +16,15 @@
 (defn connect-nrepl
   "Connect to an nrepl port. Return a user session and
    a control session."
-  [port]
+  [port out-writer]
   (let [conn (nrepl/connect :port port)
         client (nrepl/client conn 1000)]
     {:port port
      :connection conn
      :client client
      :user (nrepl/new-session client)
-     :control (nrepl/new-session client)}))
+     :control (nrepl/new-session client)
+     :out out-writer}))
 
 (defn disconnect-nrepl
   "Disconnects from an nrepl port."
@@ -33,15 +34,24 @@
 (defn nrepl-eval
   "Evaluate nrepl code, where session-type is either :user or :control."
   [nrepl-connection code session-type]
-  (-> (nrepl/message
-        (:client nrepl-connection)
-        {:op :eval :code code
-         :session (session-type nrepl-connection)})))
+  (let [results (nrepl/message
+                  (:client nrepl-connection)
+                  {:op :eval :code (str "(do " code ")")
+                   :session (session-type nrepl-connection)})
+        promised-value (promise)]
+    (println results)
+    (future (doseq [result results]
+              (when-let [out (:out result)]
+                (binding [*out* (:out nrepl-connection)]
+                  (print out)))
+              (when-let [value (:value result)]
+                (deliver promised-value (read-string value)))))
+    @promised-value))
 
 (defn nrepl
   "Connects to an nrepl, returning a Repl instance."
-  [port]
-  (let [nrepl (connect-nrepl port)]
+  [port out-writer]
+  (let [nrepl (connect-nrepl port out-writer)]
     (reify Repl
       (evaluate [_ code channel]
         (nrepl-eval nrepl code channel))
@@ -78,11 +88,11 @@
 (defn lein-repl-start
   "Start an external lein repl process, and connect
    to it via nrepl."
-  [project-path]
+  [project-path out-writer]
   (let [process (lein-repl-process project-path)
         lines (line-seq (process-reader process))
         port (lein-nrepl-port-number (first (drop-while nil? lines)))]
-    {:nrepl (nrepl port)
+    {:nrepl (nrepl port out-writer)
      :process process}))
     
 (defn lein-repl-stop
@@ -94,8 +104,8 @@
 (defn lein-repl
   "Creates and connect to a lein repl,
    returning a Repl instance."
-  [project-path]
-  (let [repl (lein-repl-start project-path)]
+  [project-path out-writer]
+  (let [repl (lein-repl-start project-path out-writer)]
     (reify Repl
       (evaluate [_ code channel]
         (.evaluate (:nrepl repl) code channel))
