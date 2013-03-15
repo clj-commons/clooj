@@ -58,7 +58,7 @@
 (defn create-outside-repl
   "This function creates an outside process with a clojure repl."
   [project-path result-writer]
-  (let [classpath (repl-classpath project-path)
+  (let [classpath (repl-classpath-pieces project-path)
         proc (repl-process project-path classpath)
         input-writer  (-> proc .getOutputStream (PrintWriter. true))
         repl {:input-writer input-writer
