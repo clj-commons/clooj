@@ -12,7 +12,8 @@
            (javax.swing DefaultListCellRenderer ListSelectionModel)
            (javax.swing.event ListSelectionListener)
            (java.io File))
-  (:require [clojure.string :as string]
+  (:require [clojure.repl]
+            [clojure.string :as string]
             [clooj.collaj :as collaj]
             [clooj.utils :as utils]
             [clooj.brackets :as brackets]
