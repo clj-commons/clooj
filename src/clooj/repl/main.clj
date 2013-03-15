@@ -237,7 +237,7 @@
       
 (defn generate-repl
   [app project-path]
-  (let [repl (primitive/create-outside-repl (app :repl-out-writer) project-path)]
+  (let [repl (primitive/create-outside-repl project-path (app :repl-out-writer))]
     (initialize-repl (:input-writer repl))
     repl))
 

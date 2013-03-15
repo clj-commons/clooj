@@ -6,19 +6,13 @@
             [clooj.utils :as utils]
             [clooj.help :as help]
             [clj-inspector.jars :as jars]))
-
-(defn setup-classpath [project-path]
-  (when project-path
-    (let [project-dir (io/file project-path)]
-      (when (and (.exists project-dir) (.isDirectory project-dir))
-        (let [sub-dirs (utils/get-directories project-dir)]
-          (concat sub-dirs
-                  (filter #(.endsWith (.getName %) ".jar")
-                          (mapcat #(.listFiles %) (file-seq project-dir)))))))))
    
-(defn find-clojure-jar [class-loader]
-  (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
-    (-> url .getFile URL. .getFile URLDecoder/decode (.split "!/") first)))
+(defn own-clojure-jar
+  "Locate the clojure jar being used by clooj (last resort)."
+  []
+  (let [class-loader (.getClassLoader clojure.lang.RT)]
+    (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
+      (-> url .getFile URL. .getFile URLDecoder/decode (.split "!/") first))))
 
 (defn clojure-jar-location
   "Find the location of a clojure jar in a project."
@@ -36,38 +30,35 @@
                   jar))))))
                        
         
-(defn outside-repl-classpath [project-path]
-  (let [clojure-jar-term (when-not (clojure-jar-location project-path)
-                           (find-clojure-jar (.getClassLoader clojure.lang.RT)))]
-    (filter identity [(str project-path "/lib/*")
-                      (str project-path "/src")
-                      (when clojure-jar-term
-                        clojure-jar-term)])))
-
-(defn copy-input-stream-to-writer [input-stream writer]
-  (loop []
-    (let [c (.read input-stream)]
-      (when (not= c -1)
-        (.write writer c)
-        (recur)))))
+(defn repl-classpath-pieces
+  "Figures out the necessary pieces for a viable classpath
+   given a particular project directory."
+  [project-path]
+  (set
+    [(or (clojure-jar-location project-path)
+         (own-clojure-jar))
+     (str project-path "/lib/*")
+     (str project-path "/src")]))
   
-(defn java-binary []
+(defn java-binary
+  "Returns the fully-qualified path of the java binary."
+  []
   (str (System/getProperty "java.home")
        File/separator "bin" File/separator "java"))
 
-(defn repl-process [project-path classpath]
-  (let [classpath-str (apply str (interpose File/pathSeparatorChar classpath))
-        command [(java-binary) "-cp" classpath-str "clojure.main"]]
-    ;(println command)
+(defn repl-process
+  "Start a primitive repl process by running clojure.main."
+  [project-path classpath]
+  (let [classpath-str (apply str (interpose File/pathSeparatorChar classpath))]
     (.start
-      (doto (ProcessBuilder. command)
+      (doto (ProcessBuilder. [(java-binary) "-cp" classpath-str "clojure.main"])
         (.redirectErrorStream true)
         (.directory (io/file (or project-path ".")))))))
 
 (defn create-outside-repl
   "This function creates an outside process with a clojure repl."
-  [result-writer project-path]
-  (let [classpath (outside-repl-classpath project-path)
+  [project-path result-writer]
+  (let [classpath (repl-classpath project-path)
         proc (repl-process project-path classpath)
         input-writer  (-> proc .getOutputStream (PrintWriter. true))
         repl {:input-writer input-writer
@@ -78,5 +69,5 @@
               :classpath-queue (LinkedBlockingQueue.)}
         is (.getInputStream proc)]
     (send-off (repl :var-maps) #(merge % (help/get-var-maps project-path classpath)))
-    (future (copy-input-stream-to-writer is result-writer)); :buffer-size 10))
+    (future (utils/copy-input-stream-to-writer is result-writer)); :buffer-size 10))
     repl))
