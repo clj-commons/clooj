@@ -605,7 +605,7 @@
           [file namespace] (specify-source
                              (first (project/get-selected-projects app))
                              "Rename a source file"
-                             (project/get-selected-namespace tree))]
+                             (repl/get-file-ns app))]
       (when file
         (.renameTo @(app :file) file)
         (project/update-project-tree (:docs-tree app))
