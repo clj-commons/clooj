@@ -14,21 +14,22 @@
     (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
       (-> url .getFile URL. .getFile URLDecoder/decode (.split "!/") first))))
 
+(defn jar-contains-class?
+  "Does the jar contain a particular class file? Specify the
+   classname in a string, e.g. \"clojure.lang.RT\""
+  [jar classname]
+  (let [entries (jars/get-entries-in-jar jar)
+        filenames (map #(.getName %) entries)
+        desired (str (.replace classname "." "/") ".class")]
+    (not (nil? (some #(= % desired) filenames)))))
+
 (defn clojure-jar-location
   "Find the location of a clojure jar in a project."
   [^String project-path]
   (let [lib-dir (str project-path "/lib")
         jars (filter #(.contains (.getName %) "clojure")
                      (jars/jar-files lib-dir))]
-    (first
-      (remove nil?
-              (for [jar jars]
-                (when-not
-                  (empty?
-                    (filter #(= "clojure/lang/RT.class" %)
-                            (map #(.getName %) (jars/get-entries-in-jar jar))))
-                  jar))))))
-                       
+    (some #(jar-contains-class? % "clojure.lang.RT") jars)))
         
 (defn repl-classpath-pieces
   "Figures out the necessary pieces for a viable classpath
