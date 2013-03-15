@@ -11,7 +11,8 @@
            (java.util.prefs Preferences)
            (java.security MessageDigest)
            (java.io ByteArrayInputStream ByteArrayOutputStream
-                    File FilenameFilter
+                    File FilenameFilter BufferedReader
+                    InputStreamReader
                     ObjectInputStream ObjectOutputStream
                     OutputStream Writer PrintStream)
            (javax.swing AbstractAction JButton JFileChooser JMenu JMenuBar JMenuItem BorderFactory
@@ -483,7 +484,7 @@
    (let [bytes (.getBytes (with-out-str (pr obj)))] 
      (String. (.digest (MessageDigest/getInstance "MD") bytes))))
 
-;; streams and writers
+;; streams, writers and readers
  
 (defn printstream-to-writer [writer]
   (->
@@ -498,6 +499,14 @@
       (flush [] (.flush writer))
       (close [] (.close writer)))
     (PrintStream. true)))
+
+(defn process-reader
+  "Create a buffered reader from the output of a process."
+  [process]
+  (-> process
+      .getInputStream
+      InputStreamReader.
+      BufferedReader.))
 
 ;; .clj file in current jar
 

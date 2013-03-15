@@ -3,7 +3,7 @@
 ; Eclipse Public License 1.0
 ; arthuredelstein@gmail.com
 
-(ns clooj.repl
+(ns clooj.repl.main
   (:import (java.io
              BufferedReader BufferedWriter
              InputStreamReader
@@ -20,6 +20,7 @@
             [clooj.brackets :as brackets]
             [clooj.help :as help]
             [clooj.project :as project]
+            [clooj.repl.primitive :as primitive]
             [clooj.utils :as utils]))
 
 (use 'clojure.java.javadoc)
@@ -50,71 +51,26 @@
          (.startsWith (.getMessage throwable) "java.lang.Exception: EOF while reading")
          (.startsWith (.getMessage throwable) "java.io.IOException: Write end dead"))))
 
+(defn get-project-path [app]
+  (when-let [repl (:repl app)]
+    (-> repl deref :project-path)))
+
 (defn get-repl-ns [app]
   (let [repl-map @repls]
-    (-> app :repl deref :project-path repl-map :ns)))
+    (let [project (get-project-path app)]
+      (:ns (repl-map project)))))
 
-(defn setup-classpath [project-path]
-  (when project-path
-    (let [project-dir (io/file project-path)]
-      (when (and (.exists project-dir) (.isDirectory project-dir))
-        (let [sub-dirs (utils/get-directories project-dir)]
-          (concat sub-dirs
-                  (filter #(.endsWith (.getName %) ".jar")
-                          (mapcat #(.listFiles %) (file-seq project-dir)))))))))
-   
-(defn find-clojure-jar [class-loader]
-  (when-let [url (.findResource class-loader "clojure/lang/RT.class")]
-    (-> url .getFile URL. .getFile URLDecoder/decode (.split "!/") first)))
-
-(defn clojure-jar-location
-  "Find the location of a clojure jar in a project."
-  [^String project-path]
-  (let [lib-dir (str project-path "/lib")
-        jars (filter #(.contains (.getName %) "clojure")
-                     (jars/jar-files lib-dir))]
-    (first
-      (remove nil?
-              (for [jar jars]
-                (when-not
-                  (empty?
-                    (filter #(= "clojure/lang/RT.class" %)
-                            (map #(.getName %) (jars/get-entries-in-jar jar))))
-                  jar))))))
-                       
-        
-(defn outside-repl-classpath [project-path]
-  (let [clojure-jar-term (when-not (clojure-jar-location project-path)
-                           (find-clojure-jar (.getClassLoader clojure.lang.RT)))]
-    (filter identity [(str project-path "/lib/*")
-                      (str project-path "/src")
-                      (when clojure-jar-term
-                        clojure-jar-term)])))
-
-(defn load-pomegranate-stub []
-  (utils/local-clj-source "clooj/cemerick/pomegranate.clj"))
-
-(defn initialize-repl [repl-input-writer current-ns]
+(defn initialize-repl [repl-input-writer]
   (binding [*out* repl-input-writer]
     (print    
       "(do"
-      (load-pomegranate-stub)
-     "(ns clooj.repl)
-      (def silence (atom false))
-      (defmacro silent [& body]
-        `(do
-           (reset! clooj.repl/silence true)
-           ~@body
-           (let [last-val# *1]
-             (set! *1 *2)
-             (set! *2 *3)
-             last-val#)))"
-      "(ns" current-ns ")"
+      (utils/local-clj-source "clooj/cemerick/pomegranate.clj")
+      (utils/local-clj-source "clooj/repl/remote.clj")    
        " (clojure.main/repl
           :print (fn [x]
-                   (if @clooj.repl/silence
+                   (if @clooj.repl.remote/silence
                      (do
-                       (reset! clooj.repl/silence false)
+                       (reset! clooj.repl.remote/silence false)
                        (println))
                      (if (var? x)
                        (println x)
@@ -122,46 +78,6 @@
           :prompt #(do (clojure.main/repl-prompt) (.flush *out*))) "
       ")"
       )))
-
-(defn copy-input-stream-to-writer [input-stream writer]
-  (loop []
-    (let [c (.read input-stream)]
-      (when (not= c -1)
-        (.write writer c)
-        (recur)))))
-  
-(defn java-binary []
-  (str (System/getProperty "java.home")
-       File/separator "bin" File/separator "java"))
-
-(defn repl-process [project-path classpath]
-  (let [classpath-str (apply str (interpose File/pathSeparatorChar classpath))
-        command [(java-binary) "-cp" classpath-str "clojure.main"]]
-    ;(println command)
-    (.start
-      (doto (ProcessBuilder. command)
-        (.redirectErrorStream true)
-        (.directory (io/file (or project-path ".")))))))
-
-(defn create-outside-repl
-  "This function creates an outside process with a clojure repl."
-  [result-writer project-path ns]
-  (let [classpath (outside-repl-classpath project-path)
-        proc (repl-process project-path classpath)
-        input-writer  (-> proc .getOutputStream (PrintWriter. true))
-        repl {:input-writer input-writer
-              :project-path project-path
-              :thread nil
-              :proc proc
-              :var-maps (agent nil)
-              :classpath-queue (LinkedBlockingQueue.)}
-        is (.getInputStream proc)]
-    (send-off (repl :var-maps) #(merge % (help/get-var-maps project-path classpath)))
-    (swap! repls assoc project-path repl)
-    (initialize-repl input-writer ns)
-    (Thread/sleep 1000)
-    (future (copy-input-stream-to-writer is result-writer)); :buffer-size 10))
-    repl))
 
 (defn replace-first [coll x]
   (cons x (next coll)))
@@ -202,9 +118,8 @@
            
 (defn print-to-repl
   [app cmd-str silent?]
-  ;(println @(app :repl))
   (binding [*out* (:input-writer @(app :repl))]
-    (println (if silent? "(clooj.repl/silent" "(do") cmd-str ")")
+    (println (if silent? "(clooj.repl.remote/silent" "(do") cmd-str ")")
     (flush)))
 
 (defn drain-queue 
@@ -238,7 +153,7 @@
                         (Rectangle. 0 (dec (.getHeight text-area)) 1 1)))
 
 (defn relative-file [app]
-  (let [prefix (str (-> app :repl deref :project-path) File/separator
+  (let [prefix (str (get-project-path app) File/separator
                     "src"  File/separator)]
     (utils/when-lets [f @(app :file)
                       path (.getAbsolutePath f)]
@@ -309,32 +224,43 @@
         (str (second sexpr))))
     (catch Exception e)))
 
+(defn install-outside-repl [app project-path repl]
+    (reset! (:repl app) repl)
+    (swap! repls assoc project-path repl))
+
 (defn apply-namespace-to-repl [app]
   (when-let [current-ns (get-file-ns app)]
     (send-to-repl app (str "(ns " current-ns ")") true)
     (swap! repls assoc-in
-           [(-> app :repl deref :project-path) :ns]
+           [(get-project-path app) :ns]
            current-ns)))
-  
+      
+(defn generate-repl
+  [app project-path]
+  (let [repl (primitive/create-outside-repl (app :repl-out-writer) project-path)]
+    (initialize-repl (:input-writer repl))
+    repl))
+
 (defn restart-repl [app project-path]
   (utils/awt-event (utils/append-text (app :repl-out-text-area)
                                 (str "\n=== RESTARTING " project-path " REPL ===\n")))
-  (when-let [proc (-> app :repl deref :proc)]
+  (utils/when-lets [repl (app :repl)
+                    proc (@repl :proc)]
     (.destroy proc))
-  (reset! (:repl app) (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))
+  (install-outside-repl
+    app project-path
+    (generate-repl app project-path))
   (apply-namespace-to-repl app))
 
 (defn switch-repl [app project-path]
   (when (and project-path
-             (not= project-path (-> app :repl deref :project-path)))
+             (not= project-path (get-project-path app)))
     (utils/awt-event
       (utils/append-text (app :repl-out-text-area)
                    (str "\n\n=== Switching to " project-path " REPL ===\n")))
     (let [repl (or (get @repls project-path)
-                   (create-outside-repl (app :repl-out-writer) project-path (get-file-ns app)))]
-      (reset! (:repl app) repl)
-      ;(apply-namespace-to-repl app)
-      )))
+                   (generate-repl app project-path))]
+      (install-outside-repl app project-path repl))))
 
 (defn add-repl-input-handler [app]
   (let [ta-in (app :repl-in-text-area)
@@ -369,20 +295,5 @@
 (defn print-stack-trace [app]
   (send-to-repl app "(when *e (.printStackTrace *e))" true))
 
-(defn read-code-at
-  "Read some text as code, as though it were located
-   at a particular line number."
-  [text line]
-   (read (proxy [clojure.lang.LineNumberingPushbackReader]
-           [(StringReader. (str "(do " text ")"))]
-           (getLineNumber []
-             (+ -1 line (proxy-super getLineNumber))))))
-    
-(defn eval-code-at
-  "Evaluate some text as code, as though it were located
-   in a given file at a particular line number."
-  [text file line]
-  (binding [*file* file]
-    (eval (read-code-at text line))))
 
   

@@ -196,8 +196,9 @@
     (-> tree-path .getLastPathComponent .getUserObject .getAbsolutePath)))
 
 (defn get-selected-namespace [tree]
-  (->> tree .getSelectionPaths first
-       .getLastPathComponent .getUserObject .toString))
+  (-> tree .getSelectionPaths first
+      .getLastPathComponent .getUserObject .toString
+      (.replace ".clj" "") (.replace "/" ".")))
 
 (defn get-selected-projects [app]
   (let [tree (app :docs-tree)

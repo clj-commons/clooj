@@ -13,7 +13,6 @@
            (javax.swing.event ListSelectionListener)
            (java.io File))
   (:require [clojure.string :as string]
-            [clojure.repl]
             [clooj.collaj :as collaj]
             [clooj.utils :as utils]
             [clooj.brackets :as brackets]
@@ -130,9 +129,10 @@
 
 (defn arglist-from-token [app ns token]
   (or (special-forms token)
-      (-> app :repl deref :var-maps
-          deref (get (var-from-token app ns token))
-          arglist-from-var-map)))
+      (utils/when-lets [repl (:repl app)
+                        var-maps (@repl :var-maps)]
+                       (-> @var-maps (get (var-from-token app ns token))
+                           arglist-from-var-map))))
 
 (defn arglist-from-caret-pos [app ns text pos]
   (let [token (token-from-caret-pos text pos)]

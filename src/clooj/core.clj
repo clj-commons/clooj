@@ -26,7 +26,7 @@
                                         TokenMakerFactory)	
            (org.fife.ui.rtextarea RTextScrollPane))
   (:require [clojure.set]
-            [clooj.repl :as repl]
+            [clooj.repl.main :as repl]
             [clooj.utils :as utils]
             [clooj.help :as help]
             [clooj.navigate :as navigate]
@@ -38,7 +38,6 @@
             [clooj.search :as search])
   (:gen-class
    :methods [^{:static true} [show [] void]]))
-
 
 (def gap 5)
 
@@ -391,7 +390,7 @@
         repl-input-label (JLabel. "Clojure REPL input \u2191")
         split-pane (utils/make-split-pane doc-split-pane repl-panel true gap 0.5)
         app (merge {:file (atom nil)
-                    :repl (atom (repl/create-outside-repl repl-out-writer nil "user"))
+                    :repl (atom nil)
                     :changed false}
                    (utils/gen-map
                      doc-text-area
@@ -608,7 +607,7 @@
                              "Rename a source file"
                              (project/get-selected-namespace tree))]
       (when file
-        (.renameTo @(app :file) file)33
+        (.renameTo @(app :file) file)
         (project/update-project-tree (:docs-tree app))
         (utils/awt-event (project/set-tree-selection tree (.getAbsolutePath file)))))))
 
