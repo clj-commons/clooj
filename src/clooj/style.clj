@@ -68,7 +68,7 @@
         layout (SpringLayout.)
         font-list (simple-list #(set-font app (reset! name %) @size)
                                (get-monospaced-fonts) init-name)
-        size-list (simple-list #(set-font app @name (reset! size%))
+        size-list (simple-list #(set-font app @name (reset! size))
                                (concat (range 5 49)) init-size)
         split (utils/make-split-pane font-list size-list true 5 0.5)
         frame (doto (JFrame. "Choose Font")
