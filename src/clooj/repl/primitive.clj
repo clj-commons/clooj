@@ -29,7 +29,7 @@
   (let [lib-dir (str project-path "/lib")
         jars (filter #(.contains (.getName %) "clojure")
                      (jars/jar-files lib-dir))]
-    (some #(jar-contains-class? % "clojure.lang.RT") jars)))
+    (first (filter #(jar-contains-class? % "clojure.lang.RT") jars))))
         
 (defn repl-classpath-pieces
   "Figures out the necessary pieces for a viable classpath
