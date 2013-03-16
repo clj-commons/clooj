@@ -119,7 +119,7 @@
 
 (defn matching-vars [app token]
   (into {} (filter #(= token (second (first %)))
-                   (-> app :repl deref :var-maps deref))))
+                   (-> app :var-maps deref))))
 
 (defn var-from-token [app current-ns token]
   (when token
@@ -131,8 +131,8 @@
 (defn arglist-from-token [app ns token]
   (or (special-forms token)
       (utils/when-lets [repl (:repl app)
-                        var-maps (@repl :var-maps)]
-                       (-> @var-maps (get (var-from-token app ns token))
+                        var-maps nil];@(app :var-maps)]
+                       (-> var-maps (get (var-from-token app ns token))
                            arglist-from-var-map))))
 
 (defn arglist-from-caret-pos [app ns text pos]
@@ -251,7 +251,7 @@
       (do
         (swap! help-state assoc :token token)
         (.setListData help-list (Vector.))
-        (when-let [items (-> app :repl deref :var-maps deref vals)]
+        (when-let [items (-> app :var-maps deref vals)]
           (let [best (sort-by #(.toLowerCase (:name %))
                               (filter
                                 #(re-find token-pat1 (:name %))

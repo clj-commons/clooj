@@ -1,5 +1,5 @@
 (ns clooj.repl.lein
-  (:import (java.io BufferedReader InputStreamReader))
+  (:import (java.io BufferedReader File InputStreamReader))
   (:require [clojure.tools.nrepl :as nrepl]
             [clojure.java.io :as io]
             [clooj.protocols :as protocols]
@@ -38,7 +38,7 @@
     (future (doseq [result results]
               (when-let [out (:out result)]
                 (binding [*out* (:out nrepl-connection)]
-                  (print out)))
+                  (locking *out* (print out))))
               (when-let [value (:value result)]
                 (deliver promised-value (read-string value)))))
     @promised-value))
@@ -49,21 +49,25 @@
   (let [nrepl (connect-nrepl port out-writer)]
     (reify protocols/Repl
       (evaluate [_ code]
-        (nrepl-eval nrepl code :main))
+        (nrepl-eval nrepl code))
       (close [_]
         (disconnect-nrepl nrepl)))))
 
 ;; lein repl
 
+(defn lein-command
+  "Issue a leiningen command in project-path."
+  [project-path cmd]
+  (->
+    (doto (ProcessBuilder. ["lein" cmd])
+      (.redirectErrorStream true)
+      (.directory (io/file (or project-path "."))))
+    .start))
+
 (defn lein-repl-process
   "Start an external lein repl process."
   [project-path]
-  (let [command ["lein" "repl"]]
-    (->
-      (doto (ProcessBuilder. command)
-        (.redirectErrorStream true)
-        (.directory (io/file (or project-path "."))))
-      .start)))
+  (lein-command project-path "repl"))
 
 (defn lein-nrepl-port-number
   "Takes the first line printed to stdout from a lein repl process
@@ -93,9 +97,21 @@
    returning a Repl instance. The repl's output
    is printed to out-writer."
   [project-path out-writer]
+  (println "lein-repl.")
   (let [repl (lein-repl-start project-path out-writer)]
     (reify protocols/Repl
       (evaluate [_ code]
         (.evaluate (:nrepl repl) code))
       (close [_]
         (lein-repl-stop repl)))))
+
+(defn lein-classpath-items
+  "Returns a string containing the lein classpath."
+  [project-path]
+  (-> (lein-command project-path "classpath")
+      utils/process-reader
+      line-seq
+      first
+      (.split File/pathSeparator)))
+
+  

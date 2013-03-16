@@ -391,6 +391,7 @@
         split-pane (utils/make-split-pane doc-split-pane repl-panel true gap 0.5)
         app (merge {:file (atom nil)
                     :repl (atom nil)
+                    :var-maps (atom nil)
                     :changed false}
                    (utils/gen-map
                      doc-text-area
@@ -751,6 +752,7 @@
       (project/load-expanded-paths tree)
       (project/load-tree-selection tree))
     (load-font app)))
+
 (defn -show []
   (reset! embedded true)
   (if (not @current-app)

@@ -1,7 +1,7 @@
 (ns clooj.repl.remote
   (:import (java.io StringReader)))
 
-(def silence (atom true))
+(def silence (atom false))
 
 (defmacro silent
   "Silently evaluate code in a repl such that

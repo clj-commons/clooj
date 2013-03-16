@@ -389,9 +389,9 @@
     (let [dirs-on #(System/setProperty
                      "apple.awt.fileDialogForDirectories" (str %))]
       (dirs-on true)
-        (let [dir (choose-file parent title "" true)]
+        (let [f (choose-file parent title "" true)]
           (dirs-on false)
-          dir))
+          (.getParentFile f)))
     (let [fc (JFileChooser.)
           last-open-dir (read-value-from-prefs clooj-prefs "last-open-dir")]
       (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)

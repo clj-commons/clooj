@@ -20,7 +20,9 @@
             [clooj.brackets :as brackets]
             [clooj.help :as help]
             [clooj.project :as project]
-            [clooj.repl.primitive :as primitive]
+            [clooj.repl.external :as external]
+            [clooj.repl.lein :as lein]
+            [clooj.protocols :as protocols]
             [clooj.utils :as utils]))
 
 (use 'clojure.java.javadoc)
@@ -60,15 +62,18 @@
     (let [project (get-project-path app)]
       (:ns (repl-map project)))))
 
-(defn initialize-repl [repl-input-writer]
-  (binding [*out* repl-input-writer]
-    (print    
-      "(do"
-      (utils/local-clj-source "clooj/cemerick/pomegranate.clj")
-      (utils/local-clj-source "clooj/repl/remote.clj")    
-      "(clooj.repl.remote/repl)"
-      ")"
-      )))
+(defn initialize-repl [repl]
+  (println "initialize-repl")
+  (let [code-to-eval (str    
+                       "(do"
+                       (utils/local-clj-source "clooj/cemerick/pomegranate.clj")
+                       (utils/local-clj-source "clooj/repl/remote.clj")    
+                       "(clooj.repl.remote/repl)"
+                       ")"
+                       )]
+    ;(println code-to-eval)
+    (.evaluate repl
+               code-to-eval)))
 
 (defn replace-first [coll x]
   (cons x (next coll)))
@@ -109,9 +114,12 @@
            
 (defn print-to-repl
   [app cmd-str silent?]
-  (binding [*out* (:input-writer @(app :repl))]
-    (println (if silent? "(clooj.repl.remote/silent" "(do") cmd-str ")")
-    (flush)))
+  (when-let [repl @(app :repl)]
+    (.evaluate repl
+               (str (if silent?
+                      "(clooj.repl.remote/silent"
+                      "(do")
+                    cmd-str ")"))))
 
 (defn drain-queue 
   [queue]
@@ -125,12 +133,13 @@
     (utils/awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
             cmd-trim (.trim cmd)
-            classpaths (filter identity
-                               (map #(.getAbsolutePath %)
-                                    (-> app :repl deref :classpath-queue drain-queue)))]
+            ;classpaths (filter identity
+            ;                   (map #(.getAbsolutePath %)
+            ;                        (-> app :classpaths)))
+            ]
         (when-not silent?
           (utils/append-text (app :repl-out-text-area) cmd-ln))
-        (let [cmd-str (cmd-attach-file-and-line cmd file line classpaths)]
+        (let [cmd-str (cmd-attach-file-and-line cmd file line nil)] ;classpaths)]
           (print-to-repl app cmd-str silent?))
         (when-not silent?
           (when (not= cmd-trim (second @(:items repl-history)))
@@ -228,16 +237,22 @@
       
 (defn generate-repl
   [app project-path]
-  (let [repl (primitive/create-outside-repl project-path (app :repl-out-writer))]
-    (initialize-repl (:input-writer repl))
+  (let [
+        ;repl (try (lein/lein-repl project-path (app :repl-out-writer))
+        ;          (catch Exception e
+        ;                 (do (println e)
+        ;                     (external/repl project-path (app :repl-out-writer)))))
+        repl (external/repl project-path (app :repl-out-writer))
+       ]
+    (println repl)
+    (initialize-repl repl)
+    ;(send-off (app :var-maps) #(merge % (help/get-var-maps project-path classpath)))
     repl))
 
 (defn restart-repl [app project-path]
   (utils/awt-event (utils/append-text (app :repl-out-text-area)
                                 (str "\n=== RESTARTING " project-path " REPL ===\n")))
-  (utils/when-lets [repl (app :repl)
-                    proc (@repl :proc)]
-    (.destroy proc))
+  (.close @(:repl app))
   (install-outside-repl
     app project-path
     (generate-repl app project-path))
@@ -248,9 +263,9 @@
              (not= project-path (get-project-path app)))
     (utils/awt-event
       (utils/append-text (app :repl-out-text-area)
-                   (str "\n\n=== Switching to " project-path " REPL ===\n")))
-    (let [repl (or (get @repls project-path)
-                   (generate-repl app project-path))]
+                   (str "\n=== Switching to " project-path " REPL ===\n")))
+    (let [repl (get @repls project-path
+                    (generate-repl app project-path))]
       (install-outside-repl app project-path repl))))
 
 (defn add-repl-input-handler [app]
