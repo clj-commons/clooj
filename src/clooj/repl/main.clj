@@ -260,7 +260,8 @@
 
 (defn switch-repl [app project-path]
   (when (and project-path
-             (not= project-path (get-project-path app)))
+             (empty? @repls))
+            ; (not= project-path (get-project-path app)))
     (utils/awt-event
       (utils/append-text (app :repl-out-text-area)
                    (str "\n=== Switching to " project-path " REPL ===\n")))
