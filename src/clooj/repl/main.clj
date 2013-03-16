@@ -1,4 +1,4 @@
-; Copyright (c) 2011, Arthur Edelstein
+; Copyright (c) 2011-2013, Arthur Edelstein
 ; All rights reserved.
 ; Eclipse Public License 1.0
 ; arthuredelstein@gmail.com
@@ -232,17 +232,21 @@
     (let [repl (generate-repl app project-path)]
       (reset! (:repl app) repl)))
 
-(defn restart-repl [app project-path]
+(defn stop-repl [app project-path]
   (utils/awt-event (utils/append-text (app :repl-out-text-area)
                                       "\n=== Shutting down REPL ==="))
-  (.close @(:repl app))
-  (start-repl app project-path))
+  (.close @(:repl app)))
 
 (defn apply-namespace-to-repl [app]
   (when-not @(:repl app)
     (start-repl app (first (project/get-selected-projects app))))
   (when-let [current-ns (get-file-ns app)]
     (send-to-repl app (str "(ns " current-ns ")") true)))
+
+(defn restart-repl [app project-path]
+  (stop-repl app project-path)
+  (start-repl app project-path)
+  (apply-namespace-to-repl app))
 
 (defn add-repl-input-handler [app]
   (let [ta-in (app :repl-in-text-area)

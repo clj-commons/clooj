@@ -1,3 +1,8 @@
+; Copyright (c) 2011-2013, Arthur Edelstein
+; All rights reserved.
+; Eclipse Public License 1.0
+; arthuredelstein@gmail.com
+
 (ns clooj.repl.remote
   (:import (java.io StringReader)))
 
