@@ -211,28 +211,15 @@
         (str (second sexpr))))
     (catch Exception e)))
 
-(defn generate-repl
-  [app project-path]
-  (let [
-        ;repl (try (lein/lein-repl project-path (app :repl-out-writer))
-        ;          (catch Exception e
-        ;                 (do (println e)
-        ;                     (external/repl project-path (app :repl-out-writer)))))
-        repl (external/repl project-path (app :repl-out-writer))
-       ]
-    (println repl)
-    (initialize-repl repl)
-   ; (send-off help/var-maps-agent #(merge % (help/get-var-maps project-path classpath)))
-    repl))
-
 (defn start-repl [app project-path]
     (utils/awt-event
       (utils/append-text (app :repl-out-text-area)
                    (str "\n=== Starting new REPL at " project-path " ===\n")))
-    (let [repl (generate-repl app project-path)]
+    (let [repl (external/repl project-path (app :repl-out-writer))]
+      (initialize-repl repl)
       (reset! (:repl app) repl)))
 
-(defn stop-repl [app project-path]
+(defn stop-repl [app]
   (utils/awt-event (utils/append-text (app :repl-out-text-area)
                                       "\n=== Shutting down REPL ==="))
   (.close @(:repl app)))
@@ -244,8 +231,8 @@
     (send-to-repl app (str "(ns " current-ns ")") true)))
 
 (defn restart-repl [app project-path]
-  (stop-repl app project-path)
-  (start-repl app project-path)
+  (stop-repl app)
+  (start-repl app :path project-path)
   (apply-namespace-to-repl app))
 
 (defn add-repl-input-handler [app]
