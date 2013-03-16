@@ -29,8 +29,6 @@
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
 
-(def repls (atom {}))
-
 ;; utils
 
 (defn tokens
@@ -56,11 +54,6 @@
 (defn get-project-path [app]
   (when-let [repl (:repl app)]
     (-> repl deref :project-path)))
-
-(defn get-repl-ns [app]
-  (let [repl-map @repls]
-    (let [project (get-project-path app)]
-      (:ns (repl-map project)))))
 
 (defn initialize-repl [repl]
   (println "initialize-repl")
@@ -121,25 +114,19 @@
                       "(do")
                     cmd-str ")"))))
 
-(defn drain-queue 
-  [queue]
-  (let [array-list (java.util.ArrayList.)]
-    (.drainTo queue array-list)
-    (seq array-list)))
-
 (defn send-to-repl
   ([app cmd silent?] (send-to-repl app cmd "NO_SOURCE_PATH" 0 silent?))
   ([app cmd file line silent?]
     (utils/awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
             cmd-trim (.trim cmd)
-            ;classpaths (filter identity
-            ;                   (map #(.getAbsolutePath %)
-            ;                        (-> app :classpaths)))
+            classpaths (filter identity
+                               (map #(.getAbsolutePath %)
+                                    (-> app :classpath-queue)))
             ]
         (when-not silent?
           (utils/append-text (app :repl-out-text-area) cmd-ln))
-        (let [cmd-str (cmd-attach-file-and-line cmd file line nil)] ;classpaths)]
+        (let [cmd-str (cmd-attach-file-and-line cmd file line classpaths)]
           (print-to-repl app cmd-str silent?))
         (when-not silent?
           (when (not= cmd-trim (second @(:items repl-history)))
@@ -224,17 +211,6 @@
         (str (second sexpr))))
     (catch Exception e)))
 
-(defn install-outside-repl [app project-path repl]
-    (reset! (:repl app) repl)
-    (swap! repls assoc project-path repl))
-
-(defn apply-namespace-to-repl [app]
-  (when-let [current-ns (get-file-ns app)]
-    (send-to-repl app (str "(ns " current-ns ")") true)
-    (swap! repls assoc-in
-           [(get-project-path app) :ns]
-           current-ns)))
-      
 (defn generate-repl
   [app project-path]
   (let [
@@ -246,28 +222,27 @@
        ]
     (println repl)
     (initialize-repl repl)
-    ;(send-off (app :var-maps) #(merge % (help/get-var-maps project-path classpath)))
+   ; (send-off help/var-maps-agent #(merge % (help/get-var-maps project-path classpath)))
     repl))
+
+(defn start-repl [app project-path]
+    (utils/awt-event
+      (utils/append-text (app :repl-out-text-area)
+                   (str "\n=== Starting new REPL at " project-path " ===\n")))
+    (let [repl (generate-repl app project-path)]
+      (reset! (:repl app) repl)))
 
 (defn restart-repl [app project-path]
   (utils/awt-event (utils/append-text (app :repl-out-text-area)
-                                (str "\n=== RESTARTING " project-path " REPL ===\n")))
+                                      "\n=== Shutting down REPL ==="))
   (.close @(:repl app))
-  (install-outside-repl
-    app project-path
-    (generate-repl app project-path))
-  (apply-namespace-to-repl app))
+  (start-repl app project-path))
 
-(defn switch-repl [app project-path]
-  (when (and project-path
-             (empty? @repls))
-            ; (not= project-path (get-project-path app)))
-    (utils/awt-event
-      (utils/append-text (app :repl-out-text-area)
-                   (str "\n=== Switching to " project-path " REPL ===\n")))
-    (let [repl (get @repls project-path
-                    (generate-repl app project-path))]
-      (install-outside-repl app project-path repl))))
+(defn apply-namespace-to-repl [app]
+  (when-not @(:repl app)
+    (start-repl app (first (project/get-selected-projects app))))
+  (when-let [current-ns (get-file-ns app)]
+    (send-to-repl app (str "(ns " current-ns ")") true)))
 
 (defn add-repl-input-handler [app]
   (let [ta-in (app :repl-in-text-area)

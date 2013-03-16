@@ -21,6 +21,8 @@
             [clj-inspector.jars :as jars]
             [clj-inspector.vars :as vars]))
 
+(def var-maps-agent (atom nil))
+
 ; from http://clojure.org/special_forms
 (def special-forms
   {"def" "(def symbol init?)"
@@ -117,10 +119,6 @@
 (defn token-from-caret-pos [text pos]
   (head-token (find-form-string text pos)))
 
-(defn matching-vars [app token]
-  (into {} (filter #(= token (second (first %)))
-                   (-> app :var-maps deref))))
-
 (defn var-from-token [app current-ns token]
   (when token
     (if (.contains token "/")
@@ -130,10 +128,9 @@
 
 (defn arglist-from-token [app ns token]
   (or (special-forms token)
-      (utils/when-lets [repl (:repl app)
-                        var-maps nil];@(app :var-maps)]
-                       (-> var-maps (get (var-from-token app ns token))
-                           arglist-from-var-map))))
+      (when-let [repl (:repl app)]
+        (-> @var-maps-agent (get (var-from-token app ns token))
+            arglist-from-var-map))))
 
 (defn arglist-from-caret-pos [app ns text pos]
   (let [token (token-from-caret-pos text pos)]
@@ -251,7 +248,7 @@
       (do
         (swap! help-state assoc :token token)
         (.setListData help-list (Vector.))
-        (when-let [items (-> app :var-maps deref vals)]
+        (let [items (vals @var-maps-agent)]
           (let [best (sort-by #(.toLowerCase (:name %))
                               (filter
                                 #(re-find token-pat1 (:name %))
@@ -332,9 +329,7 @@
 
 (defn add-classpath-to-repl
   [app files]
-  (let [project-path (-> app :repl deref :project-path)
-        classpath-queue (-> app :repl deref :classpath-queue)]
-    (.addAll classpath-queue files)))
+  (.addAll (app :classpath-queue) files))
 
 (defn load-dependencies [app artifact]
   (utils/awt-event (utils/append-text (app :repl-out-text-area)

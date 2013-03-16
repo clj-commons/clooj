@@ -19,6 +19,7 @@
                            MouseAdapter WindowAdapter KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
+           (java.util.concurrent LinkedBlockingQueue)
            (java.util Map)
            (java.io File FileReader StringReader
                     BufferedWriter OutputStreamWriter FileOutputStream)
@@ -191,7 +192,7 @@
       (utils/add-caret-listener text-comp f)
       (utils/add-text-change-listener text-comp f)))
   (when-let [text-comp (app :repl-in-text-area)]
-    (let [f #(handle-caret-move app text-comp (repl/get-repl-ns app))]
+    (let [f #(handle-caret-move app text-comp (repl/get-file-ns app))]
       (utils/add-caret-listener text-comp f)
       (utils/add-text-change-listener text-comp f))))
 
@@ -392,6 +393,7 @@
         app (merge {:file (atom nil)
                     :repl (atom nil)
                     :var-maps (atom nil)
+                    :classpath-queue (LinkedBlockingQueue.)
                     :changed false}
                    (utils/gen-map
                      doc-text-area
@@ -526,7 +528,6 @@
     (update-caret-position text-area)
     (indent/setup-autoindent text-area)
     (reset! (app :file) file)
-    (repl/switch-repl app (first (project/get-selected-projects app)))
     (repl/apply-namespace-to-repl app)
     (reset! changing-file false)))
 

@@ -73,17 +73,24 @@
      :classpath classpath
      :result-writer result-writer}))
 
-(defn evaluate-code [repl-map code]
+(defn evaluate-code
+  "Evaluate some code in the repl specified by repl-map."
+  [repl-map code]
   (binding [*out* (:input-writer repl-map)]
     (println code)
     (.flush *out*)))
 
-(defn close [{:keys [input-writer result-writer process] :as repl-map}]
+(defn close
+  "Close the repl specified in the repl-map."
+  [{:keys [input-writer result-writer process] :as repl-map}]
   (doto input-writer .flush .close)
   (.flush result-writer)
   (.destroy process))
 
-(defn repl [project-path result-writer]
+(defn repl
+  "Returns a repl, based at project-path, where outputs
+   are printed to result-writer."
+  [project-path result-writer]
   (let [repl-map (launch-repl project-path result-writer)]
     (reify protocols/Repl
       (evaluate [this code]
