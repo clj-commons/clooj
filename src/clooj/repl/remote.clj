@@ -31,3 +31,17 @@
   (binding [*file* file]
     (eval (read-code-at text line))))
 
+(defn repl
+  "Starts a REPL (for nesting in a primitive REPL) that
+   prints nicely and suppresses silent evaluations."
+  []
+  (clojure.main/repl
+    :print (fn [x]
+             (if @silence
+               (do
+                 (reset! silence false)
+                 (println))
+               (if (var? x)
+                 (println x)
+                 (clojure.pprint/pprint x))))
+    :prompt #(do (clojure.main/repl-prompt) (.flush *out*))))

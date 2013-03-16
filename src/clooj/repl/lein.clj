@@ -5,7 +5,7 @@
             [clooj.protocols :as protocols]
             [clooj.utils :as utils]))
 
-;https://github.com/clojure/tools.nrepl
+; Documentation for nrepl at https://github.com/clojure/tools.nrepl
 
 ;; nrepl handling
 

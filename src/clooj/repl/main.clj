@@ -66,16 +66,7 @@
       "(do"
       (utils/local-clj-source "clooj/cemerick/pomegranate.clj")
       (utils/local-clj-source "clooj/repl/remote.clj")    
-       " (clojure.main/repl
-          :print (fn [x]
-                   (if @clooj.repl.remote/silence
-                     (do
-                       (reset! clooj.repl.remote/silence false)
-                       (println))
-                     (if (var? x)
-                       (println x)
-                       (clojure.pprint/pprint x))))
-          :prompt #(do (clojure.main/repl-prompt) (.flush *out*))) "
+      "(clooj.repl.remote/repl)"
       ")"
       )))
 
