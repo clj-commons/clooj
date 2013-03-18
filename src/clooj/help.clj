@@ -240,43 +240,48 @@
 (defn list-size [list]
   (-> list .getModel .getSize))
 
+(defn match-items [pattern items]
+  (->> items
+    (filter #(re-find pattern (:name %)))
+    (sort-by #(.toLowerCase (:name %)))))
+
+(defn hits [token]
+  (let [token-pat1 (re-pattern (str "(?i)\\A\\Q" token "\\E"))
+        token-pat2 (re-pattern (str "(?i)\\A.\\Q" token "\\E"))
+        items (vals @var-maps-agent)
+        best (match-items token-pat1 items)
+        others (match-items token-pat2 items)
+        collaj-items (or (try (collaj/raw-data token) (catch Throwable _)))]
+    (concat best others collaj-items)))
+
+(defn show-completion-list [{:keys [completion-list
+                                    repl-split-pane
+                                    help-text-scroll-pane
+                                    doc-split-pane
+                                    completion-panel
+                                    repl-label]:as app}]
+    (when (pos? (list-size completion-list))
+      (set-first-component repl-split-pane help-text-scroll-pane)
+      (set-first-component doc-split-pane completion-panel)
+      (.setText repl-label "Documentation")
+      (.ensureIndexIsVisible completion-list
+                             (.getSelectedIndex completion-list))))
+
 (defn advance-help-list [app token index-change-fn]
-  (let [help-list (app :completion-list)
-        token-pat1 (re-pattern (str "(?i)\\A\\Q" token "\\E"))
-        token-pat2 (re-pattern (str "(?i)\\Q" token "\\E"))]
+  (let [help-list (app :completion-list)]
     (if (not= token (@help-state :token))
       (do
         (swap! help-state assoc :token token)
-        (.setListData help-list (Vector.))
-        (let [items (vals @var-maps-agent)]
-          (let [best (sort-by #(.toLowerCase (:name %))
-                              (filter
-                                #(re-find token-pat1 (:name %))
-                                items))
-                others (sort-by #(.toLowerCase (:name %))
-                                (filter 
-                                  #(re-find token-pat2 (.substring (:name %) 1))
-                                  items))
-                collaj-items (or (try (collaj/raw-data token) (catch Throwable _)))]
-            (.setListData help-list
-                          (Vector. (concat best others collaj-items)))
-            (.setSelectedIndex help-list 0)
-                   )))
+        (.setListData help-list (Vector. (hits token)))
+        (.setSelectedIndex help-list 0))
       (let [n (list-size help-list)]
         (when (pos? n)
           (.setSelectedIndex help-list
                              (clock-num
                                (index-change-fn
                                     (.getSelectedIndex help-list))
-                               n)))))
-    (when (pos? (list-size help-list))
-      (set-first-component (app :repl-split-pane)
-                           (app :help-text-scroll-pane))
-      (set-first-component (app :doc-split-pane)
-                           (app :completion-panel))
-      (.setText (app :repl-label) "Documentation")
-      (.ensureIndexIsVisible help-list
-                             (.getSelectedIndex help-list)))))
+                               n))))))
+  (show-completion-list app))
   
 (defn get-list-item [app]
   (-> app :completion-list .getSelectedValue))

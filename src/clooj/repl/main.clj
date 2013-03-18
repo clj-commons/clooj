@@ -215,7 +215,9 @@
     (utils/awt-event
       (utils/append-text (app :repl-out-text-area)
                    (str "\n=== Starting new REPL at " project-path " ===\n")))
-    (let [repl (external/repl project-path (app :repl-out-writer))]
+    (let [classpath-items (external/repl-classpath-items project-path)
+          repl (external/repl project-path classpath-items 
+                              (app :repl-out-writer))]
       (initialize-repl repl)
       (reset! (:repl app) repl)))
 
@@ -232,7 +234,7 @@
 
 (defn restart-repl [app project-path]
   (stop-repl app)
-  (start-repl app :path project-path)
+  (start-repl app project-path)
   (apply-namespace-to-repl app))
 
 (defn add-repl-input-handler [app]

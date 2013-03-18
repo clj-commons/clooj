@@ -38,16 +38,17 @@
                      (jars/jar-files lib-dir))]
     (first (filter #(jar-contains-class? % "clojure.lang.RT") jars))))
         
-(defn repl-classpath-pieces
+(defn repl-classpath-items
   "Figures out the necessary pieces for a viable classpath
    given a particular project directory."
   [project-path]
-  (concat
+  (try
     (lein/lein-classpath-items project-path)
-    [(or (clojure-jar-location project-path)
-         (own-clojure-jar))
-     (str project-path "/lib/*")
-     (str project-path "/src")]))
+    (catch Exception e
+           [(or (clojure-jar-location project-path)
+                (own-clojure-jar))
+            (str project-path "/lib/*")
+            (str project-path "/src")])))
   
 (defn java-binary
   "Returns the fully-qualified path of the java binary."
@@ -57,8 +58,8 @@
 
 (defn repl-process
   "Start an external repl process by running clojure.main."
-  [project-path classpath]
-  (let [classpath-str (apply str (interpose File/pathSeparatorChar classpath))]
+  [project-path classpath-items]
+  (let [classpath-str (apply str (interpose File/pathSeparatorChar classpath-items))]
     (.start
       (doto (ProcessBuilder. [(java-binary) "-cp" classpath-str "clojure.main"])
         (.redirectErrorStream true)
@@ -66,16 +67,15 @@
   
 (defn launch-repl
   "Launch an outside process with a clojure repl."
-  [project-path result-writer]
-  (let [classpath (repl-classpath-pieces project-path)
-        process (repl-process project-path classpath)
+  [project-path classpath-items result-writer]
+  (let [process (repl-process project-path classpath-items)
         input-writer  (-> process .getOutputStream (PrintWriter. true))
         is (.getInputStream process)]
     (future (utils/copy-input-stream-to-writer is result-writer)); :buffer-size 10))
     {:input-writer input-writer
      :project-path project-path
      :process process
-     :classpath classpath
+     :classpath classpath-items
      :result-writer result-writer}))
 
 (defn evaluate-code
@@ -95,8 +95,8 @@
 (defn repl
   "Returns a repl, based at project-path, where outputs
    are printed to result-writer."
-  [project-path result-writer]
-  (let [repl-map (launch-repl project-path result-writer)]
+  [project-path classpath-items result-writer]
+  (let [repl-map (launch-repl project-path classpath-items result-writer)]
     (reify protocols/Repl
       (evaluate [this code]
         (evaluate-code repl-map code))
