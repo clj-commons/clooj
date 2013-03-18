@@ -56,17 +56,14 @@
     (-> repl deref :project-path)))
 
 (defn initialize-repl [repl]
-  (println "initialize-repl")
-  (let [code-to-eval (str    
-                       "(do"
-                       (utils/local-clj-source "clooj/cemerick/pomegranate.clj")
-                       (utils/local-clj-source "clooj/repl/remote.clj")    
-                       "(clooj.repl.remote/repl)"
-                       ")"
-                       )]
-    ;(println code-to-eval)
-    (.evaluate repl
-               code-to-eval)))
+  (.evaluate repl
+    (str    
+      "(do"
+      (utils/local-clj-source "clooj/cemerick/pomegranate.clj")
+      (utils/local-clj-source "clooj/repl/remote.clj")    
+      "(clooj.repl.remote/repl)"
+      ")"
+      )))
 
 (defn replace-first [coll x]
   (cons x (next coll)))
@@ -219,12 +216,14 @@
           repl (external/repl project-path classpath-items 
                               (app :repl-out-writer))]
       (initialize-repl repl)
+      (help/update-var-maps! project-path classpath-items)
       (reset! (:repl app) repl)))
 
 (defn stop-repl [app]
   (utils/awt-event (utils/append-text (app :repl-out-text-area)
                                       "\n=== Shutting down REPL ==="))
-  (.close @(:repl app)))
+  (when-let [repl @(:repl app)]
+    (.close repl)))
 
 (defn apply-namespace-to-repl [app]
   (when-not @(:repl app)

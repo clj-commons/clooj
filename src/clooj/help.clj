@@ -21,7 +21,7 @@
             [clj-inspector.jars :as jars]
             [clj-inspector.vars :as vars]))
 
-(def var-maps-agent (atom nil))
+(def var-maps-agent (agent nil))
 
 ; from http://clojure.org/special_forms
 (def special-forms
@@ -76,6 +76,9 @@
               (concat
                 (get-sources-from-jars project-path classpath)
                 (get-sources-from-clj-files classpath)))))
+
+(defn update-var-maps! [project-path classpath]
+  (send-off var-maps-agent #(merge % (get-var-maps project-path classpath))))
 
 (defn find-form-string [text pos]
   (let [[left right] (brackets/find-enclosing-brackets text pos)]
