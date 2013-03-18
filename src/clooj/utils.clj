@@ -384,21 +384,32 @@
     (if (and d n)
       (File. d n))))
 
+;doesn't work with Java 7 -- see version below
+;(defn choose-directory [parent title]
+;  (if (is-mac)
+;    (let [dirs-on #(System/setProperty
+;                     "apple.awt.fileDialogForDirectories" (str %))]
+;      (dirs-on true)
+;        (let [f (choose-file parent title "" true)]
+;          (dirs-on false)
+;          (.getParentFile f)))
+;    (let [fc (JFileChooser.)
+;          last-open-dir (read-value-from-prefs clooj-prefs "last-open-dir")]
+;      (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)
+;               (.setDialogTitle title)
+;               (.setCurrentDirectory (if last-open-dir (File. last-open-dir) nil)))
+;       (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
+;         (.getSelectedFile fc)))))
+
 (defn choose-directory [parent title]
-  (if (is-mac)
-    (let [dirs-on #(System/setProperty
-                     "apple.awt.fileDialogForDirectories" (str %))]
-      (dirs-on true)
-        (let [f (choose-file parent title "" true)]
-          (dirs-on false)
-          (.getParentFile f)))
-    (let [fc (JFileChooser.)
-          last-open-dir (read-value-from-prefs clooj-prefs "last-open-dir")]
-      (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)
-               (.setDialogTitle title)
-               (.setCurrentDirectory (if last-open-dir (File. last-open-dir) nil)))
-       (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
-         (.getSelectedFile fc)))))
+  (let [fc (JFileChooser.)
+        last-open-dir (read-value-from-prefs clooj-prefs "last-open-dir")]
+    (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)
+      (.setDialogTitle title)
+      (.setCurrentDirectory (if last-open-dir (File. last-open-dir) nil)))
+    (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
+      (.getSelectedFile fc))))
+
  
 (defn get-directories [path]
   (filter #(and (.isDirectory %)
