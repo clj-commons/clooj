@@ -40,9 +40,8 @@
 
 (def search-highlights (atom nil))
 
-(defn update-find-highlight [app back]
-  (let [sta (:search-text-area app)
-        dta (:doc-text-area app)
+(defn update-find-highlight [sta app back]
+  (let [dta (:doc-text-area app)
         length (.length (utils/get-text-str sta))
         posns (find-all-in-string (utils/get-text-str dta) (utils/get-text-str sta))]
     (highlighting/remove-highlights dta @search-highlights)
@@ -89,9 +88,10 @@
   (.requestFocus (:doc-text-area app)))
 
 (defn highlight-step [app back]
-  (let [dta (:doc-text-area app)]
+  (let [doc-text-area (:doc-text-area app)
+        search-text-area (:search-text-area app)]
     (start-find app)
     (if (not back)
-        (.setSelectionStart dta (.getSelectionEnd dta)))
-    (update-find-highlight app back)))
+      (.setSelectionStart doc-text-area (.getSelectionEnd doc-text-area)))
+    (update-find-highlight search-text-area app back)))
 

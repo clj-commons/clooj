@@ -362,7 +362,7 @@
         (.. text-comp getDocument
             (replace start len new-token nil))))))
 
-(defn setup-tab-help [app text-comp]
+(defn setup-tab-help [text-comp app]
   (utils/attach-action-keys text-comp
     ["TAB" #(show-tab-help app text-comp inc)]
     ["shift TAB" #(show-tab-help app text-comp dec)]

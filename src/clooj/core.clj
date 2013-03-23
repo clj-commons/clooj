@@ -153,8 +153,8 @@
 (defn update-caret-position [text-comp]
   (swap! caret-position assoc text-comp (.getCaretPosition text-comp)))
 
-(defn display-caret-position [app]
-  (let [{:keys [row col]} (utils/get-caret-coords (:doc-text-area app))]
+(defn display-caret-position [doc-text-area app]
+  (let [{:keys [row col]} (utils/get-caret-coords doc-text-area)]
     (.setText (:pos-label app) (str " " (inc row) "|" (inc col)))))
 
 (defn handle-caret-move [app text-comp ns]
@@ -188,11 +188,11 @@
 
 (defn activate-caret-highlighter [app]
   (when-let [text-comp (app :doc-text-area)]
-    (let [f #(handle-caret-move app text-comp (repl/get-file-ns app))]
+    (let [f #(handle-caret-move app % (repl/get-file-ns app))]
       (utils/add-caret-listener text-comp f)
       (utils/add-text-change-listener text-comp f)))
   (when-let [text-comp (app :repl-in-text-area)]
-    (let [f #(handle-caret-move app text-comp (repl/get-file-ns app))]
+    (let [f #(handle-caret-move app % (repl/get-file-ns app))]
       (utils/add-caret-listener text-comp f)
       (utils/add-text-change-listener text-comp f))))
 
@@ -241,7 +241,7 @@
   (let [text-comp (:doc-text-area app)]
     (utils/add-text-change-listener text-comp
       #(when-not @changing-file
-         (update-caret-position text-comp)
+         (update-caret-position %)
          (update-temp app)))))
 
 (declare restart-doc)
@@ -289,7 +289,7 @@
       (.setVisible false)
       (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
       (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (search/stop-find app)))))]
-    (utils/add-text-change-listener sta #(search/update-find-highlight app false))
+    (utils/add-text-change-listener sta #(search/update-find-highlight % app false))
     (utils/attach-action-keys sta ["ENTER" #(search/highlight-step app false)]
                             ["shift ENTER" #(search/highlight-step app true)]
                             ["ESCAPE" #(search/escape-find app)])))
@@ -356,9 +356,20 @@
       (windowActivated [_]
         (fun)))))
 
+(defn new-doc-text-area [app]
+  (doto (make-text-area false)
+    navigate/attach-navigation-keys
+    double-click-selector
+    (utils/attach-action-keys
+      ["cmd1 ENTER" #(repl/send-selected-to-repl app)])
+    (utils/add-caret-listener #(display-caret-position % app))
+    (help/setup-tab-help app)
+    indent/setup-autoindent
+    ))
+  
+
 (defn create-app []
-  (let [doc-text-area (make-text-area false)
-        doc-text-panel (JPanel.)
+  (let [doc-text-panel (JPanel.)
         doc-label (JLabel. "Source Editor")
         repl-out-text-area (make-text-area true)
         repl-out-writer (repl/make-repl-writer repl-out-text-area)
@@ -396,7 +407,6 @@
                     :classpath-queue (LinkedBlockingQueue.)
                     :changed false}
                    (utils/gen-map
-                     doc-text-area
                      doc-label
                      repl-out-text-area
                      repl-in-text-area
@@ -420,7 +430,9 @@
                      completion-scroll-pane
                      completion-panel
                      ))
-        doc-scroll-pane (make-scroll-pane doc-text-area)]
+        doc-text-area (new-doc-text-area app)
+        doc-scroll-pane (make-scroll-pane doc-text-area)
+        app (assoc app :doc-text-area doc-text-area)]
     (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
@@ -446,8 +458,6 @@
       (.setLayout (SpringLayout.))
       (.add completion-label)
       (.add completion-scroll-pane))
-    (doto doc-text-area
-      navigate/attach-navigation-keys)
     (utils/constrain-to-parent completion-label :n 0 :w 0 :n 15 :e 0)
     (utils/constrain-to-parent completion-scroll-pane :n 16 :w 0 :s 0 :e 0)
     (utils/constrain-to-parent repl-label :n 0 :w 0 :n 15 :e 0)
@@ -458,7 +468,6 @@
     (help/setup-completion-list completion-list app)
     (doto pos-label
       (.setFont (Font. "Courier" Font/PLAIN 13)))
-    (double-click-selector doc-text-area)
     (doto repl-in-text-area
       double-click-selector
       navigate/attach-navigation-keys)
@@ -474,19 +483,15 @@
     (.layoutContainer layout frame)
     (exit-if-closed frame)
     (setup-search-text-area app)
-    (utils/add-caret-listener doc-text-area #(display-caret-position app))
     (activate-caret-highlighter app)
     (setup-temp-writer app)
-    (utils/attach-action-keys doc-text-area
-      ["cmd1 ENTER" #(repl/send-selected-to-repl app)])
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
     (indent/setup-autoindent repl-in-text-area)
-    (help/setup-tab-help app doc-text-area)
+
     (dorun (map #(attach-global-action-keys % app)
                 [docs-tree doc-text-area repl-in-text-area repl-out-text-area (.getContentPane frame)]))
-    (indent/setup-autoindent doc-text-area)
     app))
 
 ;; clooj docs
@@ -741,7 +746,7 @@
     (make-menus app)
     (add-visibility-shortcut app)
     (repl/add-repl-input-handler app)
-    (help/setup-tab-help app (app :repl-in-text-area))
+    (help/setup-tab-help (app :repl-in-text-area) app)
     (doall (map #(project/add-project app %) (project/load-project-set)))
     (let [frame (app :frame)]
       (utils/persist-window-shape utils/clooj-prefs "main-window" frame) 

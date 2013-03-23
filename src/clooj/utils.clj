@@ -171,8 +171,8 @@
   (.addDocumentListener
     (.getDocument text-comp)
     (reify DocumentListener
-      (insertUpdate [this evt] (f))
-      (removeUpdate [this evt] (f))
+      (insertUpdate [this evt] (f text-comp))
+      (removeUpdate [this evt] (f text-comp))
       (changedUpdate [this evt]))))
 
 (defn remove-text-change-listeners [text-comp]
@@ -186,7 +186,8 @@
 
 (defn add-caret-listener [text-comp f]
   (.addCaretListener text-comp
-                     (reify CaretListener (caretUpdate [this evt] (f)))))
+                     (reify CaretListener (caretUpdate [this evt]
+                                                       (f text-comp)))))
 
 (defn set-selection [text-comp start end]
   (doto text-comp (.setSelectionStart start) (.setSelectionEnd end)))
