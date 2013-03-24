@@ -4,6 +4,7 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.collaj
+  (:require [clojure.edn :as edn])
   (:import (java.net URLEncoder)))
 
 (defn url-encode
@@ -15,6 +16,6 @@
   "Get a clojure data collection of raw search
    results from collaj.net"
   [terms]
-  (read-string (slurp (str "http://collaj.net/?format=raw&q="
-                           (url-encode terms)))))
+  (edn/read-string (slurp (str "http://collaj.net/?format=raw&q="
+                               (url-encode terms)))))
 

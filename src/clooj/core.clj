@@ -360,13 +360,10 @@
   (doto (make-text-area false)
     navigate/attach-navigation-keys
     double-click-selector
-    (utils/attach-action-keys
-      ["cmd1 ENTER" #(repl/send-selected-to-repl app)])
     (utils/add-caret-listener #(display-caret-position % app))
     (help/setup-tab-help app)
     indent/setup-autoindent
     ))
-  
 
 (defn create-app []
   (let [doc-text-panel (JPanel.)
@@ -485,6 +482,8 @@
     (setup-search-text-area app)
     (activate-caret-highlighter app)
     (setup-temp-writer app)
+    (utils/attach-action-keys doc-text-area
+      ["cmd1 ENTER" #(repl/send-selected-to-repl app)])
     (doto repl-out-text-area (.setEditable false))
     (doto help-text-area (.setEditable false)
                          (.setBackground (Color. 0xFF 0xFF 0xE8)))
