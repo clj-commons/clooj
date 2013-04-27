@@ -29,8 +29,7 @@
                              (when (.getAndSet should-scroll false)
                                (scroll-to-end text-area))
                              (proxy-super paint graphics)))]
-    {:text-area text-area
-     :scroll-pane scroll-pane}))
+    [text-area scroll-pane]))
 
 ;; manual tests
 
@@ -38,7 +37,7 @@
   "Creates a JTextArea, shows it in a JFrame with a
    JSlider above it. Returns the text-area instance."
   []
-  (let [{:keys [text-area scroll-pane]} (tailing-text-area)
+  (let [[text-area scroll-pane] (tailing-text-area)
         frame (JFrame. "test")
         document (.getDocument text-area)
         slider (JSlider. 0 100)

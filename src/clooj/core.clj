@@ -28,6 +28,7 @@
            (org.fife.ui.rtextarea RTextScrollPane))
   (:require [clojure.set]
             [clooj.repl.main :as repl]
+            [clooj.repl.output :as repl-output]
             [clooj.utils :as utils]
             [clooj.help :as help]
             [clooj.navigate :as navigate]
@@ -368,7 +369,7 @@
 (defn create-app []
   (let [doc-text-panel (JPanel.)
         doc-label (JLabel. "Source Editor")
-        repl-out-text-area (make-text-area true)
+        [repl-out-text-area repl-out-scroll-pane] (repl-output/tailing-text-area)
         repl-out-writer (repl/make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
         help-text-area (make-text-area true)
@@ -390,7 +391,6 @@
         doc-split-pane (utils/make-split-pane
                          docs-tree-panel
                          doc-text-panel true gap 0.25)
-        repl-out-scroll-pane (JScrollPane. repl-out-text-area)
         repl-split-pane (utils/make-split-pane
                           repl-out-scroll-pane
                           (make-scroll-pane repl-in-text-area) false gap 0.75)

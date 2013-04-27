@@ -114,7 +114,6 @@
 (defn send-to-repl
   ([app cmd silent?] (send-to-repl app cmd "NO_SOURCE_PATH" 0 silent?))
   ([app cmd file line silent?]
-    (utils/awt-event
       (let [cmd-ln (str \newline (.trim cmd) \newline)
             cmd-trim (.trim cmd)
             classpaths (filter identity
@@ -130,11 +129,7 @@
             (swap! (:items repl-history)
                    replace-first cmd-trim)
             (swap! (:items repl-history) conj ""))
-          (reset! (:pos repl-history) 0))))))
-
-(defn scroll-to-last [text-area]
-  (.scrollRectToVisible text-area
-                        (Rectangle. 0 (dec (.getHeight text-area)) 1 1)))
+          (reset! (:pos repl-history) 0)))))
 
 (defn relative-file [app]
   (let [prefix (str (get-project-path app) File/separator
@@ -174,11 +169,11 @@
       (write
         ([char-array offset length]
           ;(println "char array:" (apply str char-array) (count char-array))
-          (utils/awt-event (utils/append-text ta-out (apply str char-array))))
+          (utils/append-text ta-out (apply str char-array)))
         ([t]
           (if (= Integer (type t))
-            (utils/awt-event (utils/append-text ta-out (str (char t))))
-            (utils/awt-event (utils/append-text ta-out (apply str t))))))
+            (utils/append-text ta-out (str (char t)))
+            (utils/append-text ta-out (apply str t)))))
       (flush [])
       (close [] nil))
     (PrintWriter. true)))
@@ -209,9 +204,8 @@
     (catch Exception e)))
 
 (defn start-repl [app project-path]
-    (utils/awt-event
       (utils/append-text (app :repl-out-text-area)
-                   (str "\n=== Starting new REPL at " project-path " ===\n")))
+                   (str "\n=== Starting new REPL at " project-path " ===\n"))
     (let [classpath-items (external/repl-classpath-items project-path)
           repl (external/repl project-path classpath-items 
                               (app :repl-out-writer))]
@@ -220,8 +214,8 @@
       (reset! (:repl app) repl)))
 
 (defn stop-repl [app]
-  (utils/awt-event (utils/append-text (app :repl-out-text-area)
-                                      "\n=== Shutting down REPL ==="))
+  (utils/append-text (app :repl-out-text-area)
+                                      "\n=== Shutting down REPL ===")
   (when-let [repl @(:repl app)]
     (.close repl)))
 
@@ -229,7 +223,7 @@
   (when-not @(:repl app)
     (start-repl app (first (project/get-selected-projects app))))
   (when-let [current-ns (get-file-ns app)]
-    (send-to-repl app (str "(in-ns '" current-ns ")") true)))
+    (send-to-repl app (str "(ns " current-ns ")") true)))
 
 (defn restart-repl [app project-path]
   (stop-repl app)
