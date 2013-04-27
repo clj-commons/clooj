@@ -229,7 +229,7 @@
   (when-not @(:repl app)
     (start-repl app (first (project/get-selected-projects app))))
   (when-let [current-ns (get-file-ns app)]
-    (send-to-repl app (str "(ns " current-ns ")") true)))
+    (send-to-repl app (str "(in-ns '" current-ns ")") true)))
 
 (defn restart-repl [app project-path]
   (stop-repl app)
