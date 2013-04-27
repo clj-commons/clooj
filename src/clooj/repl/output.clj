@@ -15,6 +15,9 @@
        (.getLineStartOffset text-area)
        (.setCaretPosition text-area)))
     
+
+;; TODO: use documentlistener to set should-scroll
+;;  and thus allow use of any JTextArea instead.
 (defn tailing-text-area
   "Creates a JTextArea in a JScrollPane that scrolls
    to the bottom whenever text is appended."
@@ -22,13 +25,13 @@
   (let [should-scroll (AtomicBoolean. false)
         text-area (proxy [JTextArea] []
                     (append [^String text]
-                            (proxy-super append text)
-                            (.set should-scroll true)))
+                      (proxy-super append text)
+                      (.set should-scroll true)))
         scroll-pane (proxy [JScrollPane] [text-area]
-                      (paint [graphics]
-                             (when (.getAndSet should-scroll false)
-                               (scroll-to-end text-area))
-                             (proxy-super paint graphics)))]
+                      (paintComponent [graphics]
+                        (when (.getAndSet should-scroll false)
+                          (scroll-to-end text-area))
+                        (proxy-super paintComponent graphics)))]
     [text-area scroll-pane]))
 
 ;; manual tests
