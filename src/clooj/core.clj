@@ -756,7 +756,8 @@
                    (into-array Class [java.awt.Window (. Boolean TYPE)]))
                 invoke
                 util 
-                (object-array [frame true]))))
+                (object-array [frame true])))
+	(catch Exception e "Not Mac OS"))
       (.setVisible frame true)
       (on-window-activation frame #(project/update-project-tree (app :docs-tree))))
     (setup-temp-writer app)
