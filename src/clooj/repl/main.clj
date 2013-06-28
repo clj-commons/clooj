@@ -171,6 +171,7 @@
           ;(println "char array:" (apply str char-array) (count char-array))
           (utils/append-text ta-out (apply str char-array)))
         ([t]
+          ;(println "t:" t)
           (if (= Integer (type t))
             (utils/append-text ta-out (str (char t)))
             (utils/append-text ta-out (apply str t)))))

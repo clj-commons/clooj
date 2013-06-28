@@ -254,8 +254,9 @@
         items (vals @var-maps-agent)
         best (match-items token-pat1 items)
         others (match-items token-pat2 items)
-        collaj-items (or (try (collaj/raw-data token) (catch Throwable _)))]
-    (concat best others collaj-items)))
+        ;collaj-items (or (try (collaj/raw-data token) (catch Throwable _)))
+        ]
+    (concat best others (comment collaj-items))))
 
 (defn show-completion-list [{:keys [completion-list
                                     repl-split-pane

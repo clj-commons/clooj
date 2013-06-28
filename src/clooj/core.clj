@@ -369,7 +369,8 @@
 (defn create-app []
   (let [doc-text-panel (JPanel.)
         doc-label (JLabel. "Source Editor")
-        [repl-out-text-area repl-out-scroll-pane] (repl-output/tailing-text-area)
+        repl-out-text-area (JTextArea.)
+        repl-out-scroll-pane (repl-output/tailing-scroll-pane repl-out-text-area)
         repl-out-writer (repl/make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
         help-text-area (make-text-area true)

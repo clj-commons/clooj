@@ -1,46 +1,51 @@
 (ns clooj.repl.output
   (:import (java.awt Point Rectangle)
-           (java.util.concurrent.atomic AtomicBoolean)
+           (java.util.concurrent.atomic AtomicBoolean AtomicInteger)
            (javax.swing JFrame JScrollPane JSplitPane JSlider JTextArea
-                        SwingUtilities)))
+                        SwingUtilities)
+           (javax.swing.event DocumentEvent DocumentListener)))
 
+(defn end-position
+  "Finds the end position of an insert or change in a document
+   as reported in a DocumentEvent instance."
+  [^DocumentEvent document-event]
+  (+ (.getOffset document-event)
+     (.getLength document-event)))
 
-(defn scroll-to-end
-  "Moves the caret to the last line of a text-area.
-   Causes text-area to scroll to the end."
+(defn tailing-scroll-pane
+  "Embeds the given JTextArea in a JScrollPane that scrolls
+   to the bottom whenever text is inserted or appended."
   [text-area]
-  (->> text-area
-       .getLineCount
-       dec
-       (.getLineStartOffset text-area)
-       (.setCaretPosition text-area)))
-    
-
-;; TODO: use documentlistener to set should-scroll
-;;  and thus allow use of any JTextArea instead.
-(defn tailing-text-area
-  "Creates a JTextArea in a JScrollPane that scrolls
-   to the bottom whenever text is appended."
-  []
-  (let [should-scroll (AtomicBoolean. false)
-        text-area (proxy [JTextArea] []
-                    (append [^String text]
-                      (proxy-super append text)
-                      (.set should-scroll true)))
-        scroll-pane (proxy [JScrollPane] [text-area]
-                      (paintComponent [graphics]
-                        (when (.getAndSet should-scroll false)
-                          (scroll-to-end text-area))
-                        (proxy-super paintComponent graphics)))]
-    [text-area scroll-pane]))
-
+  (let [scroll-offset (AtomicInteger. -1)
+        scroll-pane
+        (proxy [JScrollPane] [text-area]
+         (paintComponent [graphics]
+           (let [offset (.getAndSet scroll-offset -1)]
+             (when (not= -1 offset)
+               (.. this
+                   getVerticalScrollBar
+                   (setValue (.y (.modelToView text-area offset))))))
+           (proxy-super paintComponent graphics)))
+        set-scroll-offset (fn [e]
+                            (.set scroll-offset (end-position e))
+                            (.repaint scroll-pane))]
+        (.. text-area getDocument
+            (addDocumentListener
+              (proxy [DocumentListener] []
+                (changedUpdate [e] (set-scroll-offset e))
+                (insertUpdate [e] (set-scroll-offset e))
+                (removeUpdate [e]))))
+    scroll-pane))
+  
 ;; manual tests
 
 (defn test-text-area
   "Creates a JTextArea, shows it in a JFrame with a
    JSlider above it. Returns the text-area instance."
   []
-  (let [[text-area scroll-pane] (tailing-text-area)
+  (let [text-area (JTextArea.)
+        scroll-pane (tailing-scroll-pane text-area)
+        ;[text-area scroll-pane] (tailing-text-area)
         frame (JFrame. "test")
         document (.getDocument text-area)
         slider (JSlider. 0 100)
