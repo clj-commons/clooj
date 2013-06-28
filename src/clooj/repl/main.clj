@@ -207,9 +207,12 @@
 (defn start-repl [app project-path]
       (utils/append-text (app :repl-out-text-area)
                    (str "\n=== Starting new REPL at " project-path " ===\n"))
-    (let [classpath-items (external/repl-classpath-items project-path)
-          repl (external/repl project-path classpath-items 
-                              (app :repl-out-writer))]
+    (let [classpath-items ;(lein/lein-classpath-items project-path)
+                          (external/repl-classpath-items project-path)
+          repl ;(lein/lein-repl project-path (app :repl-out-writer))
+               (external/repl project-path classpath-items 
+                              (app :repl-out-writer))
+          ]
       (initialize-repl repl)
       (help/update-var-maps! project-path classpath-items)
       (reset! (:repl app) repl)))
