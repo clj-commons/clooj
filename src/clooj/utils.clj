@@ -548,16 +548,18 @@
 
 ;; OS-specific utils
 
-(defmacro enable-mac-fullscreen
+(defn enable-mac-fullscreen
   "Turns on Mac full-screen mode if possible."
   [window]
   (when (and window
              (is-mac)
              (class-exists 'com.apple.eawt.FullScreenUtilities))
-    `(try
-       (com.apple.eawt.FullScreenUtilities/setWindowCanFullScreen
-         ~window true)
-       (catch Throwable _# nil))))
+    ((eval
+      `(fn [window#]
+        (try
+           (com.apple.eawt.FullScreenUtilities/setWindowCanFullScreen
+             window# true)
+          (catch Throwable _# nil)))) window)))
 
 
 
