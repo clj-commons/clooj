@@ -53,6 +53,14 @@
   (let [kw (map keyword args)]
     (zipmap kw args)))
 
+(defn class-exists
+  "Returns true if a class represented by class-symbol
+   can be loaded by eval."
+  [class-symbol]
+  (try (eval class-symbol)
+       true
+       (catch Throwable _ false)))
+
 ;; preferences
   
 ;; define a UUID for clooj preferences
@@ -537,6 +545,21 @@
         java.net.URL.
         slurp)
     (catch Exception _ nil)))
+
+;; OS-specific utils
+
+(defmacro enable-mac-fullscreen
+  "Turns on Mac full-screen mode if possible."
+  [window]
+  (when (and window
+             (is-mac)
+             (class-exists 'com.apple.eawt.FullScreenUtilities))
+    `(try
+       (com.apple.eawt.FullScreenUtilities/setWindowCanFullScreen
+         ~window true)
+       (catch Throwable _# nil))))
+
+
 
 
 
