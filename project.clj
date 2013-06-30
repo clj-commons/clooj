@@ -1,4 +1,4 @@
-(defproject clooj "0.4.3"
+(defproject clooj "0.4.4"
   :description "clooj, a small IDE for clojure"
   :url "https://github.com/arthuredelstein/clooj"
   :license {:name "Eclipse Public License"
