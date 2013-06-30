@@ -53,13 +53,21 @@
   (let [kw (map keyword args)]
     (zipmap kw args)))
 
-(defn class-exists
-  "Returns true if a class represented by class-symbol
-   can be loaded by eval."
-  [class-symbol]
-  (try (eval class-symbol)
-       true
-       (catch Throwable _ false)))
+(defn class-for-name
+  "Returns true if a class represented by class-name
+   can be found by the class loader."
+  [class-name]
+  (try (Class/forName class-name)
+       (catch Throwable _ nil)))
+
+(defn static-method [class-name method-name & arg-types]
+  (let [method
+        (some-> class-name
+                class-for-name
+                (.getMethod method-name
+                            (into-array Class arg-types)))]
+          (fn [& args]
+            (.invoke method nil (object-array args)))))
 
 ;; preferences
   
@@ -549,17 +557,16 @@
 ;; OS-specific utils
 
 (defn enable-mac-fullscreen
-  "Turns on Mac full-screen mode if possible."
+  "Shows the Mac full-screen double arrow, as introduced in
+   OS X Lion, if possible."
   [window]
-  (when (and window
-             (is-mac)
-             (class-exists 'com.apple.eawt.FullScreenUtilities))
-    ((eval
-      `(fn [window#]
-        (try
-           (com.apple.eawt.FullScreenUtilities/setWindowCanFullScreen
-             window# true)
-          (catch Throwable _# nil)))) window)))
+    (when (is-mac)
+      (let [enable (static-method
+                     "com.apple.eawt.FullScreenUtilities"
+                     "setWindowCanFullScreen"
+                     java.awt.Window
+                     Boolean/TYPE)]
+        (enable window true))))
 
 
 
