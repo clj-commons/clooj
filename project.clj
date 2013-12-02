@@ -4,7 +4,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main clooj.core
-  :dependencies [[org.clojure/clojure "1.5.0"]
+  :dependencies [[org.clojure/clojure "1.5.1"]
                  [clj-inspector "0.0.12"]
                  [slamhound "1.2.0"]
                  [com.cemerick/pomegranate "0.0.11"]
