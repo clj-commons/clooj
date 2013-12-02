@@ -72,6 +72,7 @@
     (.setBracketMatchingEnabled false)
     (.setAutoIndentEnabled false)
     (.setAntiAliasingEnabled true)
+    (.setLineWrap wrap)
     ))
 
 (def get-clooj-version
@@ -696,6 +697,7 @@
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(utils/indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(utils/unindent (:doc-text-area app))]
       ["Name search/docs" "S" "TAB" #(help/show-tab-help app (help/find-focused-text-pane app) inc)]
+      ["Toggle line wrapping mode" "L" nil #(.setLineWrap (:doc-text-area app) (not (.getLineWrap (:doc-text-area app))))]              
       ;["Go to definition" "G" "cmd1 D" #(goto-definition (repl/get-file-ns app) app)]
       )
     (utils/add-menu menu-bar "REPL" "R"
