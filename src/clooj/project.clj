@@ -121,7 +121,11 @@
 
 (defn load-tree-selection [tree]
   (let [path (utils/read-value-from-prefs utils/clooj-prefs "tree-selection")]
-    (set-tree-selection tree path)))
+     (if (nil? path) 
+       false 
+       (do 
+         (set-tree-selection tree path)
+         true))))
 
 ;;;;;;;;;;;;;;;;;;;
 

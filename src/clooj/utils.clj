@@ -427,6 +427,9 @@
                 (not (.startsWith (.getName %) ".")))
           (.listFiles path)))
 
+(defn file-exists? [file]
+  (and file (.. file exists)))
+
 ;; tree seq on widgets (awt or swing)
 
 (defn widget-seq [^java.awt.Component comp]

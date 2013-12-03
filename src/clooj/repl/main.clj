@@ -205,21 +205,22 @@
     (catch Exception e)))
 
 (defn start-repl [app project-path]
-      (utils/append-text (app :repl-out-text-area)
-                   (str "\n=== Starting new REPL at " project-path " ===\n"))
+  (let [project-path (if (utils/file-exists? project-path) project-path nil)]
+    (utils/append-text (app :repl-out-text-area)
+                       (str "\n=== Starting new REPL at " project-path " ===\n"))
     (let [classpath-items ;(lein/lein-classpath-items project-path)
-                          (external/repl-classpath-items project-path)
+          (external/repl-classpath-items project-path)
           repl ;(lein/lein-repl project-path (app :repl-out-writer))
-               (external/repl project-path classpath-items 
-                              (app :repl-out-writer))
+          (external/repl project-path classpath-items 
+                         (app :repl-out-writer))
           ]
       (initialize-repl repl)
       (help/update-var-maps! project-path classpath-items)
-      (reset! (:repl app) repl)))
+      (reset! (:repl app) repl))))
 
 (defn stop-repl [app]
   (utils/append-text (app :repl-out-text-area)
-                                      "\n=== Shutting down REPL ===")
+                     "\n=== Shutting down REPL ===")
   (when-let [repl @(:repl app)]
     (.close repl)))
 

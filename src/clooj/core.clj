@@ -523,7 +523,7 @@
           (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
           (.setEditable text-area true)	
           (.setSyntaxEditingStyle text-area
-                                  (let [file-name (.getName file-to-open)]
+            (let [file-name (.getName file-to-open)]
               (if (or (.endsWith file-name ".clj")
                       (.endsWith file-name ".clj~"))
                 SyntaxConstants/SYNTAX_STYLE_CLOJURE
@@ -759,7 +759,8 @@
     (setup-tree app)
     (let [tree (app :docs-tree)]
       (project/load-expanded-paths tree)
-      (project/load-tree-selection tree))
+      (when (false? (project/load-tree-selection tree))
+        (repl/start-repl app nil)))
     (load-font app)))
 
 (defn -show []
