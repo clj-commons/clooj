@@ -330,6 +330,40 @@
 (defn toggle-line-wrapping [textarea]
   (.setLineWrap textarea (not (.getLineWrap textarea))))
 
+(defn move-caret-to-line [textarea]
+  "Move caret to choosen position by pattern line(some delimiter)symbol"
+  
+  (defn line-length [line-number]
+    (- (.getLineEndOffset textarea line-number)
+       (.getLineStartOffset textarea line-number)))
+  
+  (defn line-now []
+    (.getLineOfOffset textarea (.getCaretPosition textarea)))
+  
+  (let [line-str (utils/ask-value "Line number:" "Go to Line")
+        line-seq (re-seq #"\d+" (if (nil? line-str)
+                                  ""
+                                  line-str))
+        parsed-line (if (nil? (first line-seq)) 
+                      (line-now)
+                      (Integer. (first line-seq)))
+        parsed-symbol (if (nil? (second line-seq))
+                        0
+                        (Integer. (second line-seq)))
+        real-line (cond 
+                    (<= parsed-line 0) 0
+                    (> parsed-line (.getLineCount textarea)) (dec (.getLineCount textarea))
+                    :else (dec parsed-line))
+        real-symbol (cond 
+                      (<= parsed-symbol 0) 0
+                      (>= parsed-symbol (line-length real-line)) (dec (line-length real-line))
+                      :else (dec parsed-symbol))
+        caret-position (if (> (+ (.getLineStartOffset textarea real-line) real-symbol)
+                              (.. textarea getDocument getEndPosition getOffset))
+                         (.. textarea getDocument getEndPosition getOffset)
+                         (+ (.getLineStartOffset textarea real-line) real-symbol))]
+    (.setCaretPosition textarea caret-position)
+    (.requestFocus textarea)))
 
 (defn open-project [app]
   (when-let [dir (utils/choose-directory (app :f) "Choose a project directory")]
@@ -700,7 +734,8 @@
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(utils/indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(utils/unindent (:doc-text-area app))]
       ["Name search/docs" "S" "TAB" #(help/show-tab-help app (help/find-focused-text-pane app) inc)]
-      ["Toggle line wrapping mode" "L" nil #(toggle-line-wrapping (:doc-text-area app))]      
+      ["Toggle line wrapping mode" "L" nil #(toggle-line-wrapping (:doc-text-area app))]
+      ["Go to line..." "G" "cmd1 L" #(move-caret-to-line (:doc-text-area app))]                    
       ;["Go to definition" "G" "cmd1 D" #(goto-definition (repl/get-file-ns app) app)]
       )
     (utils/add-menu menu-bar "REPL" "R"

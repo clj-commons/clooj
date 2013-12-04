@@ -493,6 +493,9 @@
      (JOptionPane/showConfirmDialog
        nil question title  JOptionPane/YES_NO_OPTION)))
 
+(defn ask-value [question title]
+  (JOptionPane/showInputDialog nil question title JOptionPane/QUESTION_MESSAGE))
+
 (defn persist-window-shape [prefs name ^java.awt.Window window]
   (let [components (widget-seq window)
         shape-persister (agent nil)]
