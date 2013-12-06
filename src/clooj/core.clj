@@ -331,39 +331,18 @@
   (.setLineWrap textarea (not (.getLineWrap textarea))))
 
 (defn move-caret-to-line [textarea]
-  "Move caret to choosen position by pattern line(some delimiter)symbol"
+  "Move caret to choosen line"
   
-  (defn line-length [line-number]
-    (- (.getLineEndOffset textarea line-number)
-       (.getLineStartOffset textarea line-number)))
-  
-  (defn line-now []
-    (.getLineOfOffset textarea (.getCaretPosition textarea)))
-  
+  (defn current-line []
+    (inc (.getLineOfOffset textarea (.getCaretPosition textarea))))
+
   (let [line-str (utils/ask-value "Line number:" "Go to Line")
-        line-seq (re-seq #"\d+" (if (nil? line-str)
-                                  ""
-                                  line-str))
-        parsed-line (if (nil? (first line-seq)) 
-                      (line-now)
-                      (Integer. (first line-seq)))
-        parsed-symbol (if (nil? (second line-seq))
-                        0
-                        (Integer. (second line-seq)))
-        real-line (cond 
-                    (<= parsed-line 0) 0
-                    (> parsed-line (.getLineCount textarea)) (dec (.getLineCount textarea))
-                    :else (dec parsed-line))
-        real-symbol (cond 
-                      (<= parsed-symbol 0) 0
-                      (>= parsed-symbol (line-length real-line)) (dec (line-length real-line))
-                      :else (dec parsed-symbol))
-        caret-position (if (> (+ (.getLineStartOffset textarea real-line) real-symbol)
-                              (.. textarea getDocument getEndPosition getOffset))
-                         (.. textarea getDocument getEndPosition getOffset)
-                         (+ (.getLineStartOffset textarea real-line) real-symbol))]
-    (.setCaretPosition textarea caret-position)
-    (.requestFocus textarea)))
+        line-num  (Integer.
+                    (if (or (nil? line-str) (nil? (re-find #"\d+" line-str)))
+                      (current-line)
+                      (re-find #"\d+" line-str)))]
+  (utils/scroll-to-line textarea line-num)
+  (.requestFocus textarea)))
 
 (defn open-project [app]
   (when-let [dir (utils/choose-directory (app :f) "Choose a project directory")]
