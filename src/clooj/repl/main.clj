@@ -114,7 +114,7 @@
 (defn send-to-repl
   ([app cmd silent?] (send-to-repl app cmd "NO_SOURCE_PATH" 0 silent?))
   ([app cmd file line silent?]
-      (let [cmd-ln (str \newline (.trim cmd) \newline)
+      (let [cmd-ln (str (.trim cmd) \newline)
             cmd-trim (.trim cmd)
             classpaths (filter identity
                                (map #(.getAbsolutePath %)
