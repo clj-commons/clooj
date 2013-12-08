@@ -405,7 +405,7 @@
 (defn create-app []
   (let [doc-text-panel (JPanel.)
         doc-label (JLabel. "Source Editor")
-        repl-out-text-area (JTextArea.)
+        repl-out-text-area (make-text-area false)
         repl-out-scroll-pane (repl-output/tailing-scroll-pane repl-out-text-area)
         repl-out-writer (repl/make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
@@ -506,6 +506,8 @@
       double-click-selector
       navigate/attach-navigation-keys)
     (.setSyntaxEditingStyle repl-in-text-area
+                            SyntaxConstants/SYNTAX_STYLE_CLOJURE)
+    (.setSyntaxEditingStyle repl-out-text-area
                             SyntaxConstants/SYNTAX_STYLE_CLOJURE)
     (.setModel docs-tree (DefaultTreeModel. nil))
     (utils/constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
