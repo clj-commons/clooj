@@ -72,13 +72,6 @@
   (swap! (:items repl-history) replace-first
          (utils/get-text-str (app :repl-in-text-area))))
 
-(defn correct-expression? [cmd]
-  (let [rdr (-> cmd StringReader. PushbackReader.)]
-    (try (while (read rdr nil nil))
-         true
-         (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
-         (catch Exception e false))))
-
 (defn read-string-at [source-text start-line]
   `(let [sr# (java.io.StringReader. (str (apply str (repeat ~start-line "\n"))
                                          ~source-text))
@@ -145,7 +138,7 @@
   (let [ta (app :doc-text-area)
         region (selected-region ta)
         txt (:text region)]
-    (if-not (and txt (correct-expression? txt))
+    (if-not txt
       (.setText (app :arglist-label) "Malformed expression")
       (let [line (.getLineOfOffset ta (:start region))]
         (send-to-repl app txt (relative-file app) line false)))))
@@ -241,10 +234,8 @@
                                   txt
                                   caret-pos)))))
         submit #(when-let [txt (.getText ta-in)]
-                  (if (correct-expression? txt)
-                    (do (send-to-repl app txt false)
-                        (.setText ta-in ""))
-                    (.setText (app :arglist-label) "Malformed expression")))
+                  (do (send-to-repl app txt false)
+                      (.setText ta-in "")))
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
         at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
                       (.getLineOfOffset ta-in (.. ta-in getText length)))
