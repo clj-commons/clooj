@@ -327,8 +327,27 @@
      (select menu <b>File > New...</b>)<br>
      &nbsp;2. edit an existing file by selecting one at left.</html>")
 
-(defn toggle-line-wrapping [textarea]
-  (.setLineWrap textarea (not (.getLineWrap textarea))))
+(defn set-line-wrapping [text-area mode]
+  (.setLineWrap text-area mode))
+
+(defn toggle-line-wrapping [app text-area-id]
+  (let [text-area (text-area-id app)
+        mode (not (.getLineWrap text-area))]
+    (set-line-wrapping text-area mode)
+    (utils/write-value-to-prefs 
+      utils/clooj-prefs 
+      (str "line-wrapping-mode" text-area-id)
+      mode)))
+
+(defn load-line-wrapping-mode [app]
+  (let [doc :doc-text-area
+        doc-text-area-mode (utils/read-value-from-prefs
+                             utils/clooj-prefs
+                             (str "line-wrapping-mode" doc))]
+    (set-line-wrapping (doc app) doc-text-area-mode)))
+
+(defn load-gui-settings [app]
+  (load-line-wrapping-mode app))
 
 (defn move-caret-to-line [textarea]
   "Move caret to choosen line"
@@ -553,6 +572,7 @@
     (load-caret-position app)
     (update-caret-position text-area)
     (repl/apply-namespace-to-repl app)
+    (load-gui-settings app)
     (reset! changing-file false)))
 
 (defn save-file [app]
@@ -715,7 +735,7 @@
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(utils/indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(utils/unindent (:doc-text-area app))]
       ["Name search/docs" "S" "TAB" #(help/show-tab-help app (help/find-focused-text-pane app) inc)]
-      ["Toggle line wrapping mode" "L" nil #(toggle-line-wrapping (:doc-text-area app))]
+      ["Toggle line wrapping mode" "L" nil #(toggle-line-wrapping app :doc-text-area)]
       ["Go to line..." "G" "cmd1 L" #(move-caret-to-line (:doc-text-area app))]                    
       ;["Go to definition" "G" "cmd1 D" #(goto-definition (repl/get-file-ns app) app)]
       )
