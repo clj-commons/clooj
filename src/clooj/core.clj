@@ -7,7 +7,8 @@
   (:import (javax.swing AbstractListModel BorderFactory JDialog
                         JFrame JLabel JList JMenuBar JOptionPane
                         JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree KeyStroke SpringLayout JTextPane
+                        JTextField JTree KeyStroke SpringLayout
+                        JTextPane JCheckBox JButton
                         ListSelectionModel
                         UIManager)
            (javax.swing.event TreeSelectionListener
@@ -15,8 +16,9 @@
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (java.awt Insets Rectangle Window)
-           (java.awt.event AWTEventListener FocusAdapter
-                           MouseAdapter WindowAdapter KeyAdapter)
+           (java.awt.event AWTEventListener FocusAdapter 
+                           MouseAdapter WindowAdapter 
+                           ActionListener KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
            (java.util.concurrent LinkedBlockingQueue)
@@ -286,11 +288,17 @@
 (defn make-scroll-pane [text-area]
   (RTextScrollPane. text-area))
 
-(defn setup-search-text-area [app]
+(defn setup-search-elements [app]
+  (.setVisible (:search-match-case-checkbox app) false)
+  (.setVisible (:search-regex-checkbox app) false)
+  (doto (:search-close-button app)
+    (.setVisible  false)
+    (.addActionListener 
+      (reify ActionListener
+        (actionPerformed [_ _] (search/stop-find app)))))
   (let [sta (doto (app :search-text-area)
       (.setVisible false)
-      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
-      (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (search/stop-find app)))))]
+      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY)))]
     (utils/add-text-change-listener sta #(search/update-find-highlight % app false))
     (utils/attach-action-keys sta ["ENTER" #(search/highlight-step app false)]
                             ["shift ENTER" #(search/highlight-step app true)]
@@ -416,6 +424,9 @@
         completion-list (JList.)
         completion-scroll-pane (JScrollPane. completion-list)
         search-text-area (JTextField.)
+        search-match-case-checkbox (JCheckBox. "Match case")
+        search-regex-checkbox (JCheckBox. "Regex")
+        search-close-button (JButton. "X")
         arglist-label (create-arglist-label)
         pos-label (JLabel.)
         frame (JFrame.)
@@ -454,6 +465,9 @@
                      docs-tree-panel
                      docs-tree-label
                      search-text-area
+                     search-match-case-checkbox
+                     search-regex-checkbox
+                     search-close-button
                      pos-label
                      repl-out-writer
                      doc-split-pane
@@ -478,7 +492,10 @@
       (.add doc-label)
       (.add pos-label)
       (.add search-text-area)
-      (.add arglist-label))
+      (.add arglist-label)
+      (.add search-match-case-checkbox)
+      (.add search-regex-checkbox)
+      (.add search-close-button))
     (doto docs-tree-panel
       (.setLayout (SpringLayout.))
       (.add docs-tree-label)
@@ -514,11 +531,14 @@
     (utils/constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)
     (utils/constrain-to-parent doc-scroll-pane :n 16 :w 0 :s -16 :e 0)
     (utils/constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
-    (utils/constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
+    (utils/constrain-to-parent search-text-area :s -15 :w 100 :s 0 :w 350)
+    (utils/constrain-to-parent search-match-case-checkbox :s -15 :w 355 :s 0 :w 470)
+    (utils/constrain-to-parent search-regex-checkbox :s -15 :w 475 :s 0 :w 550)
+    (utils/constrain-to-parent search-close-button :s -15 :w 65 :s 0 :w 95)
     (utils/constrain-to-parent arglist-label :s -14 :w 80 :s -1 :e -10)
     (.layoutContainer layout frame)
     (exit-if-closed frame)
-    (setup-search-text-area app)
+    (setup-search-elements app)
     (activate-caret-highlighter app)
     (setup-temp-writer app)
     (utils/attach-action-keys doc-text-area
