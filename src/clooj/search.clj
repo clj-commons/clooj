@@ -33,10 +33,10 @@
         posns)))
 
 (defn next-item [cur-pos posns]
-  (or (first (drop-while #(>= cur-pos (first %)) posns)) (first posns)))
+  (or (first (drop-while #(> cur-pos (first %)) posns)) (first posns)))
 
 (defn prev-item [cur-pos posns]
-  (or (first (drop-while #(<= cur-pos (first %)) (reverse posns))) (last posns)))
+  (or (first (drop-while #(< cur-pos (first %)) (reverse posns))) (last posns)))
 
 (def search-highlights (atom nil))
 
@@ -53,7 +53,7 @@
     (highlighting/remove-highlights dta @search-highlights)
     (if (pos? (count posns))
       (let [selected-pos
-             (if back (prev-item @current-pos posns)
+             (if back (prev-item (dec @current-pos) posns)
                       (next-item @current-pos posns))
             posns (remove #(= selected-pos %) posns)]
         (.setBackground sta Color/WHITE)
@@ -108,7 +108,7 @@
   (let [doc-text-area (:doc-text-area app)
         search-text-area (:search-text-area app)]
     (start-find app)
-    (if (not back)
-      (.setSelectionStart doc-text-area (.getSelectionEnd doc-text-area)))
+    (when-not back
+      (swap! current-pos inc))
     (update-find-highlight search-text-area app back)))
 
