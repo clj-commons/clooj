@@ -25,7 +25,7 @@
           (if (.find m)
             (recur (conj positions [(.start m) (.end m)] ) )
             positions))))
-    (catch java.util.regex.PatternSyntaxException _ [])))
+    (catch Exception _ [])))
 
 (defn highlight-found [text-comp posns]
     (doall
@@ -55,14 +55,19 @@
       (let [selected-pos
              (if back (prev-item (dec @current-pos) posns)
                       (next-item @current-pos posns))
-            posns (remove #(= selected-pos %) posns)]
+            posns (remove #(= selected-pos %) posns)
+            pos-start (first selected-pos)
+            pos-end (second selected-pos)]
         (.setBackground sta Color/WHITE)
-        (reset! current-pos (first selected-pos))
+        (doto dta
+          (.setSelectionStart pos-end)
+          (.setSelectionEnd pos-end))
+        (reset! current-pos pos-start)
         (reset! search-highlights
                 (conj (highlight-found dta posns)
-                      (highlighting/highlight dta (first selected-pos)
-                                              (second selected-pos) (.getSelectionColor dta))))
-        (utils/scroll-to-pos dta (first selected-pos)))
+                      (highlighting/highlight dta pos-start
+                                              pos-end (.getSelectionColor dta))))
+        (utils/scroll-to-pos dta pos-start))
       (.setBackground sta  Color/PINK))))
 
 (defn start-find [app]
