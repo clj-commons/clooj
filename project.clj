@@ -8,5 +8,5 @@
                  [clj-inspector "0.0.12"]
                  [slamhound "1.2.0"]
                  [com.cemerick/pomegranate "0.0.11"]
-                 [com.fifesoft/rsyntaxtextarea "2.0.2"]
+                 [com.fifesoft/rsyntaxtextarea "2.5.0"]
                  [org.clojure/tools.nrepl "0.2.3"]])
