@@ -751,8 +751,7 @@
       ["Move/Rename" "M" nil #(project/rename-project app)]
       ["Remove" nil nil #(remove-project app)])
     (utils/add-menu menu-bar "Source" "U"
-      ["Comment-out" "C" "cmd1 SEMICOLON" #(utils/comment-out (:doc-text-area app))]
-      ["Uncomment-out" "U" "cmd1 shift SEMICOLON" #(utils/uncomment-out (:doc-text-area app))]
+      ["Comment" "C" "cmd1 SEMICOLON" #(utils/toggle-comment (:doc-text-area app))]
       ["Fix indentation" "F" "cmd1 BACK_SLASH" #(indent/fix-indent-selected-lines (:doc-text-area app))]
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(utils/indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(utils/unindent (:doc-text-area app))]

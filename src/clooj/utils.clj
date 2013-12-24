@@ -246,12 +246,19 @@
       (doseq [start (get-selected-line-starts text-comp)]
         (when (= (.getText (.getDocument text-comp) start len) txt)
           (.remove document start len))))))
-  
+
 (defn comment-out [text-comp]
   (insert-in-selected-row-headers text-comp ";"))
 
 (defn uncomment-out [text-comp]
   (remove-from-selected-row-headers text-comp ";"))
+
+(defn toggle-comment [text-comp]
+  (if (= (.getText (.getDocument text-comp) 
+                   (first (get-selected-line-starts text-comp)) 1)
+         ";")
+    (uncomment-out text-comp)
+    (comment-out text-comp)))
     
 (defn indent [text-comp]
   (when (.isFocusOwner text-comp)
