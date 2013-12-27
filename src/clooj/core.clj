@@ -36,10 +36,10 @@
             [clooj.navigate :as navigate]
             [clooj.project :as project]
             [clooj.indent :as indent]
-            [clooj.style :as style]
             [clooj.brackets :as brackets]
             [clooj.highlighting :as highlighting]
-            [clooj.search :as search])
+            [clooj.search :as search]
+            [clooj.settings :as settings])
   (:gen-class
    :methods [^{:static true} [show [] void]]))
 
@@ -94,11 +94,6 @@
 (defn font [name size]
   (Font. name Font/PLAIN size))
 
-(def default-font
-  (cond (utils/is-mac) ["Monaco" 11]
-        (utils/is-win) ["Courier New" 12]
-        :else    ["Monospaced" 12]))
-
 (defn set-font
   ([app font-name size]
     (let [f (font font-name size)]
@@ -114,10 +109,6 @@
   ([app font-name]
     (let [size (second @current-font)]
       (set-font app font-name size))))
-
-(defn load-font [app]
-   (apply set-font app (or (utils/read-value-from-prefs utils/clooj-prefs "app-font")
-                     default-font)))
   
 (defn resize-font [app fun]
   (let [[name size] @current-font]
@@ -126,6 +117,51 @@
 (defn grow-font [app] (resize-font app inc))
 
 (defn shrink-font [app] (resize-font app dec))
+
+;; settings
+
+(def default-settings
+  (merge 
+    (zipmap [:font-name :font-size] 
+            (cond (utils/is-mac) ["Monaco" 11]
+                  (utils/is-win) ["Courier New" 12]
+                  :else    ["Monospaced" 12]))
+  {:line-wrap-doc false
+   :line-wrap-repl-out false
+   :line-wrap-repl-in false
+   }))
+
+(defn load-settings []
+  (atom
+    (or (utils/read-value-from-prefs utils/clooj-prefs "settings")
+        default-settings)))
+
+(defn save-settings [settings]
+  (utils/write-value-to-prefs 
+    utils/clooj-prefs 
+    "settings"
+    settings))
+
+(defn apply-settings [app settings]
+   
+  (defn set-line-wrapping [text-area mode]
+    (.setLineWrap text-area mode))
+  
+  (set-line-wrapping 
+    (:doc-text-area app)
+    (:line-wrap-doc settings))
+  (set-line-wrapping 
+    (:repl-in-text-area app)
+    (:line-wrap-repl-in settings))
+  (set-line-wrapping 
+    (:repl-out-text-area app)
+    (:line-wrap-repl-out settings))
+  
+  (set-font app 
+            (:font-name settings)
+            (:font-size settings))
+  (reset! (:settings app) settings)
+  (save-settings settings))
 
 ;; caret finding
 
@@ -336,28 +372,6 @@
      (select menu <b>File > New...</b>)<br>
      &nbsp;2. edit an existing file by selecting one at left.</html>")
 
-(defn set-line-wrapping [text-area mode]
-  (.setLineWrap text-area mode))
-
-(defn toggle-line-wrapping [app text-area-id]
-  (let [text-area (text-area-id app)
-        mode (not (.getLineWrap text-area))]
-    (set-line-wrapping text-area mode)
-    (utils/write-value-to-prefs 
-      utils/clooj-prefs 
-      (str "line-wrapping-mode" text-area-id)
-      mode)))
-
-(defn load-line-wrapping-mode [app]
-  (let [doc :doc-text-area
-        doc-text-area-mode (utils/read-value-from-prefs
-                             utils/clooj-prefs
-                             (str "line-wrapping-mode" doc))]
-    (set-line-wrapping (doc app) doc-text-area-mode)))
-
-(defn load-gui-settings [app]
-  (load-line-wrapping-mode app))
-
 (defn move-caret-to-line [textarea]
   "Move caret to choosen line"
   
@@ -481,7 +495,8 @@
                      ))
         doc-text-area (new-doc-text-area app)
         doc-scroll-pane (make-scroll-pane doc-text-area)
-        app (assoc app :doc-text-area doc-text-area)]
+        app (assoc app :doc-text-area doc-text-area)
+        app (assoc app :settings (load-settings))]
     (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
@@ -595,7 +610,6 @@
     (load-caret-position app)
     (update-caret-position text-area)
     (repl/apply-namespace-to-repl app)
-    (load-gui-settings app)
     (reset! changing-file false)))
 
 (defn save-file [app]
@@ -757,7 +771,6 @@
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(utils/indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(utils/unindent (:doc-text-area app))]
       ["Name search/docs" "S" "TAB" #(help/show-tab-help app (help/find-focused-text-pane app) inc)]
-      ["Toggle line wrapping mode" "L" nil #(toggle-line-wrapping app :doc-text-area)]
       ["Go to line..." "G" "cmd1 L" #(move-caret-to-line (:doc-text-area app))]                    
       ;["Go to definition" "G" "cmd1 D" #(goto-definition (repl/get-file-ns app) app)]
       )
@@ -779,8 +792,8 @@
       ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
       ["Increase font size" nil "cmd1 PLUS" #(grow-font app)]
       ["Decrease font size" nil "cmd1 MINUS" #(shrink-font app)]
-      ["Choose font..." nil nil #(apply style/show-font-window
-                                        app set-font @current-font)])))
+      ["Settings" nil nil #(settings/show-settings-window
+                             app apply-settings)])))
       
     
 (defn add-visibility-shortcut [app]
@@ -822,7 +835,7 @@
       (project/load-expanded-paths tree)
       (when (false? (project/load-tree-selection tree))
         (repl/start-repl app nil)))
-    (load-font app)))
+    (apply-settings app @(:settings app))))
 
 (defn -show []
   (reset! embedded true)
