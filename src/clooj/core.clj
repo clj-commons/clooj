@@ -328,7 +328,8 @@
   (.setVisible (:search-match-case-checkbox app) false)
   (.setVisible (:search-regex-checkbox app) false)
   (doto (:search-close-button app)
-    (.setVisible  false)
+    (.setVisible false)
+    (.setBorder nil)
     (.addActionListener 
       (reify ActionListener
         (actionPerformed [_ _] (search/stop-find app)))))
