@@ -87,37 +87,6 @@
             URL. slurp read-string (nth 2))
         (catch Exception _ nil)))))
 
-;; font
-
-(defonce current-font (atom nil))
-
-(defn font [name size]
-  (Font. name Font/PLAIN size))
-
-(defn set-font
-  ([app font-name size]
-    (let [f (font font-name size)]
-      (utils/awt-event
-        (utils/write-value-to-prefs utils/clooj-prefs "app-font"
-                              [font-name size])
-        (dorun (map #(.setFont (app %) f)
-                    [:doc-text-area :repl-in-text-area
-                     :repl-out-text-area :arglist-label
-                     :search-text-area :help-text-area
-                     :completion-list]))
-        (reset! current-font [font-name size]))))
-  ([app font-name]
-    (let [size (second @current-font)]
-      (set-font app font-name size))))
-  
-(defn resize-font [app fun]
-  (let [[name size] @current-font]
-    (set-font app name (fun size))))
-
-(defn grow-font [app] (resize-font app inc))
-
-(defn shrink-font [app] (resize-font app dec))
-
 ;; settings
 
 (def default-settings
@@ -147,6 +116,16 @@
    
   (defn set-line-wrapping [text-area mode]
     (.setLineWrap text-area mode))
+
+  (defn set-font
+    [app font-name size]
+    (let [f (Font. font-name Font/PLAIN size)]
+      (utils/awt-event
+        (dorun (map #(.setFont (app %) f)
+                    [:doc-text-area :repl-in-text-area
+                     :repl-out-text-area :arglist-label
+                     :search-text-area :help-text-area
+                     :completion-list])))))
   
   (set-line-wrapping 
     (:doc-text-area app)
@@ -163,6 +142,18 @@
             (:font-size settings))
   (reset! (:settings app) settings)
   (save-settings settings))
+
+;; font
+
+(defn resize-font [app fun]
+  (apply-settings app (update-in @(:settings app)
+                                 [:font-size]
+                                 fun)))
+
+(defn grow-font [app] (resize-font app inc))
+
+(defn shrink-font [app] (resize-font app dec))
+
 
 ;; caret finding
 
