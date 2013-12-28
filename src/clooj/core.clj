@@ -129,12 +129,13 @@
   {:line-wrap-doc false
    :line-wrap-repl-out false
    :line-wrap-repl-in false
+   :show-only-monospaced-fonts true
    }))
 
 (defn load-settings []
   (atom
-    (or (utils/read-value-from-prefs utils/clooj-prefs "settings")
-        default-settings)))
+    (merge default-settings
+           (utils/read-value-from-prefs utils/clooj-prefs "settings"))))
 
 (defn save-settings [settings]
   (utils/write-value-to-prefs 

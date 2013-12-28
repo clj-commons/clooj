@@ -1,7 +1,7 @@
-; Copyright (c) 2013, Aleksey Kolpakov
+; Copyright (c) 2011-2013, Arthur Edelstein
 ; All rights reserved.
 ; Eclipse Public License 1.0
-; alhimik45@gmail.com
+; arthuredelstein@gmail.com
 
 (ns clooj.settings
   (:import 
@@ -11,6 +11,7 @@
                  BoxLayout SpringLayout
                  JButton JCheckBox)
     (java.awt Font GraphicsEnvironment Dimension)
+    (java.awt.image BufferedImage)
     (javax.swing.event DocumentListener)
     (java.awt.event ActionListener ItemListener ItemEvent))
   (:require
@@ -49,16 +50,40 @@
               ItemEvent/SELECTED)))))))
 
 (defn font-panel []
-  (let [font-names (.. GraphicsEnvironment
-                       getLocalGraphicsEnvironment
-                       getAvailableFontFamilyNames)
-        example-text-area (doto (JTextArea. 
-                              "abcdefghijklmnopqrstuvwxyz 0123456789 (){}[]\nABCDEFGHIJKLMNOPQRSTUVWXYZ +-*/= .,;:!? #&$%@|^")
+  
+  
+  (def graphics-object
+    (memoize (fn [] (.createGraphics
+                      (BufferedImage. 1 1 BufferedImage/TYPE_INT_ARGB)))))
+  
+  (def monospaced?
+    (fn [font]
+      (let [g (graphics-object)
+            m (.getFontMetrics g font)]
+        (apply == (map #(.charWidth m %) [\m \n \. \M \-])))))
+
+  (defn get-all-font-names []
+    (.. GraphicsEnvironment
+        getLocalGraphicsEnvironment
+        getAvailableFontFamilyNames))
+    
+  (defn get-all-fonts-12 []
+    (map #(Font. % Font/PLAIN 12) (get-all-font-names)))
+  
+  (defn get-monospaced-font-names []
+    (map #(.getName %) (filter monospaced? (get-all-fonts-12))))
+  
+  (defn get-necessary-fonts []
+    (if (:show-only-monospaced-fonts @settings)
+      (get-monospaced-font-names)
+      (get-all-font-names)))
+  (let [example-text-area (doto (JTextArea. 
+                                  "abcdefghijklmnopqrstuvwxyz 0123456789 (){}[]\nABCDEFGHIJKLMNOPQRSTUVWXYZ +-*/= .,;:!? #&$%@|^")
                             (.setFont (Font. (:font-name @settings) Font/PLAIN (:font-size @settings))))
         example-pane (doto (JPanel. (SpringLayout.))      
                        (.add example-text-area))
         font-box (combo-box
-                   font-names
+                   (get-necessary-fonts)
                    (:font-name @settings)
                    #(do 
                       (swap! settings assoc :font-name %)
@@ -73,6 +98,19 @@
                       (.setFont 
                         example-text-area 
                         (Font. (:font-name @settings) Font/PLAIN %))))
+        monospaced-check-box (check-box
+                               "Show only monospaced fonts"
+                               (:show-only-monospaced-fonts @settings)
+                               #(do
+                                  (swap! settings 
+                                         assoc :show-only-monospaced-fonts %)
+                                  (doto font-box 
+                                    (.setModel 
+                                      (.getModel 
+                                        (JComboBox.
+                                          (into-array 
+                                            (get-necessary-fonts)))))
+                                    (.setSelectedItem (:font-name @settings)))))
         controls-pane (JPanel.)
         font-pane (JPanel.)]
 
@@ -93,6 +131,7 @@
     (doto font-pane
       (.setLayout (BoxLayout. font-pane BoxLayout/Y_AXIS))
       (.add controls-pane)
+      (.add monospaced-check-box)
       (.add example-pane))))
 
 (defn editor-options-panel []
@@ -132,6 +171,7 @@
       (.add (utils/create-button "Cancel" #(.dispose settings-frame))))
     
     (doto settings-frame
+      (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
       (.setLayout (BoxLayout. (.getContentPane settings-frame) BoxLayout/Y_AXIS))
       (.setBounds (- x 250) (- y 250) 500 500)
 
