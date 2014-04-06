@@ -246,12 +246,19 @@
       (doseq [start (get-selected-line-starts text-comp)]
         (when (= (.getText (.getDocument text-comp) start len) txt)
           (.remove document start len))))))
-  
+
 (defn comment-out [text-comp]
   (insert-in-selected-row-headers text-comp ";"))
 
 (defn uncomment-out [text-comp]
   (remove-from-selected-row-headers text-comp ";"))
+
+(defn toggle-comment [text-comp]
+  (if (= (.getText (.getDocument text-comp) 
+                   (first (get-selected-line-starts text-comp)) 1)
+         ";")
+    (uncomment-out text-comp)
+    (comment-out text-comp)))
     
 (defn indent [text-comp]
   (when (.isFocusOwner text-comp)
@@ -427,6 +434,9 @@
                 (not (.startsWith (.getName %) ".")))
           (.listFiles path)))
 
+(defn file-exists? [file]
+  (and file (.. file exists)))
+
 ;; tree seq on widgets (awt or swing)
 
 (defn widget-seq [^java.awt.Component comp]
@@ -489,6 +499,9 @@
   (= JOptionPane/YES_OPTION
      (JOptionPane/showConfirmDialog
        nil question title  JOptionPane/YES_NO_OPTION)))
+
+(defn ask-value [question title]
+  (JOptionPane/showInputDialog nil question title JOptionPane/QUESTION_MESSAGE))
 
 (defn persist-window-shape [prefs name ^java.awt.Window window]
   (let [components (widget-seq window)

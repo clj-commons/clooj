@@ -7,7 +7,8 @@
   (:import (javax.swing AbstractListModel BorderFactory JDialog
                         JFrame JLabel JList JMenuBar JOptionPane
                         JPanel JScrollPane JSplitPane JTextArea
-                        JTextField JTree KeyStroke SpringLayout JTextPane
+                        JTextField JTree KeyStroke SpringLayout
+                        JTextPane JCheckBox JButton
                         ListSelectionModel
                         UIManager)
            (javax.swing.event TreeSelectionListener
@@ -15,8 +16,9 @@
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (java.awt Insets Rectangle Window)
-           (java.awt.event AWTEventListener FocusAdapter
-                           MouseAdapter WindowAdapter KeyAdapter)
+           (java.awt.event AWTEventListener FocusAdapter 
+                           MouseAdapter WindowAdapter 
+                           ActionListener KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
            (java.util.concurrent LinkedBlockingQueue)
@@ -34,10 +36,10 @@
             [clooj.navigate :as navigate]
             [clooj.project :as project]
             [clooj.indent :as indent]
-            [clooj.style :as style]
             [clooj.brackets :as brackets]
             [clooj.highlighting :as highlighting]
-            [clooj.search :as search])
+            [clooj.search :as search]
+            [clooj.settings :as settings])
   (:gen-class
    :methods [^{:static true} [show [] void]]))
 
@@ -72,6 +74,7 @@
     (.setBracketMatchingEnabled false)
     (.setAutoIndentEnabled false)
     (.setAntiAliasingEnabled true)
+    (.setLineWrap wrap)
     ))
 
 (def get-clooj-version
@@ -84,45 +87,73 @@
             URL. slurp read-string (nth 2))
         (catch Exception _ nil)))))
 
-;; font
+;; settings
 
-(defonce current-font (atom nil))
+(def default-settings
+  (merge 
+    (zipmap [:font-name :font-size] 
+            (cond (utils/is-mac) ["Monaco" 11]
+                  (utils/is-win) ["Courier New" 12]
+                  :else    ["Monospaced" 12]))
+  {:line-wrap-doc false
+   :line-wrap-repl-out false
+   :line-wrap-repl-in false
+   :show-only-monospaced-fonts true
+   }))
 
-(defn font [name size]
-  (Font. name Font/PLAIN size))
+(defn load-settings []
+  (atom
+    (merge default-settings
+           (utils/read-value-from-prefs utils/clooj-prefs "settings"))))
 
-(def default-font
-  (cond (utils/is-mac) ["Monaco" 11]
-        (utils/is-win) ["Courier New" 12]
-        :else    ["Monospaced" 12]))
+(defn save-settings [settings]
+  (utils/write-value-to-prefs 
+    utils/clooj-prefs 
+    "settings"
+    settings))
 
-(defn set-font
-  ([app font-name size]
-    (let [f (font font-name size)]
+(defn apply-settings [app settings]
+   
+  (defn set-line-wrapping [text-area mode]
+    (.setLineWrap text-area mode))
+
+  (defn set-font
+    [app font-name size]
+    (let [f (Font. font-name Font/PLAIN size)]
       (utils/awt-event
-        (utils/write-value-to-prefs utils/clooj-prefs "app-font"
-                              [font-name size])
         (dorun (map #(.setFont (app %) f)
                     [:doc-text-area :repl-in-text-area
                      :repl-out-text-area :arglist-label
                      :search-text-area :help-text-area
-                     :completion-list]))
-        (reset! current-font [font-name size]))))
-  ([app font-name]
-    (let [size (second @current-font)]
-      (set-font app font-name size))))
-
-(defn load-font [app]
-   (apply set-font app (or (utils/read-value-from-prefs utils/clooj-prefs "app-font")
-                     default-font)))
+                     :completion-list])))))
   
+  (set-line-wrapping 
+    (:doc-text-area app)
+    (:line-wrap-doc settings))
+  (set-line-wrapping 
+    (:repl-in-text-area app)
+    (:line-wrap-repl-in settings))
+  (set-line-wrapping 
+    (:repl-out-text-area app)
+    (:line-wrap-repl-out settings))
+  
+  (set-font app 
+            (:font-name settings)
+            (:font-size settings))
+  (reset! (:settings app) settings)
+  (save-settings settings))
+
+;; font
+
 (defn resize-font [app fun]
-  (let [[name size] @current-font]
-    (set-font app name (fun size))))
+  (apply-settings app (update-in @(:settings app)
+                                 [:font-size]
+                                 fun)))
 
 (defn grow-font [app] (resize-font app inc))
 
 (defn shrink-font [app] (resize-font app dec))
+
 
 ;; caret finding
 
@@ -285,11 +316,18 @@
 (defn make-scroll-pane [text-area]
   (RTextScrollPane. text-area))
 
-(defn setup-search-text-area [app]
+(defn setup-search-elements [app]
+  (.setVisible (:search-match-case-checkbox app) false)
+  (.setVisible (:search-regex-checkbox app) false)
+  (doto (:search-close-button app)
+    (.setVisible false)
+    (.setBorder nil)
+    (.addActionListener 
+      (reify ActionListener
+        (actionPerformed [_ _] (search/stop-find app)))))
   (let [sta (doto (app :search-text-area)
       (.setVisible false)
-      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY))
-      (.addFocusListener (proxy [FocusAdapter] [] (focusLost [_] (search/stop-find app)))))]
+      (.setBorder (BorderFactory/createLineBorder Color/DARK_GRAY)))]
     (utils/add-text-change-listener sta #(search/update-find-highlight % app false))
     (utils/attach-action-keys sta ["ENTER" #(search/highlight-step app false)]
                             ["shift ENTER" #(search/highlight-step app true)]
@@ -300,11 +338,12 @@
     (.setVisible true)
     ))
 
-(defn exit-if-closed [^java.awt.Window f]
+(defn exit-if-closed [^java.awt.Window f app]
   (when-not @embedded
     (.addWindowListener f
       (proxy [WindowAdapter] []
         (windowClosing [_]
+          (save-caret-position app)          
           (System/exit 0))))))
 
 (def no-project-txt
@@ -326,6 +365,19 @@
      (select menu <b>File > New...</b>)<br>
      &nbsp;2. edit an existing file by selecting one at left.</html>")
 
+(defn move-caret-to-line [textarea]
+  "Move caret to choosen line"
+  
+  (defn current-line []
+    (inc (.getLineOfOffset textarea (.getCaretPosition textarea))))
+
+  (let [line-str (utils/ask-value "Line number:" "Go to Line")
+        line-num  (Integer.
+                    (if (or (nil? line-str) (nil? (re-find #"\d+" line-str)))
+                      (current-line)
+                      (re-find #"\d+" line-str)))]
+  (utils/scroll-to-line textarea line-num)
+  (.requestFocus textarea)))
 
 (defn open-project [app]
   (when-let [dir (utils/choose-directory (app :f) "Choose a project directory")]
@@ -369,7 +421,7 @@
 (defn create-app []
   (let [doc-text-panel (JPanel.)
         doc-label (JLabel. "Source Editor")
-        repl-out-text-area (JTextArea.)
+        repl-out-text-area (make-text-area false)
         repl-out-scroll-pane (repl-output/tailing-scroll-pane repl-out-text-area)
         repl-out-writer (repl/make-repl-writer repl-out-text-area)
         repl-in-text-area (make-text-area false)
@@ -380,6 +432,9 @@
         completion-list (JList.)
         completion-scroll-pane (JScrollPane. completion-list)
         search-text-area (JTextField.)
+        search-match-case-checkbox (JCheckBox. "Match case")
+        search-regex-checkbox (JCheckBox. "Regex")
+        search-close-button (JButton. "X")
         arglist-label (create-arglist-label)
         pos-label (JLabel.)
         frame (JFrame.)
@@ -418,6 +473,9 @@
                      docs-tree-panel
                      docs-tree-label
                      search-text-area
+                     search-match-case-checkbox
+                     search-regex-checkbox
+                     search-close-button
                      pos-label
                      repl-out-writer
                      doc-split-pane
@@ -430,7 +488,8 @@
                      ))
         doc-text-area (new-doc-text-area app)
         doc-scroll-pane (make-scroll-pane doc-text-area)
-        app (assoc app :doc-text-area doc-text-area)]
+        app (assoc app :doc-text-area doc-text-area)
+        app (assoc app :settings (load-settings))]
     (doto frame
       (.setBounds 25 50 950 700)
       (.setLayout layout)
@@ -442,7 +501,10 @@
       (.add doc-label)
       (.add pos-label)
       (.add search-text-area)
-      (.add arglist-label))
+      (.add arglist-label)
+      (.add search-match-case-checkbox)
+      (.add search-regex-checkbox)
+      (.add search-close-button))
     (doto docs-tree-panel
       (.setLayout (SpringLayout.))
       (.add docs-tree-label)
@@ -471,16 +533,21 @@
       navigate/attach-navigation-keys)
     (.setSyntaxEditingStyle repl-in-text-area
                             SyntaxConstants/SYNTAX_STYLE_CLOJURE)
+    (.setSyntaxEditingStyle repl-out-text-area
+                            SyntaxConstants/SYNTAX_STYLE_CLOJURE)
     (.setModel docs-tree (DefaultTreeModel. nil))
     (utils/constrain-to-parent split-pane :n gap :w gap :s (- gap) :e (- gap))
     (utils/constrain-to-parent doc-label :n 0 :w 0 :n 15 :e 0)
     (utils/constrain-to-parent doc-scroll-pane :n 16 :w 0 :s -16 :e 0)
     (utils/constrain-to-parent pos-label :s -14 :w 0 :s 0 :w 100)
-    (utils/constrain-to-parent search-text-area :s -15 :w 80 :s 0 :w 300)
+    (utils/constrain-to-parent search-text-area :s -15 :w 100 :s 0 :w 350)
+    (utils/constrain-to-parent search-match-case-checkbox :s -15 :w 355 :s 0 :w 470)
+    (utils/constrain-to-parent search-regex-checkbox :s -15 :w 475 :s 0 :w 550)
+    (utils/constrain-to-parent search-close-button :s -15 :w 65 :s 0 :w 95)
     (utils/constrain-to-parent arglist-label :s -14 :w 80 :s -1 :e -10)
     (.layoutContainer layout frame)
-    (exit-if-closed frame)
-    (setup-search-text-area app)
+    (exit-if-closed frame app)
+    (setup-search-elements app)
     (activate-caret-highlighter app)
     (setup-temp-writer app)
     (utils/attach-action-keys doc-text-area
@@ -522,7 +589,7 @@
           (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
           (.setEditable text-area true)	
           (.setSyntaxEditingStyle text-area
-                                  (let [file-name (.getName file-to-open)]
+            (let [file-name (.getName file-to-open)]
               (if (or (.endsWith file-name ".clj")
                       (.endsWith file-name ".clj~"))
                 SyntaxConstants/SYNTAX_STYLE_CLOJURE
@@ -530,9 +597,11 @@
       (do (.setText text-area no-project-txt)
           (.setText doc-label (str "Source Editor (No file selected)"))
           (.setEditable text-area false)))
-    (update-caret-position text-area)
+    
     (indent/setup-autoindent text-area)
     (reset! (app :file) file)
+    (load-caret-position app)
+    (update-caret-position text-area)
     (repl/apply-namespace-to-repl app)
     (reset! changing-file false)))
 
@@ -556,8 +625,8 @@
 (def project-clj-text (.trim
 "
 (defproject PROJECTNAME \"1.0.0-SNAPSHOT\"
-  :description \"FIXME: write\"
-  :dependencies [[org.clojure/clojure \"1.3.0\"]])
+  :description \"FIXME: write description\"
+  :dependencies [[org.clojure/clojure \"1.5.1\"]])
 "))
       
 (defn specify-source [project-dir title default-namespace]
@@ -690,12 +759,12 @@
       ["Move/Rename" "M" nil #(project/rename-project app)]
       ["Remove" nil nil #(remove-project app)])
     (utils/add-menu menu-bar "Source" "U"
-      ["Comment-out" "C" "cmd1 SEMICOLON" #(utils/comment-out (:doc-text-area app))]
-      ["Uncomment-out" "U" "cmd1 shift SEMICOLON" #(utils/uncomment-out (:doc-text-area app))]
+      ["Comment" "C" "cmd1 SEMICOLON" #(utils/toggle-comment (:doc-text-area app))]
       ["Fix indentation" "F" "cmd1 BACK_SLASH" #(indent/fix-indent-selected-lines (:doc-text-area app))]
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(utils/indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(utils/unindent (:doc-text-area app))]
       ["Name search/docs" "S" "TAB" #(help/show-tab-help app (help/find-focused-text-pane app) inc)]
+      ["Go to line..." "G" "cmd1 L" #(move-caret-to-line (:doc-text-area app))]                    
       ;["Go to definition" "G" "cmd1 D" #(goto-definition (repl/get-file-ns app) app)]
       )
     (utils/add-menu menu-bar "REPL" "R"
@@ -716,8 +785,8 @@
       ["Go to Project Tree" "P" "cmd1 1" #(.requestFocusInWindow (:docs-tree app))]
       ["Increase font size" nil "cmd1 PLUS" #(grow-font app)]
       ["Decrease font size" nil "cmd1 MINUS" #(shrink-font app)]
-      ["Choose font..." nil nil #(apply style/show-font-window
-                                        app set-font @current-font)])))
+      ["Settings" nil nil #(settings/show-settings-window
+                             app apply-settings)])))
       
     
 (defn add-visibility-shortcut [app]
@@ -757,8 +826,9 @@
     (setup-tree app)
     (let [tree (app :docs-tree)]
       (project/load-expanded-paths tree)
-      (project/load-tree-selection tree))
-    (load-font app)))
+      (when (false? (project/load-tree-selection tree))
+        (repl/start-repl app nil)))
+    (apply-settings app @(:settings app))))
 
 (defn -show []
   (reset! embedded true)

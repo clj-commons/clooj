@@ -72,14 +72,6 @@
   (swap! (:items repl-history) replace-first
          (utils/get-text-str (app :repl-in-text-area))))
 
-(defn correct-expression? [cmd]
-  (when-not (empty? (.trim cmd))
-    (let [rdr (-> cmd StringReader. PushbackReader.)]
-      (try (while (read rdr nil nil))
-           true
-           (catch IllegalArgumentException e true) ;explicitly show duplicate keys etc.
-           (catch Exception e false)))))
-
 (defn read-string-at [source-text start-line]
   `(let [sr# (java.io.StringReader. (str (apply str (repeat ~start-line "\n"))
                                          ~source-text))
@@ -106,30 +98,23 @@
   [app cmd-str silent?]
   (when-let [repl @(app :repl)]
     (.evaluate repl
-               (str (if silent?
-                      "(clooj.repl.remote/silent"
-                      "(do")
-                    cmd-str ")"))))
+               (if silent?
+                      (str "(clooj.repl.remote/silent" cmd-str ")")
+                      cmd-str))))
 
 (defn send-to-repl
   ([app cmd silent?] (send-to-repl app cmd "NO_SOURCE_PATH" 0 silent?))
   ([app cmd file line silent?]
-      (let [cmd-ln (str \newline (.trim cmd) \newline)
-            cmd-trim (.trim cmd)
-            classpaths (filter identity
-                               (map #(.getAbsolutePath %)
-                                    (-> app :classpath-queue)))
-            ]
-        (when-not silent?
-          (utils/append-text (app :repl-out-text-area) cmd-ln))
-        (let [cmd-str (cmd-attach-file-and-line cmd file line classpaths)]
-          (print-to-repl app cmd-str silent?))
-        (when-not silent?
-          (when (not= cmd-trim (second @(:items repl-history)))
-            (swap! (:items repl-history)
-                   replace-first cmd-trim)
-            (swap! (:items repl-history) conj ""))
-          (reset! (:pos repl-history) 0)))))
+    (let [cmd-ln (str cmd \newline)]
+      (when-not silent?
+        (utils/append-text (app :repl-out-text-area) cmd-ln))
+      (print-to-repl app cmd silent?)
+      (when-not silent?
+        (when (not= cmd (second @(:items repl-history)))
+          (swap! (:items repl-history)
+                 replace-first cmd)
+          (swap! (:items repl-history) conj ""))
+        (reset! (:pos repl-history) 0)))))
 
 (defn relative-file [app]
   (let [prefix (str (get-project-path app) File/separator
@@ -153,7 +138,7 @@
   (let [ta (app :doc-text-area)
         region (selected-region ta)
         txt (:text region)]
-    (if-not (and txt (correct-expression? txt))
+    (if-not txt
       (.setText (app :arglist-label) "Malformed expression")
       (let [line (.getLineOfOffset ta (:start region))]
         (send-to-repl app txt (relative-file app) line false)))))
@@ -205,21 +190,22 @@
     (catch Exception e)))
 
 (defn start-repl [app project-path]
-      (utils/append-text (app :repl-out-text-area)
-                   (str "\n=== Starting new REPL at " project-path " ===\n"))
+  (let [project-path (if (utils/file-exists? project-path) project-path nil)]
+    (utils/append-text (app :repl-out-text-area)
+                       (str "\n=== Starting new REPL at " project-path " ===\n"))
     (let [classpath-items ;(lein/lein-classpath-items project-path)
-                          (external/repl-classpath-items project-path)
+          (external/repl-classpath-items project-path)
           repl ;(lein/lein-repl project-path (app :repl-out-writer))
-               (external/repl project-path classpath-items 
-                              (app :repl-out-writer))
+          (external/repl project-path classpath-items 
+                         (app :repl-out-writer))
           ]
       (initialize-repl repl)
       (help/update-var-maps! project-path classpath-items)
-      (reset! (:repl app) repl)))
+      (reset! (:repl app) repl))))
 
 (defn stop-repl [app]
   (utils/append-text (app :repl-out-text-area)
-                                      "\n=== Shutting down REPL ===")
+                     "\n=== Shutting down REPL ===")
   (when-let [repl @(:repl app)]
     (.close repl)))
 
@@ -248,10 +234,8 @@
                                   txt
                                   caret-pos)))))
         submit #(when-let [txt (.getText ta-in)]
-                  (if (correct-expression? txt)
-                    (do (send-to-repl app txt false)
-                        (.setText ta-in ""))
-                    (.setText (app :arglist-label) "Malformed expression")))
+                  (do (send-to-repl app txt false)
+                      (.setText ta-in "")))
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
         at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
                       (.getLineOfOffset ta-in (.. ta-in getText length)))
