@@ -546,12 +546,13 @@
 (defn copy-input-stream-to-writer
   "Continuously copies all content from a java InputStream
    to a java Writer. Blocks until InputStream closes."
-  [input-stream writer]
-  (loop []
-    (let [c (.read input-stream)]
-      (when (not= c -1)
-        (.write writer c)
-        (recur)))))
+  [input-stream writer] 
+  (let [reader (InputStreamReader. input-stream)]
+    (loop []
+      (let [c (.read reader)]
+        (when (not= c -1)
+          (.write writer c)
+          (recur))))))
 
 ;; .clj file in current jar
 
