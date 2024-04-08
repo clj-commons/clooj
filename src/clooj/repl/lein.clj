@@ -65,7 +65,7 @@
   [project-path cmd]
   (->
     (doto (ProcessBuilder. ["lein" cmd])
-      (.redirectErrorStream true)
+      (.redirectErrorStream false)
       (.directory (io/file (or project-path "."))))
     .start))
 
