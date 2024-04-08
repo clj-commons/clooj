@@ -9,4 +9,4 @@
                  [slamhound "1.5.5"]
                  [com.cemerick/pomegranate "1.1.0"]
                  [com.fifesoft/rsyntaxtextarea "3.4.0"]
-                 [org.clojure/tools.nrepl "0.2.13"]])
+                 [nrepl/nrepl "1.1.1"]])

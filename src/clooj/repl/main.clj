@@ -15,7 +15,7 @@
            (java.util.concurrent LinkedBlockingQueue))
   (:require [clj-inspector.jars :as jars]
             [clojure.string :as string]
-            [clojure.tools.nrepl :as nrepl]
+            [nrepl.core :as nrepl]
             [clojure.java.io :as io]
             [clooj.brackets :as brackets]
             [clooj.help :as help]
