@@ -86,7 +86,7 @@
     (.setVisible case-checkbox true)
     (.setVisible regex-checkbox true)
     (.setVisible close-button true)
-    (if (not (empty? sel-text))
+    (when (seq sel-text)
       (.setText sta sel-text))))
 
 (defn stop-find [app]

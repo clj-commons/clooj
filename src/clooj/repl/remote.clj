@@ -4,7 +4,10 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.repl.remote
-  (:import (java.io StringReader)))
+  (:import (java.io StringReader))
+  (:require
+    [clojure.main :as m]
+    [clojure.pprint :as pp]))
 
 (def silence (atom false))
 
@@ -28,7 +31,7 @@
           [(StringReader. (str "(do " text ")"))]
           (getLineNumber []
                          (+ -1 line (proxy-super getLineNumber))))))
-    
+
 (defn eval-code-at
   "Evaluate some text as code, as though it were located
    in a given file at a particular line number."
@@ -40,7 +43,7 @@
   "Starts a REPL (for nesting in a primitive REPL) that
    prints nicely and suppresses silent evaluations."
   []
-  (clojure.main/repl
+  (m/repl
     :print (fn [x]
              (if @silence
                (do
@@ -48,5 +51,5 @@
                  (println))
                (if (var? x)
                  (println x)
-                 (clojure.pprint/pprint x))))
-    :prompt #(do (clojure.main/repl-prompt) (.flush *out*))))
+                 (pp/pprint x))))
+    :prompt #(do (m/repl-prompt) (.flush *out*))))

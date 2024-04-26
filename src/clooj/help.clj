@@ -72,7 +72,7 @@
 
 (defn get-var-maps [project-path classpath]
   (make-var-super-map
-      (mapcat vars/analyze-clojure-source
+      (mapcat #(vars/analyze-clojure-source "clj" %)
               (concat
                 (get-sources-from-jars project-path classpath)
                 (get-sources-from-clj-files classpath)))))
@@ -256,7 +256,7 @@
         others (match-items token-pat2 items)
         ;collaj-items (or (try (collaj/raw-data token) (catch Throwable _)))
         ]
-    (concat best others (comment collaj-items))))
+    (concat best others #_collaj-items)))
 
 (defn show-completion-list [{:keys [completion-list
                                     repl-split-pane
@@ -358,8 +358,7 @@
                          (utils/get-text-str text-comp)
                          (.getCaretPosition text-comp))
           len (- stop start)]
-      (when (and (not (empty? new-token)) (-> app :completion-list
-                                              .getModel .getSize pos?))
+      (when (and (seq new-token) (-> app :completion-list .getModel .getSize pos?))
         (.. text-comp getDocument
             (replace start len new-token nil))))))
 
@@ -397,4 +396,4 @@
             (.ensureIndexIsVisible l (.getSelectedIndex l))
             (show-help-text app (.getSelectedValue l))))))
     (utils/on-click 2 #(when-let [text-pane (find-focused-text-pane app)]
-                        (update-token app text-pane)))))
+                        (update-token app text-pane (get-list-token app))))))

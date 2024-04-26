@@ -25,6 +25,7 @@
             [clooj.protocols :as protocols]
             [clooj.utils :as utils]))
 
+#_{:clj-kondo/ignore [:use]}
 (use 'clojure.java.javadoc)
 
 (def repl-history {:items (atom nil) :pos (atom 0)})
@@ -234,8 +235,8 @@
                                   txt
                                   caret-pos)))))
         submit #(when-let [txt (.getText ta-in)]
-                  (do (send-to-repl app txt false)
-                      (.setText ta-in "")))
+                  (send-to-repl app txt false)
+                  (.setText ta-in ""))
         at-top #(zero? (.getLineOfOffset ta-in (get-caret-pos)))
         at-bottom #(= (.getLineOfOffset ta-in (get-caret-pos))
                       (.getLineOfOffset ta-in (.. ta-in getText length)))

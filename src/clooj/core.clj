@@ -16,8 +16,8 @@
            (javax.swing.tree DefaultMutableTreeNode DefaultTreeModel
                              TreePath TreeSelectionModel)
            (java.awt Insets Rectangle Window)
-           (java.awt.event AWTEventListener FocusAdapter 
-                           MouseAdapter WindowAdapter 
+           (java.awt.event AWTEventListener FocusAdapter
+                           MouseAdapter WindowAdapter
                            ActionListener KeyAdapter)
            (java.awt AWTEvent Color Font GridLayout Toolkit)
            (java.net URL)
@@ -26,7 +26,7 @@
            (java.io File FileReader StringReader
                     BufferedWriter OutputStreamWriter FileOutputStream)
            (org.fife.ui.rsyntaxtextarea RSyntaxTextArea SyntaxConstants
-                                        TokenMakerFactory)	
+                                        TokenMakerFactory)
            (org.fife.ui.rtextarea RTextScrollPane))
   (:require [clojure.set]
             [clooj.repl.main :as repl]
@@ -55,7 +55,7 @@
 (extend-type RSyntaxTextArea
   DynamicWordHighlighter
   (addWordToHighlight [word token-type]))
-    
+
 (defn make-rsyntax-text-area []
   (let [tmf (TokenMakerFactory/getDefaultInstance)
         token-maker (.getTokenMaker tmf "text/clojure")
@@ -67,7 +67,7 @@
                                      token-type)))]
       (.. rsta getDocument (setTokenMakerFactory tmf))
     rsta))
-  
+
 (defn make-text-area [wrap]
   (doto (RSyntaxTextArea.)
     (.setAnimateBracketMatching false)
@@ -90,8 +90,8 @@
 ;; settings
 
 (def default-settings
-  (merge 
-    (zipmap [:font-name :font-size] 
+  (merge
+    (zipmap [:font-name :font-size]
             (cond (utils/is-mac) ["Monaco" 11]
                   (utils/is-win) ["Courier New" 12]
                   :else    ["Monospaced" 12]))
@@ -107,39 +107,37 @@
            (utils/read-value-from-prefs utils/clooj-prefs "settings"))))
 
 (defn save-settings [settings]
-  (utils/write-value-to-prefs 
-    utils/clooj-prefs 
+  (utils/write-value-to-prefs
+    utils/clooj-prefs
     "settings"
     settings))
 
 (defn apply-settings [app settings]
-   
-  (defn set-line-wrapping [text-area mode]
-    (.setLineWrap text-area mode))
+  (letfn [(set-line-wrapping [text-area mode]
+            (.setLineWrap text-area mode))
+          (set-font
+            [app font-name size]
+            (let [f (Font. font-name Font/PLAIN size)]
+              (utils/awt-event
+                (dorun (map #(.setFont (app %) f)
+                            [:doc-text-area :repl-in-text-area
+                             :repl-out-text-area :arglist-label
+                             :search-text-area :help-text-area
+                             :completion-list])))))]
 
-  (defn set-font
-    [app font-name size]
-    (let [f (Font. font-name Font/PLAIN size)]
-      (utils/awt-event
-        (dorun (map #(.setFont (app %) f)
-                    [:doc-text-area :repl-in-text-area
-                     :repl-out-text-area :arglist-label
-                     :search-text-area :help-text-area
-                     :completion-list])))))
-  
-  (set-line-wrapping 
-    (:doc-text-area app)
-    (:line-wrap-doc settings))
-  (set-line-wrapping 
-    (:repl-in-text-area app)
-    (:line-wrap-repl-in settings))
-  (set-line-wrapping 
-    (:repl-out-text-area app)
-    (:line-wrap-repl-out settings))
-  
-  (set-font app 
-            (:font-name settings)
-            (:font-size settings))
+    (set-line-wrapping
+      (:doc-text-area app)
+      (:line-wrap-doc settings))
+    (set-line-wrapping
+      (:repl-in-text-area app)
+      (:line-wrap-repl-in settings))
+    (set-line-wrapping
+      (:repl-out-text-area app)
+      (:line-wrap-repl-out settings))
+
+    (set-font app
+              (:font-name settings)
+              (:font-size settings)))
   (reset! (:settings app) settings)
   (save-settings settings))
 
@@ -206,7 +204,7 @@
                           (highlighting/highlight-brackets text-comp good-enclosures bad-brackets)))))
                   (catch Throwable t (utils/awt-event (.printStackTrace t))))))
     (when ns
-      (send-off arglist-agent 
+      (send-off arglist-agent
                 (fn [old-pos]
                   (try
                     (let [pos (@caret-position text-comp)]
@@ -215,7 +213,7 @@
                               (help/arglist-from-caret-pos app ns text pos)]
                           (utils/awt-event (.setText (:arglist-label app) arglist-text)))))
                     (catch Throwable t (utils/awt-event (.printStackTrace t)))))))))
-   
+
 ;; highlighting
 
 (defn activate-caret-highlighter [app]
@@ -245,7 +243,7 @@
 ;; temp files
 
 (defn dump-temp-doc [app orig-f txt]
-  (try 
+  (try
     (when orig-f
       (let [orig (.getAbsolutePath orig-f)
             f (.getAbsolutePath (project/get-temp-file orig-f))]
@@ -268,7 +266,7 @@
                       (dump-temp-doc app f txt))
                     pos)
                      (catch Throwable t (utils/awt-event (.printStackTrace t))))))))
-  
+
 (defn setup-temp-writer [app]
   (let [text-comp (:doc-text-area app)]
     (utils/add-text-change-listener text-comp
@@ -283,7 +281,7 @@
              last-dot (.lastIndexOf name ".")
              suffix (.substring name (inc last-dot))]
     suffix))
-    
+
 (defn text-file? [f]
   (not (some #{(file-suffix f)}
              ["jar" "class" "dll" "jpg" "png" "bmp"])))
@@ -310,7 +308,7 @@
                         (not= f @(app :file))
                         (text-file? f))
                   (restart-doc app f))))))))))
-  
+
 ;; build gui
 
 (defn make-scroll-pane [text-area]
@@ -322,7 +320,7 @@
   (doto (:search-close-button app)
     (.setVisible false)
     (.setBorder nil)
-    (.addActionListener 
+    (.addActionListener
       (reify ActionListener
         (actionPerformed [_ _] (search/stop-find app)))))
   (let [sta (doto (app :search-text-area)
@@ -343,7 +341,7 @@
     (.addWindowListener f
       (proxy [WindowAdapter] []
         (windowClosing [_]
-          (save-caret-position app)          
+          (save-caret-position app)
           (System/exit 0))))))
 
 (def no-project-txt
@@ -358,20 +356,19 @@
             (select the File > New menu), or
        b. open an existing file
             (click on it in the tree at left).")
-       
+
 (def no-file-txt
     "To edit source code you need to either: <br>
-     &nbsp;1. create a new file 
+     &nbsp;1. create a new file
      (select menu <b>File > New...</b>)<br>
      &nbsp;2. edit an existing file by selecting one at left.</html>")
 
-(defn move-caret-to-line [textarea]
+(defn move-caret-to-line
   "Move caret to choosen line"
-  
-  (defn current-line []
-    (inc (.getLineOfOffset textarea (.getCaretPosition textarea))))
-
-  (let [line-str (utils/ask-value "Line number:" "Go to Line")
+  [textarea]
+  (let [current-line (fn []
+                       (inc (.getLineOfOffset textarea (.getCaretPosition textarea))))
+        line-str (utils/ask-value "Line number:" "Go to Line")
         line-num  (Integer.
                     (if (or (nil? line-str) (nil? (re-find #"\d+" line-str)))
                       (current-line)
@@ -396,13 +393,13 @@
   (utils/attach-action-keys comp
     ["cmd1 EQUALS" #(grow-font app)]
     ["cmd1 shift EQUALS" #(grow-font app)]
-    ["cmd1 PLUS" #(grow-font app)]                  
+    ["cmd1 PLUS" #(grow-font app)]
     ["cmd2 MINUS" #(.toBack (:frame app))]
     ["cmd2 PLUS" #(.toFront (:frame app))]
     ["cmd2 EQUALS" #(.toFront (:frame app))]
     ["cmd1 shift O" #(open-project app)]
     ["cmd1 K"#(.setText (app :repl-out-text-area) "")]))
-  
+
 (defn on-window-activation [win fun]
   (.addWindowListener win
     (proxy [WindowAdapter] []
@@ -587,7 +584,7 @@
             (.read text-area rdr nil))
           (.discardAllEdits text-area)
           (.setText doc-label (str "Source Editor \u2014 " (.getPath file)))
-          (.setEditable text-area true)	
+          (.setEditable text-area true)
           (.setSyntaxEditingStyle text-area
             (let [file-name (.getName file-to-open)]
               (if (or (.endsWith file-name ".clj")
@@ -597,7 +594,7 @@
       (do (.setText text-area no-project-txt)
           (.setText doc-label (str "Source Editor (No file selected)"))
           (.setEditable text-area false)))
-    
+
     (indent/setup-autoindent text-area)
     (reset! (app :file) file)
     (load-caret-position app)
@@ -628,7 +625,7 @@
   :description \"FIXME: write description\"
   :dependencies [[org.clojure/clojure \"1.5.1\"]])
 "))
-      
+
 (defn specify-source [project-dir title default-namespace]
   (when-let [namespace (JOptionPane/showInputDialog nil
                          "Please enter a fully-qualified namespace"
@@ -644,7 +641,7 @@
           the-dir (File. project-dir dirstring)]
       (.mkdirs the-dir)
       [(File. the-dir (str name ".clj")) namespace])))
-      
+
 (defn create-file [app project-dir default-namespace]
    (when-let [[file namespace] (specify-source project-dir
                                           "Create a source file"
@@ -674,7 +671,7 @@
                                "Unable to create project."
                                "Oops" JOptionPane/ERROR_MESSAGE)
                            (.printStackTrace e)))))
-  
+
 (defn rename-file [app]
   (when-let [old-file @(app :file)]
     (let [tree (app :docs-tree)
@@ -707,20 +704,20 @@
 (defn revert-file [app]
   (when-let [f @(:file app)]
     (let [temp-file (project/get-temp-file f)]
-      (when (.exists temp-file))
+      (when (.exists temp-file)
         (let [path (.getAbsolutePath f)]
           (when (utils/confirmed? "Revert the file? This cannot be undone." path)
             (.delete temp-file)
             (project/update-project-tree (:docs-tree app))
-            (restart-doc app f))))))
+            (restart-doc app f)))))))
 
 (defn- dir-rank [dir]
   (get {"src" 0 "test" 1 "lib" 2} (.getName dir) 100))
 
 (defn- find-file [project-path relative-file-path]
   (let [classpath-dirs (sort-by dir-rank < (utils/get-directories (File. project-path)))
-        file-candidates (map 
-                          #(File. (str (.getAbsolutePath %) File/separatorChar relative-file-path)) 
+        file-candidates (map
+                          #(File. (str (.getAbsolutePath %) File/separatorChar relative-file-path))
                           classpath-dirs)]
     (first (filter #(and (.exists %) (.isFile %)) file-candidates))))
 
@@ -728,9 +725,9 @@
   (let [text-comp (:doc-text-area app)
         pos (.getCaretPosition text-comp)
         text (.getText text-comp)
-        src-file (:file (meta (do (help/token-from-caret-pos ns text pos) nil)))
+        src-file (:file (meta (do (help/token-from-caret-pos text pos) nil)))
         line (:line (meta (do (find-ns (symbol ns))
-                                        (help/token-from-caret-pos ns text pos) nil)))
+                              (help/token-from-caret-pos text pos) nil)))
         project-path (first (project/get-selected-projects app))
         file (find-file project-path src-file)]
     (when (and file line)
@@ -764,7 +761,7 @@
       ["Indent lines" "I" "cmd1 CLOSE_BRACKET" #(utils/indent (:doc-text-area app))]
       ["Unindent lines" "D" "cmd1 OPEN_BRACKET" #(utils/unindent (:doc-text-area app))]
       ["Name search/docs" "S" "TAB" #(help/show-tab-help app (help/find-focused-text-pane app) inc)]
-      ["Go to line..." "G" "cmd1 L" #(move-caret-to-line (:doc-text-area app))]                    
+      ["Go to line..." "G" "cmd1 L" #(move-caret-to-line (:doc-text-area app))]
       ;["Go to definition" "G" "cmd1 D" #(goto-definition (repl/get-file-ns app) app)]
       )
     (utils/add-menu menu-bar "REPL" "R"
@@ -787,8 +784,8 @@
       ["Decrease font size" nil "cmd1 MINUS" #(shrink-font app)]
       ["Settings" nil nil #(settings/show-settings-window
                              app apply-settings)])))
-      
-    
+
+
 (defn add-visibility-shortcut [app]
   (let [shortcuts [(map utils/get-keystroke ["cmd2 EQUALS" "cmd2 PLUS"])]]
     (.. Toolkit getDefaultToolkit
@@ -818,7 +815,7 @@
     (help/setup-tab-help (app :repl-in-text-area) app)
     (doall (map #(project/add-project app %) (project/load-project-set)))
     (let [frame (app :frame)]
-      (utils/persist-window-shape utils/clooj-prefs "main-window" frame) 
+      (utils/persist-window-shape utils/clooj-prefs "main-window" frame)
       (utils/enable-mac-fullscreen frame)
       (.setVisible frame true)
       (on-window-activation frame #(project/update-project-tree (app :docs-tree))))
