@@ -5,7 +5,7 @@
 
 (ns clooj.repl.lein
   (:import (java.io BufferedReader File InputStreamReader))
-  (:require [clojure.tools.nrepl :as nrepl]
+  (:require [nrepl.core :as nrepl]
             [clojure.java.io :as io]
             [clooj.protocols :as protocols]
             [clooj.utils :as utils]))
@@ -65,7 +65,7 @@
   [project-path cmd]
   (->
     (doto (ProcessBuilder. ["lein" cmd])
-      (.redirectErrorStream true)
+      (.redirectErrorStream false)
       (.directory (io/file (or project-path "."))))
     .start))
 

@@ -60,15 +60,6 @@
   (try (Class/forName class-name)
        (catch Throwable _ nil)))
 
-(defn static-method [class-name method-name & arg-types]
-  (let [method
-        (some-> class-name
-                class-for-name
-                (.getMethod method-name
-                            (into-array Class arg-types)))]
-          (fn [& args]
-            (.invoke method nil (object-array args)))))
-
 ;; preferences
   
 ;; define a UUID for clooj preferences
@@ -570,23 +561,9 @@
 
 ;; OS-specific utils
 
-(defn enable-mac-fullscreen
+(defmacro enable-mac-fullscreen
   "Shows the Mac full-screen double arrow, as introduced in
    OS X Lion, if possible."
   [window]
-    (when (is-mac)
-      (let [enable (static-method
-                     "com.apple.eawt.FullScreenUtilities"
-                     "setWindowCanFullScreen"
-                     java.awt.Window
-                     Boolean/TYPE)]
-        (enable window true))))
-
-
-
-
-
-
-
-
-
+  (when (is-mac)
+    `(com.apple.eawt.FullScreenUtilities/setWindowCanFullScreen ~window true)))
