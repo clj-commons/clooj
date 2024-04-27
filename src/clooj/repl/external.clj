@@ -13,7 +13,7 @@
             [clooj.protocols :as protocols]
             [clooj.repl.lein :as lein]
             [clj-inspector.jars :as jars]))
-   
+
 (defn own-clojure-jar
   "Locate the clojure jar being used by clooj (last resort)."
   []
@@ -37,7 +37,7 @@
         jars (filter #(.contains (.getName %) "clojure")
                      (jars/jar-files lib-dir))]
     (first (filter #(jar-contains-class? % "clojure.lang.RT") jars))))
-        
+
 (defn repl-classpath-items
   "Figures out the necessary pieces for a viable classpath
    given a particular project directory."
@@ -49,7 +49,7 @@
                 (own-clojure-jar))
             (str project-path "/lib/*")
             (str project-path "/src")])))
-  
+
 (defn java-binary
   "Returns the fully-qualified path of the java binary."
   []
@@ -64,7 +64,7 @@
       (doto (ProcessBuilder. [(java-binary) "-cp" classpath-str "clojure.main"])
         (.redirectErrorStream true)
         (.directory (io/file (or project-path ".")))))))
-  
+
 (defn launch-repl
   "Launch an outside process with a clojure repl."
   [project-path classpath-items result-writer]
@@ -104,7 +104,7 @@
         (close repl-map))
       (toString [this]
         (str "Repl with classpath" (:classpath repl-map))))))
-    
-  
+
+
 
 

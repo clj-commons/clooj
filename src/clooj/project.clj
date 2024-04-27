@@ -20,7 +20,7 @@
 
 (defn save-project-set []
   (utils/write-value-to-prefs utils/clooj-prefs "project-set" @project-set))
-    
+
 (defn load-project-set []
   (reset! project-set (into (sorted-set)
                             (utils/read-value-from-prefs utils/clooj-prefs "project-set"))))
@@ -69,7 +69,7 @@
         (.split File/separator))
     (remove empty?)
     (remove #(= % "."))))
-      
+
 (defn file-ancestor?
   "In the file tree, returns true if descendant-file
    is a direct descendant of ancestor-file.
@@ -79,7 +79,7 @@
         descendant (path-components descendant-file)]
     (and (every? true? (map = ancestor descendant))
          (<= (count ancestor) (count descendant)))))
-    
+
 (defn node-children [node]
   (when-not (.isLeaf node)
     (for [i (range (.getChildCount node))]
@@ -121,9 +121,9 @@
 
 (defn load-tree-selection [tree]
   (let [path (utils/read-value-from-prefs utils/clooj-prefs "tree-selection")]
-     (if (nil? path) 
-       false 
-       (do 
+     (if (nil? path)
+       false
+       (do
          (set-tree-selection tree path)
          true))))
 
@@ -183,7 +183,7 @@
 
 (defn file-tree-model [projects]
     (DefaultTreeModel. (root-node projects) false))
-    
+
 (defn update-project-tree [tree]
   (let [model (file-tree-model (vec @project-set))]
     (utils/awt-event
@@ -209,7 +209,7 @@
         selections (.getSelectionPaths tree)]
     (for [selection selections]
       (-> selection .getPath second .getUserObject))))
- 
+
 (defn add-project [app project-path]
   (swap! project-set conj project-path))
 
@@ -226,5 +226,5 @@
 (defn remove-selected-project [app]
   (apply swap! project-set disj (map #(.getAbsolutePath %)
                                      (get-selected-projects app)))
-  (update-project-tree (app :docs-tree)))     
-      
+  (update-project-tree (app :docs-tree)))
+

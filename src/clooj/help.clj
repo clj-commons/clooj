@@ -226,7 +226,7 @@
 
 (defn item-help [item]
   (cond (map? item) (var-help item)
-        (class? item) (class-help item)))    
+        (class? item) (class-help item)))
 
 (defn set-first-component [split-pane comp]
   (let [loc (.getDividerLocation split-pane)]
@@ -286,13 +286,13 @@
                                     (.getSelectedIndex help-list))
                                n))))))
   (show-completion-list app))
-  
+
 (defn get-list-item [app]
   (-> app :completion-list .getSelectedValue))
 
 (defn get-list-artifact [app]
   (when-let [artifact (:artifact (get-list-item app))]
-    (binding [*read-eval* false] 
+    (binding [*read-eval* false]
       (read-string artifact))))
 
 (defn get-list-token [app]
@@ -323,11 +323,11 @@
                            (app :docs-tree-panel))
       (.setText (app :repl-label) "Clojure REPL output"))
     (swap! help-state assoc :visible false :pos nil)))
-  
+
 (defn help-handle-caret-move [app text-comp]
   (utils/awt-event
     (when (@help-state :visible)
-      (let [[start _] (local-token-location (utils/get-text-str text-comp) 
+      (let [[start _] (local-token-location (utils/get-text-str text-comp)
                                             (.getCaretPosition text-comp))]
         (if-not (= start (@help-state :pos))
           (hide-tab-help app)
@@ -351,7 +351,7 @@
     (add-classpath-to-repl app (aether/dependency-files deps)))
   (utils/append-text (app :repl-out-text-area)
                      (str "done.")))
-  
+
 (defn update-token [app text-comp new-token]
   (utils/awt-event
     (let [[start stop] (local-token-location
@@ -388,7 +388,7 @@
       (proxy [DefaultListCellRenderer] []
         (getListCellRendererComponent [list item index isSelected cellHasFocus]
           (doto (proxy-super getListCellRendererComponent list item index isSelected cellHasFocus)
-            (.setText (present-item item)))))) 
+            (.setText (present-item item))))))
     (.addListSelectionListener
       (reify ListSelectionListener
         (valueChanged [_ e]

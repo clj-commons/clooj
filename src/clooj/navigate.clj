@@ -20,7 +20,7 @@
 (defn move-to-line-start [comp]
   (.setCaretPosition comp
     (.getLineStartOffset comp
-      (get-caret-line-number comp)))) 
+      (get-caret-line-number comp))))
 
 (defn move-to-line-end [comp]
   (.setCaretPosition comp
@@ -29,7 +29,7 @@
       (if (= p (.. comp getDocument getLength))
         p
         (dec p)))))
-           
+
 (defn attach-navigation-keys [comp]
   (utils/attach-action-keys comp
     ["cmd1 LEFT" #(move-to-line-start comp)]

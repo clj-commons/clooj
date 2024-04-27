@@ -58,10 +58,10 @@
 
 (defn initialize-repl [repl]
   (.evaluate repl
-    (str    
+    (str
       "(do"
       (utils/local-clj-source "clooj/cemerick/pomegranate.clj")
-      (utils/local-clj-source "clooj/repl/remote.clj")    
+      (utils/local-clj-source "clooj/repl/remote.clj")
       "(clooj.repl.remote/repl)"
       ")"
       )))
@@ -94,7 +94,7 @@
          (binding [*source-path* ~short-file
                    *file* ~file]
            (last (map eval ~read-string-code)))))))
-           
+
 (defn print-to-repl
   [app cmd-str silent?]
   (when-let [repl @(app :repl)]
@@ -164,7 +164,7 @@
       (flush [])
       (close [] nil))
     (PrintWriter. true)))
-  
+
 (defn update-repl-in [app]
   (when (pos? (count @(:items repl-history)))
     (.setText (:repl-in-text-area app)
@@ -197,7 +197,7 @@
     (let [classpath-items ;(lein/lein-classpath-items project-path)
           (external/repl-classpath-items project-path)
           repl ;(lein/lein-repl project-path (app :repl-out-writer))
-          (external/repl project-path classpath-items 
+          (external/repl project-path classpath-items
                          (app :repl-out-writer))
           ]
       (initialize-repl repl)
@@ -253,4 +253,4 @@
   (send-to-repl app "(when *e (.printStackTrace *e))" true))
 
 
-  
+
