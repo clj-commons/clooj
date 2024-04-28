@@ -11,7 +11,7 @@
 
 ;(defn t [] (@clooj.core/current-app :doc-text-area))
 
-(def special-tokens 
+(def special-tokens
   ["def" "defn" "defmacro" "let" "for" "loop" "doseq" "if" "when"
    "binding" "case" "definline" "defmacro" "condp" "when-let" "if-let" "fn"
    "proxy" "reify" "when-first" "defmethod" "defmulti" "defn-" "defprotocol"
@@ -22,7 +22,7 @@
 
 (defn first-token [txt]
   (second (re-find #"\((.+?)\s" txt)))
-          
+
 (defn second-token-pos [txt]
   (when-let [x (re-find #".+?\s" (string/trimr (first (.split #"\r?\n" txt))))]
     (.length x)))
@@ -46,26 +46,26 @@
           (compute-indent-size text-comp bracket-pos)
           (+ col
              (condp = bracket
-               \( (left-paren-indent-size (.. text-comp getDocument (getText
-                                                    bracket-pos
-                                                    (- offset bracket-pos))))
+               \( (left-paren-indent-size (.. text-comp getDocument
+                                              (getText bracket-pos
+                                                       (- offset bracket-pos))))
                \\ 0  \[ 1  \{ 1  \" 1
-               1))))))) ;"
+               1)))))))
 
 (defn fix-indent [text-comp line]
   (let [start (.getLineStartOffset text-comp line)
         end (.getLineEndOffset text-comp line)
         document (.getDocument text-comp)
-        line-text (.getText document start (- end start))]
-    (let [old-indent-size (count (re-find #"\A\ +" line-text))]
-      (when-let [new-indent-size (compute-indent-size text-comp start)]       
-        (let [delta (- new-indent-size old-indent-size)]
-          (if (pos? delta)
-            (.insertString document start (apply str (repeat delta " ")) nil)
-            (.remove document start (- delta))))))))
+        line-text (.getText document start (- end start))
+        old-indent-size (count (re-find #"\A\ +" line-text))]
+    (when-let [new-indent-size (compute-indent-size text-comp start)]
+      (let [delta (- new-indent-size old-indent-size)]
+        (if (pos? delta)
+          (.insertString document start (apply str (repeat delta " ")) nil)
+          (.remove document start (- delta)))))))
 
 (defn fix-indent-selected-lines [text-comp]
-  (utils/awt-event 
+  (utils/awt-event
     (dorun (map #(fix-indent text-comp %)
                 (utils/get-selected-lines text-comp)))))
 
@@ -74,7 +74,7 @@
     (apply str "\n" (repeat indent-size " "))))
 
 (defn setup-autoindent [text-comp]
-  (utils/attach-action-keys text-comp                 
+  (utils/attach-action-keys text-comp
     ["cmd1 BACK_SLASH" #(fix-indent-selected-lines text-comp)] ; "cmd1 \"
     ["cmd1 CLOSE_BRACKET" #(utils/indent text-comp)]   ; "cmd1 ]"
     ["cmd1 OPEN_BRACKET" #(utils/unindent text-comp)]) ; "cmd1 ["
@@ -83,9 +83,9 @@
       (proxy [DocumentFilter] []
         (replace [fb offset len text attrs]
           (.replace
-            fb offset len  
+            fb offset len
             (condp = text
-              "\n" (auto-indent-str text-comp offset) 
+              "\n" (auto-indent-str text-comp offset)
               text)
             attrs))
         (remove [fb offset len]

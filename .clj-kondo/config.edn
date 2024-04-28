@@ -1,0 +1,5 @@
+{:linters {:unused-binding {:level :off}
+           :unused-import {:level :off}
+           :unused-namespace {:level :off}}
+ :lint-as {clooj.utils/when-lets clojure.core/let}
+ :output {:linter-name true}}

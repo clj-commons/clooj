@@ -47,7 +47,7 @@
   (loop [t text pos 0 stack nil errs nil]
     (let [c (first t)        ;this char
           new-stack (process-bracket-stack stack c pos)
-          e (if (mismatched-brackets (ffirst stack) c)
+          e (when (mismatched-brackets (ffirst stack) c)
               (list (first stack) [c pos]))
           new-errs (if e (concat errs e) errs)]
         (if (next t)

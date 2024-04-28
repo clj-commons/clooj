@@ -11,7 +11,7 @@
   "URL-encode a string."
   [s]
   (URLEncoder/encode s "UTF-8"))
-  
+
 (defn raw-data
   "Get a clojure data collection of raw search
    results from collaj.net"

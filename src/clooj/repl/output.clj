@@ -36,7 +36,7 @@
                 (insertUpdate [e] (set-scroll-offset e))
                 (removeUpdate [e]))))
     scroll-pane))
-  
+
 ;; manual tests
 
 (defn test-text-area
@@ -59,9 +59,9 @@
       .show)
     text-area
     ))
-                         
+
 (defn write-lines
-  "Write n lines of text (positive integers) in 
+  "Write n lines of text (positive integers) in
    the text-area"
   [text-area n]
   (dotimes [i n]

@@ -90,7 +90,7 @@
         port (lein-nrepl-port-number (first (drop-while nil? lines)))]
     {:nrepl (nrepl port out-writer)
      :process process}))
-    
+
 (defn lein-repl-stop
   "Disconnect from the nrepl connection and destroy the lein repl process."
   [{:keys [process nrepl]}]

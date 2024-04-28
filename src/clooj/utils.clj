@@ -4,9 +4,8 @@
 ; arthuredelstein@gmail.com
 
 (ns clooj.utils
-  (:require [clojure.string :as string :only (join split)])
-  (:import (java.util UUID)
-           (java.awt FileDialog Point Window)
+  (:require [clojure.string :as string])
+  (:import (java.awt FileDialog Point Window)
            (java.awt.event ActionListener MouseAdapter)
            (java.util.prefs Preferences)
            (java.security MessageDigest)
@@ -14,8 +13,8 @@
                     File FilenameFilter BufferedReader
                     InputStreamReader
                     ObjectInputStream ObjectOutputStream
-                    OutputStream Writer PrintStream)
-           (javax.swing AbstractAction JButton JFileChooser JMenu JMenuBar JMenuItem BorderFactory
+                    OutputStream PrintStream)
+           (javax.swing AbstractAction JButton JFileChooser JMenu JMenuItem BorderFactory
                         JOptionPane JSplitPane KeyStroke SpringLayout SwingUtilities)
            (javax.swing.event CaretListener DocumentListener UndoableEditListener)
            (javax.swing.undo UndoManager)))
@@ -34,7 +33,7 @@
     (assert (<= 2 n))
   (if (= 2 n)
     `(when-let ~bindings ~@body)
-    (let [[a b] (map vec (split-at 2 bindings))]     
+    (let [[a b] (map vec (split-at 2 bindings))]
       `(when-let ~a (when-lets ~b ~@body))))))
 
 (defn count-while [pred coll]
@@ -46,7 +45,7 @@
 (defmacro awt-event [& body]
   `(SwingUtilities/invokeLater
      (fn [] (try ~@body
-                 (catch Throwable t# 
+                 (catch Throwable t#
                         (.printStackTrace t#))))))
 
 (defmacro gen-map [& args]
@@ -61,7 +60,7 @@
        (catch Throwable _ nil)))
 
 ;; preferences
-  
+
 ;; define a UUID for clooj preferences
 (def clooj-prefs (.. Preferences userRoot
                      (node "clooj") (node "c6833c87-9631-44af-af83-f417028ea7aa")))
@@ -69,7 +68,7 @@
 (defn partition-str [n s]
   (let [l (.length s)]
     (for [i (range 0 l n)]
-      (.substring s i (Math/min l (+ (int i) (int n))))))) 
+      (.substring s i (Math/min l (+ (int i) (int n)))))))
 
 (def pref-max-bytes (* 3/4 Preferences/MAX_VALUE_LENGTH))
 
@@ -86,25 +85,25 @@
   "Reads a pure clojure data structure from Preferences object."
   [prefs key]
   (when-not (.endsWith key "/")
-    (let [node (. prefs node key)]
-      (let [s (apply str
-                     (for [i (range (count (. node keys)))]
-                       (.get node (str i) nil)))]
-        (when (and s (pos? (.length s))) (read-string s))))))
+    (let [node (.node prefs key)
+          s (apply str
+                   (for [i (range (count (. node keys)))]
+                     (.get node (str i) nil)))]
+      (when (and s (pos? (.length s))) (read-string s)))))
 
 (defn write-obj-to-prefs
   "Writes a java object to a Preferences object."
   [prefs key obj]
   (let [bos (ByteArrayOutputStream.)
         os (ObjectOutputStream. bos)
-        node (. prefs node key)]
+        node (.node prefs key)]
     (.writeObject os obj)
     (. node putByteArray "0" (.toByteArray bos))))
 
 (defn read-obj-from-prefs
   "Reads a java object from a Preferences object."
   [prefs key]
-  (let [node (. prefs node key)
+  (let [node (.node prefs key)
         bis (ByteArrayInputStream. (. node getByteArray "0" nil))
         os (ObjectInputStream. bis)]
     (.readObject os)))
@@ -112,7 +111,7 @@
 ;; identify OS
 
 (defn get-os []
-  (.. System (getProperty "os.name") toLowerCase))
+  (string/lower-case (.getProperty System "os.name")))
 
 (def is-win
   (memoize #(not (neg? (.indexOf (get-os) "win")))))
@@ -132,7 +131,7 @@
                :s SpringLayout/SOUTH
                :e SpringLayout/EAST}]
     (.. comp1 getParent getLayout
-        (putConstraint (edges edge1) comp1 
+        (putConstraint (edges edge1) comp1
                        dist (edges edge2) comp2))))
 
 (defn put-constraints [comp & args]
@@ -167,8 +166,9 @@
 (defn get-caret-coords [text-comp]
   (get-coords text-comp (.getCaretPosition text-comp)))
 
-(defn add-text-change-listener [text-comp f]
+(defn add-text-change-listener
   "Executes f whenever text is changed in text component."
+  [text-comp f]
   (.addDocumentListener
     (.getDocument text-comp)
     (reify DocumentListener
@@ -180,7 +180,7 @@
   (let [d (.getDocument text-comp)]
     (doseq [l (.getDocumentListeners d)]
       (.removeDocumentListener d l))))
-                               
+
 (defn get-text-str [text-comp]
   (let [doc (.getDocument text-comp)]
     (.getText doc 0 (.getLength doc))))
@@ -245,12 +245,12 @@
   (remove-from-selected-row-headers text-comp ";"))
 
 (defn toggle-comment [text-comp]
-  (if (= (.getText (.getDocument text-comp) 
+  (if (= (.getText (.getDocument text-comp)
                    (first (get-selected-line-starts text-comp)) 1)
          ";")
     (uncomment-out text-comp)
     (comment-out text-comp)))
-    
+
 (defn indent [text-comp]
   (when (.isFocusOwner text-comp)
     (insert-in-selected-row-headers text-comp " ")))
@@ -262,7 +262,7 @@
 ;; other gui
 
 (defn make-split-pane [comp1 comp2 horizontal divider-size resize-weight]
-  (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT 
+  (doto (JSplitPane. (if horizontal JSplitPane/HORIZONTAL_SPLIT
                                     JSplitPane/VERTICAL_SPLIT)
                      true comp1 comp2)
         (.setResizeWeight resize-weight)
@@ -289,7 +289,7 @@
   (let [im (.getInputMap component)
         am (.getActionMap component)
         input-event (get-keystroke input-key)
-        parent-action (if-let [tag (.get im input-event)]
+        parent-action (when-let [tag (.get im input-event)]
                         (.get am tag))
         child-action
           (proxy [AbstractAction] []
@@ -298,13 +298,13 @@
                 (action-fn)
                 (when parent-action
                   (.actionPerformed parent-action e)))))
-        uuid (.. UUID randomUUID toString)]
+        uuid (str (random-uuid))]
     (.put im input-event uuid)
     (.put am uuid child-action)))
 
 
 (defn attach-child-action-keys [comp & items]
-  (doall (map #(apply attach-child-action-key comp %) items)))
+  (run! #(apply attach-child-action-key comp %) items))
 
 (defn attach-action-key
   "Maps an input-key on a swing component to an action-fn."
@@ -315,10 +315,10 @@
 (defn attach-action-keys
   "Maps input keys to action-fns."
   [comp & items]
-  (doall (map #(apply attach-action-key comp %) items)))
-  
+  (run! #(apply attach-action-key comp %) items))
+
 ;; buttons
- 
+
 (defn create-button [text fn]
   (doto (JButton. text)
     (.addActionListener
@@ -329,7 +329,7 @@
 
 (defn add-menu-item
   ([menu item-name key-mnemonic key-accelerator response-fn]
-    (let [menu-item (JMenuItem. item-name)]  
+    (let [menu-item (JMenuItem. item-name)]
       (when key-accelerator
         (.setAccelerator menu-item (get-keystroke key-accelerator)))
       (when (and (not (is-mac)) key-mnemonic)
@@ -342,7 +342,7 @@
   ([menu item]
     (condp = item
       :sep (.addSeparator menu))))
-  
+
 (defn add-menu
   "Each item-tuple is a vector containing a
   menu item's text, mnemonic key, accelerator key, and the function
@@ -351,7 +351,7 @@
   (let [menu (JMenu. title)]
     (when (and (not (is-mac)) key-mnemonic)
       (.setMnemonic menu (.getKeyCode (get-keystroke key-mnemonic))))
-    (doall (map #(apply add-menu-item menu %) item-tuples))
+    (run! #(apply add-menu-item menu %) item-tuples)
     (.add menu-bar menu)
     menu))
 
@@ -374,8 +374,8 @@
         (reify UndoableEditListener
           (undoableEditHappened [this evt] (.addEdit undoMgr (.getEdit evt))))))
     (attach-action-keys text-area
-      ["cmd1 Z" #(if (.canUndo undoMgr) (.undo undoMgr))]
-      ["cmd1 shift Z" #(if (.canRedo undoMgr) (.redo undoMgr))])))
+      ["cmd1 Z" #(when (.canUndo undoMgr) (.undo undoMgr))]
+      ["cmd1 shift Z" #(when (.canRedo undoMgr) (.redo undoMgr))])))
 
 
 ;; file handling
@@ -390,7 +390,7 @@
       (.setVisible true))
     d (.getDirectory dialog)
     n (.getFile dialog)]
-    (if (and d n)
+    (when (and d n)
       (File. d n))))
 
 ;doesn't work with Java 7 -- see version below
@@ -416,10 +416,10 @@
     (doto fc (.setFileSelectionMode JFileChooser/DIRECTORIES_ONLY)
       (.setDialogTitle title)
       (.setCurrentDirectory (if last-open-dir (File. last-open-dir) nil)))
-    (if (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
+    (when (= JFileChooser/APPROVE_OPTION (.showOpenDialog fc parent))
       (.getSelectedFile fc))))
 
- 
+
 (defn get-directories [path]
   (filter #(and (.isDirectory %)
                 (not (.startsWith (.getName %) ".")))
@@ -485,7 +485,7 @@
   (try
     (set-shape components (read-value-from-prefs prefs name))
     (catch Exception e)))
-    
+
 (defn confirmed? [question title]
   (= JOptionPane/YES_OPTION
      (JOptionPane/showConfirmDialog
@@ -507,11 +507,11 @@
                                 shape))))))
 
 (defn sha1-str [obj]
-   (let [bytes (.getBytes (with-out-str (pr obj)))] 
+   (let [bytes (.getBytes (with-out-str (pr obj)))]
      (String. (.digest (MessageDigest/getInstance "MD") bytes))))
 
 ;; streams, writers and readers
- 
+
 (defn printstream-to-writer [writer]
   (->
     (proxy [OutputStream] []
@@ -537,7 +537,7 @@
 (defn copy-input-stream-to-writer
   "Continuously copies all content from a java InputStream
    to a java Writer. Blocks until InputStream closes."
-  [input-stream writer] 
+  [input-stream writer]
   (let [reader (InputStreamReader. input-stream)]
     (loop []
       (let [c (.read reader)]

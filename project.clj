@@ -1,6 +1,6 @@
 (defproject clooj "0.5"
   :description "clooj, a small IDE for clojure"
-  :url "https://github.com/arthuredelstein/clooj"
+  :url "https://github.com/clj-commons/clooj"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main clooj.core

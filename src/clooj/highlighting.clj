@@ -9,7 +9,7 @@
            (java.awt Color)
            (javax.swing.event CaretListener))
   (:require [clooj.utils :as utils]))
- 
+
 (defn highlight
   ([text-comp start stop color]
     (when (and (<= 0 start) (<= stop (.. text-comp getDocument getLength)))

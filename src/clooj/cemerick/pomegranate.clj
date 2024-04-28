@@ -45,7 +45,7 @@ unless you are extending a type to this protocol."
   [sym & body]
   (when (resolve sym) `(do ~@body)))
 
-(when-resolves sun.misc.Launcher             
+(when-resolves sun.misc.Launcher
   (extend sun.misc.Launcher$ExtClassLoader URLClasspath
     (assoc url-classloader-base
            :can-modify? (constantly false))))
