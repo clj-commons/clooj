@@ -111,7 +111,7 @@
 ;; identify OS
 
 (defn get-os []
-  (string/lower-case (.getProperty System "os.name")))
+  (string/lower-case (System/getProperty "os.name")))
 
 (def is-win
   (memoize #(not (neg? (.indexOf (get-os) "win")))))
