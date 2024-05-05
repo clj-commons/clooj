@@ -111,7 +111,7 @@
 ;; identify OS
 
 (defn get-os []
-  (string/lower-case (.getProperty System "os.name")))
+  (string/lower-case (System/getProperty "os.name")))
 
 (def is-win
   (memoize #(not (neg? (.indexOf (get-os) "win")))))
@@ -558,12 +558,3 @@
         java.net.URL.
         slurp)
     (catch Exception _ nil)))
-
-;; OS-specific utils
-
-(defmacro enable-mac-fullscreen
-  "Shows the Mac full-screen double arrow, as introduced in
-   OS X Lion, if possible."
-  [window]
-  (when (is-mac)
-    `(com.apple.eawt.FullScreenUtilities/setWindowCanFullScreen ~window true)))
