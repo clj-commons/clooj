@@ -816,7 +816,6 @@
     (doall (map #(project/add-project app %) (project/load-project-set)))
     (let [frame (app :frame)]
       (utils/persist-window-shape utils/clooj-prefs "main-window" frame)
-      (utils/enable-mac-fullscreen frame)
       (.setVisible frame true)
       (on-window-activation frame #(project/update-project-tree (app :docs-tree))))
     (setup-temp-writer app)

@@ -558,12 +558,3 @@
         java.net.URL.
         slurp)
     (catch Exception _ nil)))
-
-;; OS-specific utils
-
-(defmacro enable-mac-fullscreen
-  "Shows the Mac full-screen double arrow, as introduced in
-   OS X Lion, if possible."
-  [window]
-  (when (is-mac)
-    `(com.apple.eawt.FullScreenUtilities/setWindowCanFullScreen ~window true)))
